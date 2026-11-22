@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-11-22T07:06:33.961Z",
+  "generatedAt": "2026-11-22T00:00:00.000Z",
   "quizzes": [
     {
       "id": "computer-basics",
@@ -256,6 +256,794 @@
           ],
           "correct": 0,
           "explanation": "A computer virus attaches to legitimate files and replicates when those files are run or shared."
+        }
+      ]
+    },
+    {
+      "id": "programming-fundamentals",
+      "title": "Programming Fundamentals",
+      "subject": "Programming",
+      "description": "Variables, loops, functions, arrays and problem solving basics.",
+      "durationMinutes": 10,
+      "passMark": 50,
+      "shuffle": true,
+      "maxAttempts": 0,
+      "allowedEmails": [
+        "student@example.com",
+        "demo@example.com"
+      ],
+      "updatedAt": 1795305600000,
+      "questions": [
+        {
+          "id": "pf01",
+          "text": "What does a variable do in a program?",
+          "options": [
+            "Draws graphics on the screen",
+            "Stores a value that can change",
+            "Connects to the internet",
+            "Compiles the source code"
+          ],
+          "correct": 1,
+          "explanation": "A variable is a named storage location whose value can change while the program runs."
+        },
+        {
+          "id": "pf02",
+          "text": "Which loop is best when you know in advance how many times to repeat?",
+          "options": [
+            "for loop",
+            "if statement",
+            "switch statement",
+            "try block"
+          ],
+          "correct": 0,
+          "explanation": "A for loop has an initialiser, condition and update, so it suits a known number of repeats."
+        },
+        {
+          "id": "pf03",
+          "text": "What is the index of the first element of an array in most languages (C, Java, JavaScript, Python)?",
+          "options": [
+            "1",
+            "-1",
+            "It depends on the data",
+            "0"
+          ],
+          "correct": 3,
+          "explanation": "Array indexes start at 0, so the last index is length - 1."
+        },
+        {
+          "id": "pf04",
+          "text": "What is a function?",
+          "options": [
+            "A comment that explains code",
+            "A type of variable",
+            "A reusable block of code that performs a task",
+            "A syntax error"
+          ],
+          "correct": 2,
+          "explanation": "Functions let you write code once and call it many times, optionally with parameters and a return value."
+        },
+        {
+          "id": "pf05",
+          "text": "Which data type is best for storing true or false?",
+          "options": [
+            "String",
+            "Boolean",
+            "Integer",
+            "Array"
+          ],
+          "correct": 1,
+          "explanation": "A Boolean holds exactly one of two values: true or false."
+        },
+        {
+          "id": "pf06",
+          "text": "What is the result of 7 % 3?",
+          "options": [
+            "1",
+            "2",
+            "0",
+            "3"
+          ],
+          "correct": 0,
+          "explanation": "The % (modulus) operator returns the remainder: 7 divided by 3 leaves 1."
+        },
+        {
+          "id": "pf07",
+          "text": "What is an algorithm?",
+          "options": [
+            "A programming language",
+            "A type of computer virus",
+            "A hardware component",
+            "A step-by-step procedure to solve a problem"
+          ],
+          "correct": 3,
+          "explanation": "An algorithm is a finite, ordered set of steps that solves a problem."
+        },
+        {
+          "id": "pf08",
+          "text": "Which statement runs different code depending on a condition?",
+          "options": [
+            "loop",
+            "return",
+            "if / else",
+            "import"
+          ],
+          "correct": 2,
+          "explanation": "if / else is a conditional (selection) statement."
+        },
+        {
+          "id": "pf09",
+          "text": "What is a syntax error?",
+          "options": [
+            "A wrong answer produced at run time",
+            "A mistake in the rules of the language, found before the program runs",
+            "A slow program",
+            "A missing internet connection"
+          ],
+          "correct": 1,
+          "explanation": "Syntax errors break the grammar of the language, so the code cannot be compiled or parsed."
+        },
+        {
+          "id": "pf10",
+          "text": "What does a compiler do?",
+          "options": [
+            "Translates source code into machine code",
+            "Draws the user interface",
+            "Stores data in tables",
+            "Sends e-mails"
+          ],
+          "correct": 0,
+          "explanation": "A compiler translates the whole source program into machine code (or bytecode) before it runs."
+        },
+        {
+          "id": "pf11",
+          "text": "What is an infinite loop?",
+          "options": [
+            "A loop that runs exactly once",
+            "A loop with no body",
+            "A loop inside a function",
+            "A loop that never meets its stopping condition"
+          ],
+          "correct": 3,
+          "explanation": "If the loop condition never becomes false, the loop keeps repeating forever."
+        },
+        {
+          "id": "pf12",
+          "text": "What is 'debugging'?",
+          "options": [
+            "Writing new features",
+            "Deleting old files",
+            "Finding and fixing errors in code",
+            "Compressing a program"
+          ],
+          "correct": 2,
+          "explanation": "Debugging is the process of locating and fixing bugs."
+        },
+        {
+          "id": "pf13",
+          "text": "In 'function add(a, b) { return a + b; }', what are a and b called?",
+          "options": [
+            "Loops",
+            "Parameters",
+            "Operators",
+            "Comments"
+          ],
+          "correct": 1,
+          "explanation": "a and b are parameters: placeholders for the values passed in when the function is called."
+        },
+        {
+          "id": "pf14",
+          "text": "Which of these is a valid way to describe 'pseudocode'?",
+          "options": [
+            "Plain-language outline of an algorithm",
+            "Code that only runs on phones",
+            "Encrypted source code",
+            "A compiled program"
+          ],
+          "correct": 0,
+          "explanation": "Pseudocode mixes plain language and programming structure to plan logic without strict syntax."
+        },
+        {
+          "id": "pf15",
+          "text": "What does 'return' do inside a function?",
+          "options": [
+            "Restarts the program",
+            "Declares a variable",
+            "Prints to the console",
+            "Sends a value back and ends the function"
+          ],
+          "correct": 3,
+          "explanation": "return ends the function and hands a value back to the caller."
+        }
+      ]
+    },
+    {
+      "id": "web-development",
+      "title": "Web Development Basics",
+      "subject": "Web Development",
+      "description": "HTML5, CSS3, Bootstrap 5 and JavaScript essentials for building responsive pages.",
+      "durationMinutes": 10,
+      "passMark": 50,
+      "shuffle": true,
+      "maxAttempts": 0,
+      "allowedEmails": [
+        "student@example.com",
+        "demo@example.com"
+      ],
+      "updatedAt": 1795305600000,
+      "questions": [
+        {
+          "id": "wd01",
+          "text": "What does HTML stand for?",
+          "options": [
+            "High Transfer Markup Language",
+            "HyperText Markup Language",
+            "Hyperlinks and Text Management Language",
+            "Home Tool Markup Language"
+          ],
+          "correct": 1,
+          "explanation": "HTML is the standard markup language that gives web pages their structure."
+        },
+        {
+          "id": "wd02",
+          "text": "Which tag creates the largest heading?",
+          "options": [
+            "<h1>",
+            "<h6>",
+            "<head>",
+            "<heading>"
+          ],
+          "correct": 0,
+          "explanation": "<h1> is the top-level heading; <h6> is the smallest."
+        },
+        {
+          "id": "wd03",
+          "text": "Which CSS property changes the text colour?",
+          "options": [
+            "font-color",
+            "text-style",
+            "foreground",
+            "color"
+          ],
+          "correct": 3,
+          "explanation": "The color property sets the colour of text."
+        },
+        {
+          "id": "wd04",
+          "text": "Which HTML attribute provides alternative text for an image?",
+          "options": [
+            "title",
+            "src",
+            "alt",
+            "href"
+          ],
+          "correct": 2,
+          "explanation": "alt text helps screen-reader users and is shown if the image fails to load."
+        },
+        {
+          "id": "wd05",
+          "text": "In Bootstrap 5, which class creates a responsive fixed-width container?",
+          "options": [
+            ".wrapper",
+            ".container",
+            ".box",
+            ".grid-fixed"
+          ],
+          "correct": 1,
+          "explanation": "The .container class centres content and changes its max-width at each breakpoint."
+        },
+        {
+          "id": "wd06",
+          "text": "How many columns does Bootstrap's grid system use per row?",
+          "options": [
+            "12",
+            "6",
+            "8",
+            "16"
+          ],
+          "correct": 0,
+          "explanation": "Bootstrap divides every row into 12 equal columns."
+        },
+        {
+          "id": "wd07",
+          "text": "Which JavaScript method finds an element by its id?",
+          "options": [
+            "document.findId()",
+            "window.getId()",
+            "page.element()",
+            "document.getElementById()"
+          ],
+          "correct": 3,
+          "explanation": "document.getElementById('x') returns the element whose id is x."
+        },
+        {
+          "id": "wd08",
+          "text": "Which symbol is used for an id selector in CSS?",
+          "options": [
+            ". (dot)",
+            "* (asterisk)",
+            "# (hash)",
+            "& (ampersand)"
+          ],
+          "correct": 2,
+          "explanation": "#name selects the element with id=\"name\"; .name selects by class."
+        },
+        {
+          "id": "wd09",
+          "text": "Where is the safest place to put a <script> that reads page elements?",
+          "options": [
+            "Inside <title>",
+            "At the end of <body> (or with defer)",
+            "Inside a CSS file",
+            "Before <!doctype html>"
+          ],
+          "correct": 1,
+          "explanation": "Scripts at the end of the body, or loaded with defer, run after the elements exist."
+        },
+        {
+          "id": "wd10",
+          "text": "What does the viewport meta tag do?",
+          "options": [
+            "Makes the page scale correctly on mobile screens",
+            "Adds a keyword list for search engines",
+            "Loads the CSS file",
+            "Blocks pop-ups"
+          ],
+          "correct": 0,
+          "explanation": "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"> is essential for responsive design."
+        },
+        {
+          "id": "wd11",
+          "text": "Which CSS feature lets a layout change at different screen widths?",
+          "options": [
+            "Comments",
+            "Variables only",
+            "Pseudo-elements",
+            "Media queries"
+          ],
+          "correct": 3,
+          "explanation": "@media rules apply styles only when conditions such as screen width are met."
+        },
+        {
+          "id": "wd12",
+          "text": "Which method saves data in the browser that stays after the tab is closed?",
+          "options": [
+            "sessionStorage",
+            "console.log",
+            "localStorage",
+            "alert"
+          ],
+          "correct": 2,
+          "explanation": "localStorage persists until cleared; sessionStorage is erased when the tab closes."
+        },
+        {
+          "id": "wd13",
+          "text": "What does 'addEventListener' do?",
+          "options": [
+            "Adds a new HTML tag",
+            "Runs a function when an event such as a click happens",
+            "Creates a CSS class",
+            "Downloads a file"
+          ],
+          "correct": 1,
+          "explanation": "It registers a handler that runs whenever the named event occurs on the element."
+        },
+        {
+          "id": "wd14",
+          "text": "Which HTML element is used for the main navigation links?",
+          "options": [
+            "<nav>",
+            "<section>",
+            "<aside>",
+            "<footer>"
+          ],
+          "correct": 0,
+          "explanation": "<nav> is the semantic element for a block of navigation links."
+        },
+        {
+          "id": "wd15",
+          "text": "What does CSS stand for?",
+          "options": [
+            "Computer Style Sheets",
+            "Creative Styling System",
+            "Coded Syntax Sheets",
+            "Cascading Style Sheets"
+          ],
+          "correct": 3,
+          "explanation": "CSS = Cascading Style Sheets, used to style HTML."
+        }
+      ]
+    },
+    {
+      "id": "databases-sql",
+      "title": "Databases and SQL",
+      "subject": "Databases",
+      "description": "Tables, keys, SQL statements and relational database concepts.",
+      "durationMinutes": 10,
+      "passMark": 50,
+      "shuffle": true,
+      "maxAttempts": 0,
+      "allowedEmails": [
+        "student@example.com",
+        "demo@example.com"
+      ],
+      "updatedAt": 1795305600000,
+      "questions": [
+        {
+          "id": "db01",
+          "text": "What does SQL stand for?",
+          "options": [
+            "Simple Query Logic",
+            "Structured Query Language",
+            "Stored Question List",
+            "System Query Layer"
+          ],
+          "correct": 1,
+          "explanation": "SQL is the standard language for working with relational databases."
+        },
+        {
+          "id": "db02",
+          "text": "Which SQL statement reads data from a table?",
+          "options": [
+            "SELECT",
+            "INSERT",
+            "UPDATE",
+            "DELETE"
+          ],
+          "correct": 0,
+          "explanation": "SELECT retrieves rows (and columns) from one or more tables."
+        },
+        {
+          "id": "db03",
+          "text": "What is a primary key?",
+          "options": [
+            "The first column of every table",
+            "A password for the database",
+            "A backup of the table",
+            "A column that uniquely identifies each row"
+          ],
+          "correct": 3,
+          "explanation": "A primary key's values are unique and not null, so each row can be identified."
+        },
+        {
+          "id": "db04",
+          "text": "Which clause filters rows in a SELECT statement?",
+          "options": [
+            "ORDER BY",
+            "GROUP BY",
+            "WHERE",
+            "FROM"
+          ],
+          "correct": 2,
+          "explanation": "WHERE keeps only the rows that satisfy a condition."
+        },
+        {
+          "id": "db05",
+          "text": "Which statement adds a new row to a table?",
+          "options": [
+            "ADD ROW",
+            "INSERT INTO",
+            "CREATE ROW",
+            "PUT"
+          ],
+          "correct": 1,
+          "explanation": "INSERT INTO table (cols) VALUES (...) adds a row."
+        },
+        {
+          "id": "db06",
+          "text": "What is a foreign key?",
+          "options": [
+            "A column that refers to the primary key of another table",
+            "A key used by another country's database",
+            "A duplicate primary key",
+            "An encrypted column"
+          ],
+          "correct": 0,
+          "explanation": "A foreign key links rows in one table to rows in another."
+        },
+        {
+          "id": "db07",
+          "text": "Which clause sorts the results?",
+          "options": [
+            "SORT",
+            "GROUP BY",
+            "ARRANGE",
+            "ORDER BY"
+          ],
+          "correct": 3,
+          "explanation": "ORDER BY col ASC|DESC sorts the output."
+        },
+        {
+          "id": "db08",
+          "text": "Which aggregate function counts rows?",
+          "options": [
+            "SUM()",
+            "AVG()",
+            "COUNT()",
+            "MAX()"
+          ],
+          "correct": 2,
+          "explanation": "COUNT() returns the number of rows (or non-null values)."
+        },
+        {
+          "id": "db09",
+          "text": "What does DBMS stand for?",
+          "options": [
+            "Data Backup and Memory Service",
+            "Database Management System",
+            "Digital Binary Matrix System",
+            "Dynamic Business Model Software"
+          ],
+          "correct": 1,
+          "explanation": "A DBMS (e.g. MySQL, PostgreSQL) stores, manages and secures data."
+        },
+        {
+          "id": "db10",
+          "text": "Which statement removes a table and its data completely?",
+          "options": [
+            "DROP TABLE",
+            "DELETE",
+            "TRUNCATE ROW",
+            "REMOVE TABLE"
+          ],
+          "correct": 0,
+          "explanation": "DROP TABLE deletes the table definition and all its data."
+        },
+        {
+          "id": "db11",
+          "text": "Which command changes existing values in a table?",
+          "options": [
+            "MODIFY",
+            "ALTER ROW",
+            "CHANGE",
+            "UPDATE"
+          ],
+          "correct": 3,
+          "explanation": "UPDATE table SET col = value WHERE ... changes existing rows."
+        },
+        {
+          "id": "db12",
+          "text": "What is a 'table' in a relational database?",
+          "options": [
+            "A drawing tool",
+            "A type of key",
+            "A collection of rows and columns",
+            "A network cable"
+          ],
+          "correct": 2,
+          "explanation": "A table stores related data in rows (records) and columns (fields)."
+        },
+        {
+          "id": "db13",
+          "text": "What does 'normalisation' aim to do?",
+          "options": [
+            "Make queries slower",
+            "Reduce duplicated data and improve consistency",
+            "Encrypt all data",
+            "Delete old records"
+          ],
+          "correct": 1,
+          "explanation": "Normalisation organises tables so each fact is stored once."
+        },
+        {
+          "id": "db14",
+          "text": "Which keyword removes duplicate values from the SELECT result?",
+          "options": [
+            "DISTINCT",
+            "UNIQUE ONLY",
+            "SINGLE",
+            "NODUP"
+          ],
+          "correct": 0,
+          "explanation": "SELECT DISTINCT col returns each different value once."
+        },
+        {
+          "id": "db15",
+          "text": "Which JOIN returns only rows that have matching values in both tables?",
+          "options": [
+            "FULL OUTER JOIN",
+            "CROSS APPLY",
+            "LEFT ONLY",
+            "INNER JOIN"
+          ],
+          "correct": 3,
+          "explanation": "INNER JOIN keeps rows where the join condition matches in both tables."
+        }
+      ]
+    },
+    {
+      "id": "computer-networks",
+      "title": "Computer Networks",
+      "subject": "Networking",
+      "description": "IP addressing, protocols, devices and the internet.",
+      "durationMinutes": 10,
+      "passMark": 50,
+      "shuffle": true,
+      "maxAttempts": 0,
+      "allowedEmails": [
+        "student@example.com",
+        "demo@example.com"
+      ],
+      "updatedAt": 1795305600000,
+      "questions": [
+        {
+          "id": "cn01",
+          "text": "What does 'IP' in IP address stand for?",
+          "options": [
+            "Internal Program",
+            "Internet Protocol",
+            "Information Packet",
+            "Input Port"
+          ],
+          "correct": 1,
+          "explanation": "An IP address identifies a device on a network using the Internet Protocol."
+        },
+        {
+          "id": "cn02",
+          "text": "Which device connects different networks and forwards packets between them?",
+          "options": [
+            "Router",
+            "Monitor",
+            "Keyboard",
+            "Speaker"
+          ],
+          "correct": 0,
+          "explanation": "A router forwards data between networks, for example your home network and the internet."
+        },
+        {
+          "id": "cn03",
+          "text": "Which protocol is used to load secure web pages?",
+          "options": [
+            "HTTP",
+            "FTP",
+            "SMTP",
+            "HTTPS"
+          ],
+          "correct": 3,
+          "explanation": "HTTPS is HTTP over TLS encryption."
+        },
+        {
+          "id": "cn04",
+          "text": "What does DNS do?",
+          "options": [
+            "Encrypts e-mails",
+            "Speeds up the CPU",
+            "Translates domain names into IP addresses",
+            "Stores files"
+          ],
+          "correct": 2,
+          "explanation": "The Domain Name System maps names like example.com to IP addresses."
+        },
+        {
+          "id": "cn05",
+          "text": "What does LAN stand for?",
+          "options": [
+            "Large Area Network",
+            "Local Area Network",
+            "Long Access Node",
+            "Linked Application Network"
+          ],
+          "correct": 1,
+          "explanation": "A LAN connects devices in a small area such as a lab, home or office."
+        },
+        {
+          "id": "cn06",
+          "text": "Which protocol is mainly used to send e-mail?",
+          "options": [
+            "SMTP",
+            "HTML",
+            "SSH",
+            "DHCP"
+          ],
+          "correct": 0,
+          "explanation": "SMTP (Simple Mail Transfer Protocol) sends mail between servers."
+        },
+        {
+          "id": "cn07",
+          "text": "What is bandwidth?",
+          "options": [
+            "The length of a cable",
+            "The size of a monitor",
+            "The speed of the CPU",
+            "The maximum amount of data that can be transferred in a given time"
+          ],
+          "correct": 3,
+          "explanation": "Bandwidth is the capacity of a connection, usually measured in Mbps or Gbps."
+        },
+        {
+          "id": "cn08",
+          "text": "Which topology connects every device to one central switch or hub?",
+          "options": [
+            "Ring",
+            "Bus",
+            "Star",
+            "Mesh"
+          ],
+          "correct": 2,
+          "explanation": "In a star topology, all devices connect to a central device."
+        },
+        {
+          "id": "cn09",
+          "text": "What is the purpose of a firewall?",
+          "options": [
+            "Increase screen resolution",
+            "Monitor and filter network traffic according to rules",
+            "Store backups",
+            "Cool the server"
+          ],
+          "correct": 1,
+          "explanation": "A firewall allows or blocks traffic based on security rules."
+        },
+        {
+          "id": "cn10",
+          "text": "Which of these is a valid IPv4 address?",
+          "options": [
+            "192.168.1.10",
+            "192.168.1.300",
+            "192.168.1",
+            "192:168:1:10"
+          ],
+          "correct": 0,
+          "explanation": "IPv4 has four numbers from 0 to 255 separated by dots."
+        },
+        {
+          "id": "cn11",
+          "text": "What does DHCP do?",
+          "options": [
+            "Checks spelling",
+            "Compresses files",
+            "Prints documents",
+            "Automatically assigns IP addresses to devices"
+          ],
+          "correct": 3,
+          "explanation": "DHCP gives devices an IP address (and other settings) when they join a network."
+        },
+        {
+          "id": "cn12",
+          "text": "What does 'WWW' refer to?",
+          "options": [
+            "A type of cable",
+            "A search engine",
+            "The system of linked web pages accessed via the internet",
+            "A programming language"
+          ],
+          "correct": 2,
+          "explanation": "The World Wide Web is a service that runs on top of the internet."
+        },
+        {
+          "id": "cn13",
+          "text": "Which command checks whether another computer is reachable?",
+          "options": [
+            "print",
+            "ping",
+            "paste",
+            "play"
+          ],
+          "correct": 1,
+          "explanation": "ping sends small test packets and reports the response time."
+        },
+        {
+          "id": "cn14",
+          "text": "What is a MAC address?",
+          "options": [
+            "A hardware address burned into a network interface",
+            "The address of a website",
+            "An e-mail address",
+            "A type of password"
+          ],
+          "correct": 0,
+          "explanation": "A MAC address is a unique identifier assigned to a network card."
+        },
+        {
+          "id": "cn15",
+          "text": "Which layer-based model has seven layers?",
+          "options": [
+            "ASCII model",
+            "Binary model",
+            "Von Neumann model",
+            "OSI model"
+          ],
+          "correct": 3,
+          "explanation": "The OSI reference model describes networking in seven layers."
         }
       ]
     }

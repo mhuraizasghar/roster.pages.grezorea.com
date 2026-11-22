@@ -1,4 +1,4 @@
-* QuizHub theme. Bootstrap 5.3 does the layout; this file adds the brand layer. *
+
 :root {
   --qh-primary: #3b5bdb;
   --qh-primary-dark: #2f4ac0;
@@ -37,7 +37,7 @@ body {
 
 .text-muted { color: var(--qh-muted) !important; }
 
-* ---------- chrome ---------- *
+/* Chrome */
 .qh-nav {
   background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(10px);
@@ -50,6 +50,44 @@ body {
   border: 1px solid var(--qh-border);
   border-radius: 1.1rem;
   box-shadow: 0 1px 2px rgba(27, 31, 59, 0.04), 0 8px 24px rgba(27, 31, 59, 0.05);
+}
+.intro-card { max-width: 680px; }
+.intro-actions { align-items: center; }
+.intro-cancel { min-width: 88px; }
+.intro-begin {
+  min-width: 190px;
+  min-height: 44px;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #3b5bdb;
+  border: 2px solid #3b5bdb;
+  color: #fff;
+  font-weight: 700;
+  opacity: 1;
+}
+.intro-begin:hover,
+.intro-begin:focus {
+  background: #2f4ac0;
+  border-color: #2f4ac0;
+  color: #fff;
+}
+.quiz-action {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #3b5bdb;
+  border: 2px solid #3b5bdb;
+  color: #fff;
+  font-weight: 700;
+}
+.quiz-action:hover,
+.quiz-action:focus {
+  background: #2f4ac0;
+  border-color: #2f4ac0;
+  color: #fff;
 }
 .quiz-card[data-quiz-url] {
   cursor: pointer;
@@ -115,7 +153,7 @@ body {
   background: var(--qh-primary-soft); color: var(--qh-primary); flex: none;
 }
 
-* ---------- timer ---------- *
+/* Timer */
 .timer {
   display: inline-flex; align-items: center; padding: 0.45rem 0.95rem; border-radius: 999px;
   background: var(--qh-primary-soft); color: var(--qh-primary); font-weight: 700;
@@ -125,7 +163,7 @@ body {
 .timer.danger { background: var(--qh-bad-soft); color: var(--qh-bad); animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 0.4rem rgba(224, 49, 49, 0.14); } }
 
-* ---------- answer options ---------- *
+/* Answer options */
 .opt {
   position: relative; display: flex; align-items: center; gap: 0.9rem; margin: 0;
   padding: 0.9rem 1rem; border: 2px solid var(--qh-border); border-radius: 0.9rem; background: #fff;
@@ -142,7 +180,7 @@ body {
 .opt:focus-within { outline: 3px solid rgba(59, 91, 219, 0.35); outline-offset: 2px; }
 .opt-text { flex: 1; overflow-wrap: anywhere; }
 
-* ---------- question navigator ---------- *
+/* Question navigator */
 .qnav { display: grid; grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr)); gap: 0.45rem; }
 .qnav button {
   aspect-ratio: 1; padding: 0; border: 2px solid var(--qh-border); background: #fff; border-radius: 0.7rem;
@@ -153,7 +191,7 @@ body {
 .qnav button:focus-visible { outline: 3px solid rgba(59, 91, 219, 0.35); outline-offset: 2px; }
 .legend-dot { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 0.25rem; margin-right: 0.35rem; vertical-align: -1px; }
 
-* ---------- results ---------- *
+/* Results */
 .score-ring {
   --pct: 0; --ring: var(--qh-ok);
   width: 170px; height: 170px; border-radius: 50%; display: grid; place-items: center; flex: none;
@@ -187,7 +225,7 @@ body {
 
 .rank-1 { color: #f5b301; } .rank-2 { color: #9aa3b5; } .rank-3 { color: #c77c3d; }
 
-* ---------- admin ---------- *
+/* Admin */
 .admin-pills .nav-link { color: var(--qh-muted); font-weight: 500; border-radius: 0.75rem; }
 .admin-pills .nav-link.active { background: var(--qh-primary); color: #fff; }
 .sticky-actions {
@@ -203,12 +241,18 @@ body {
 
 .hero-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
 
-* ---------- print (result page) ---------- *
 @media print {
   body { background: #fff; }
   .qh-nav, .no-print, .btn, .toast-container { display: none !important; }
   .qh-card { box-shadow: none; }
   .rev-card { break-inside: avoid; }
+}
+
+@media (max-width: 575.98px) {
+  .intro-actions { align-items: stretch; }
+  .intro-cancel, .intro-begin { min-width: 0; }
+  .intro-cancel { flex: 0 0 36%; }
+  .intro-begin { flex: 1 1 auto; margin-left: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

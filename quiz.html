@@ -43,8 +43,8 @@
 
     
     <section id="introView" class="d-none">
-      <div class="card qh-card mx-auto" style="max-width: 680px;">
-        <div class="card-body p-4 p-lg-5">
+      <div class="card qh-card intro-card mx-auto">
+        <div class="card-body p-4">
           <span class="badge soft-badge mb-2" id="introSubject"></span>
           <h1 class="h3" id="introTitle"></h1>
           <p class="text-muted" id="introDesc"></p>
@@ -60,9 +60,9 @@
             <li>Keyboard: <kbd>←</kbd> <kbd>→</kbd> to move, <kbd>A</kbd>–<kbd>F</kbd> to choose.</li>
           </ul>
           <div id="introLimit" class="alert alert-warning d-none"></div>
-          <div class="d-flex gap-2">
-            <a href="index.html" class="btn btn-light">Cancel</a>
-            <button id="beginBtn" class="btn btn-primary flex-grow-1"><i class="fa-solid fa-rocket me-2"></i>Begin quiz</button>
+          <div class="intro-actions d-flex gap-2">
+            <a href="index.html" class="btn btn-light intro-cancel">Cancel</a>
+            <button id="beginBtn" class="btn btn-primary intro-begin"><i class="fa-solid fa-rocket me-2"></i>Begin quiz</button>
           </div>
         </div>
       </div>
