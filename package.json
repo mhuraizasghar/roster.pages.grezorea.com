@@ -1,0 +1,13 @@
+{
+  "name": "quizhub",
+  "version": "1.0.0",
+  "description": "Responsive online quiz application with timer, scoring, answer review, admin panel and high-score table.",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test",
+    "build:published": "node scripts/build-published.js"
+  },
+  "engines": { "node": ">=18" }
+}

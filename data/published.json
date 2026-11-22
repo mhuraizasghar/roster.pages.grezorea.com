@@ -1,0 +1,263 @@
+{
+  "version": 1,
+  "generatedAt": "2026-11-22T07:06:33.961Z",
+  "quizzes": [
+    {
+      "id": "computer-basics",
+      "title": "Computer Basics",
+      "subject": "Computer Fundamentals",
+      "description": "Hardware, software, memory, networks and security essentials every computing student should know.",
+      "durationMinutes": 10,
+      "passMark": 50,
+      "shuffle": true,
+      "maxAttempts": 0,
+      "allowedEmails": [
+        "student@example.com",
+        "demo@example.com"
+      ],
+      "updatedAt": 1795305600000,
+      "questions": [
+        {
+          "id": "cb01",
+          "text": "Which component is considered the \"brain\" of the computer?",
+          "options": [
+            "Monitor",
+            "CPU",
+            "Keyboard",
+            "Power supply"
+          ],
+          "correct": 1,
+          "explanation": "The Central Processing Unit executes instructions and coordinates the other components."
+        },
+        {
+          "id": "cb02",
+          "text": "What does RAM stand for?",
+          "options": [
+            "Read Access Memory",
+            "Run Applied Memory",
+            "Rapid Auxiliary Module",
+            "Random Access Memory"
+          ],
+          "correct": 3,
+          "explanation": "RAM is Random Access Memory: fast, temporary working storage."
+        },
+        {
+          "id": "cb03",
+          "text": "Which of the following is an output device?",
+          "options": [
+            "Scanner",
+            "Mouse",
+            "Printer",
+            "Microphone"
+          ],
+          "correct": 2,
+          "explanation": "A printer produces output from the computer. The others send input to it."
+        },
+        {
+          "id": "cb04",
+          "text": "What is the decimal number 5 in binary?",
+          "options": [
+            "110",
+            "011",
+            "111",
+            "101"
+          ],
+          "correct": 3,
+          "explanation": "5 = 4 + 1, which is 101 in binary."
+        },
+        {
+          "id": "cb05",
+          "text": "Which of these is an operating system?",
+          "options": [
+            "Google Chrome",
+            "Linux",
+            "Microsoft Word",
+            "Python"
+          ],
+          "correct": 1,
+          "explanation": "Linux is an operating system kernel and family of OSes. Chrome and Word are applications; Python is a language."
+        },
+        {
+          "id": "cb06",
+          "text": "What does HTML stand for?",
+          "options": [
+            "High Text Machine Language",
+            "Hyperlinks and Text Markup Language",
+            "HyperText Markup Language",
+            "Home Tool Markup Language"
+          ],
+          "correct": 2,
+          "explanation": "HTML is HyperText Markup Language, the standard language for structuring web pages."
+        },
+        {
+          "id": "cb07",
+          "text": "Which storage unit is the largest?",
+          "options": [
+            "Kilobyte",
+            "Megabyte",
+            "Gigabyte",
+            "Terabyte"
+          ],
+          "correct": 3,
+          "explanation": "KB < MB < GB < TB. Each step is roughly 1,000 (or 1,024) times larger."
+        },
+        {
+          "id": "cb08",
+          "text": "What is the main job of an operating system?",
+          "options": [
+            "Edit photos",
+            "Manage hardware and software resources",
+            "Browse the internet",
+            "Create spreadsheets"
+          ],
+          "correct": 1,
+          "explanation": "The OS manages memory, processes, files and devices so applications can run."
+        },
+        {
+          "id": "cb09",
+          "text": "Which of the following is volatile memory?",
+          "options": [
+            "ROM",
+            "SSD",
+            "RAM",
+            "Hard disk"
+          ],
+          "correct": 2,
+          "explanation": "RAM loses its contents when power is removed, so it is volatile."
+        },
+        {
+          "id": "cb10",
+          "text": "What does URL stand for?",
+          "options": [
+            "Universal Reference Link",
+            "Unified Remote Location",
+            "Uniform Retrieval Language",
+            "Uniform Resource Locator"
+          ],
+          "correct": 3,
+          "explanation": "A URL (Uniform Resource Locator) is the address of a resource on the web."
+        },
+        {
+          "id": "cb11",
+          "text": "Which shortcut copies selected text on most Windows computers?",
+          "options": [
+            "Ctrl + V",
+            "Ctrl + C",
+            "Ctrl + X",
+            "Ctrl + Z"
+          ],
+          "correct": 1,
+          "explanation": "Ctrl + C copies, Ctrl + V pastes, Ctrl + X cuts and Ctrl + Z undoes."
+        },
+        {
+          "id": "cb12",
+          "text": "Which protocol is used to load web pages securely?",
+          "options": [
+            "FTP",
+            "HTTP",
+            "HTTPS",
+            "SMTP"
+          ],
+          "correct": 2,
+          "explanation": "HTTPS is HTTP over TLS, which encrypts traffic between browser and server."
+        },
+        {
+          "id": "cb13",
+          "text": "Which of the following is a programming language?",
+          "options": [
+            "Python",
+            "Ethernet",
+            "Bluetooth",
+            "JPEG"
+          ],
+          "correct": 0,
+          "explanation": "Python is a programming language. Ethernet and Bluetooth are networking standards; JPEG is an image format."
+        },
+        {
+          "id": "cb14",
+          "text": "Which storage device has no moving parts?",
+          "options": [
+            "Hard disk drive",
+            "Floppy disk",
+            "Solid-state drive",
+            "CD-ROM"
+          ],
+          "correct": 2,
+          "explanation": "An SSD stores data in flash memory chips, so nothing spins or moves."
+        },
+        {
+          "id": "cb15",
+          "text": "What is the purpose of a firewall?",
+          "options": [
+            "Speed up the CPU",
+            "Block unauthorised network access",
+            "Store backups",
+            "Increase screen resolution"
+          ],
+          "correct": 1,
+          "explanation": "A firewall filters network traffic according to security rules."
+        },
+        {
+          "id": "cb16",
+          "text": "Which of the following is application software?",
+          "options": [
+            "Windows",
+            "BIOS",
+            "Microsoft Excel",
+            "Device driver"
+          ],
+          "correct": 2,
+          "explanation": "Excel is an application used by people to do tasks. Windows, BIOS and drivers are system software."
+        },
+        {
+          "id": "cb17",
+          "text": "How many bits are there in one byte?",
+          "options": [
+            "4",
+            "8",
+            "16",
+            "32"
+          ],
+          "correct": 1,
+          "explanation": "One byte is 8 bits."
+        },
+        {
+          "id": "cb18",
+          "text": "Which of these is a web browser?",
+          "options": [
+            "Notepad",
+            "Photoshop",
+            "Firefox",
+            "Excel"
+          ],
+          "correct": 2,
+          "explanation": "Firefox is a web browser."
+        },
+        {
+          "id": "cb19",
+          "text": "What does \"WWW\" stand for in a web address?",
+          "options": [
+            "Wireless Web Wire",
+            "Web Wide World",
+            "World Web Window",
+            "World Wide Web"
+          ],
+          "correct": 3,
+          "explanation": "WWW stands for World Wide Web."
+        },
+        {
+          "id": "cb20",
+          "text": "Which type of malware attaches itself to files and spreads when they are shared?",
+          "options": [
+            "Virus",
+            "Router",
+            "Compiler",
+            "Driver"
+          ],
+          "correct": 0,
+          "explanation": "A computer virus attaches to legitimate files and replicates when those files are run or shared."
+        }
+      ]
+    }
+  ]
+}
