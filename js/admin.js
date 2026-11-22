@@ -37,6 +37,20 @@
             top: 0
         });
     }
+    setInterval(async () => {
+        await Store.refreshShared();
+        if (!$("#appView").classList.contains("d-none")) {
+            const active = $$('[data-view-panel]:not(.d-none)')[0];
+            if (active) showView(active.id);
+        }
+    }, 30000);
+    document.addEventListener("visibilitychange", async () => {
+        if (document.visibilityState === "visible") {
+            await Store.refreshShared();
+            const active = $$('[data-view-panel]:not(.d-none)')[0];
+            if (active) showView(active.id);
+        }
+    });
     $("#tabs").addEventListener("click", e => {
         const b = e.target.closest("[data-view]");
         if (b) showView(b.dataset.view);

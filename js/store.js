@@ -231,6 +231,39 @@ const Store = (() => {
         } catch (e) {}
         return quizzes;
     }
+    async function refreshShared() {
+        try {
+            const [attemptRes, scoreRes, quizRes] = await Promise.all([
+                fetch(`${SHARED_API_URL}/api/attempts`, { cache: "no-store" }),
+                fetch(`${SHARED_API_URL}/api/scores`, { cache: "no-store" }),
+                fetch(`${SHARED_API_URL}/api/quizzes`, { cache: "no-store" })
+            ]);
+            if (attemptRes.ok) {
+                const data = await attemptRes.json();
+                remoteAttempts = Array.isArray(data.attempts) ? data.attempts : null;
+                if (remoteAttempts) {
+                    const local = read(ls(), K.attempts, []);
+                    const merged = new Map(local.map(attempt => [attempt.id, attempt]).concat(remoteAttempts.map(attempt => [attempt.id, attempt])));
+                    write(ls(), K.attempts, [...merged.values()]);
+                }
+            }
+            if (scoreRes.ok) {
+                const data = await scoreRes.json();
+                remoteScores = data.scores && typeof data.scores === "object" ? data.scores : null;
+                if (remoteScores) write(ls(), K.scores, remoteScores);
+            }
+            if (quizRes.ok) {
+                const data = await quizRes.json();
+                if (Array.isArray(data.quizzes)) {
+                    remoteQuizzes = data.quizzes;
+                    if (data.quizzes.length) {
+                        quizzes = data.quizzes.map(quiz => normalizeQuiz(quiz, { keepId: true })).filter(quiz => quiz.id && !validateQuiz(quiz).length);
+                        persistQuizzes();
+                    }
+                }
+            }
+        } catch (e) {}
+    }
     async function publishQuizzes(list) {
         try {
             await fetch(`${SHARED_API_URL}/api/quizzes`, {
@@ -463,6 +496,7 @@ const Store = (() => {
     }
     return {
         init: init,
+        refreshShared: refreshShared,
         shuffle: shuffle,
         uid: uid,
         clone: clone,

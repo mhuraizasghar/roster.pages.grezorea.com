@@ -92,5 +92,15 @@
         $("#lbBody").innerHTML = scoreRows(quizId ? Store.getScores(quizId) : [], student && student.email);
     }
     $("#lbQuiz").addEventListener("change", renderLeaderboard);
+    setInterval(async () => {
+        await Store.refreshShared();
+        render();
+    }, 30000);
+    document.addEventListener("visibilitychange", async () => {
+        if (document.visibilityState === "visible") {
+            await Store.refreshShared();
+            render();
+        }
+    });
     render();
 })();
