@@ -150,6 +150,8 @@ const Store = (() => {
     let quizzes = [];
     let remoteAttempts = null;
     let remoteScores = null;
+    let remoteQuizzes = null;
+    let publishedQuizzes = [];
     const seed = () => clone(globalThis.SEED_QUIZZES || []);
     const persistQuizzes = () => write(ls(), K.quizzes, quizzes);
     async function init() {
@@ -165,6 +167,7 @@ const Store = (() => {
             });
             if (res.ok) {
                 const bundle = await res.json();
+                publishedQuizzes = Array.isArray(bundle.quizzes) ? bundle.quizzes : [];
                 let changed = false;
                 (Array.isArray(bundle.quizzes) ? bundle.quizzes : []).forEach(remote => {
                     const rq = normalizeQuiz(remote, {
@@ -184,9 +187,10 @@ const Store = (() => {
             }
         } catch (e) {}
         try {
-            const [attemptRes, scoreRes] = await Promise.all([
+            const [attemptRes, scoreRes, quizRes] = await Promise.all([
                 fetch(`${SHARED_API_URL}/api/attempts`, { cache: "no-store" }),
-                fetch(`${SHARED_API_URL}/api/scores`, { cache: "no-store" })
+                fetch(`${SHARED_API_URL}/api/scores`, { cache: "no-store" }),
+                fetch(`${SHARED_API_URL}/api/quizzes`, { cache: "no-store" })
             ]);
             if (attemptRes.ok) {
                 const data = await attemptRes.json();
@@ -195,6 +199,16 @@ const Store = (() => {
             if (scoreRes.ok) {
                 const data = await scoreRes.json();
                 remoteScores = data.scores && typeof data.scores === "object" ? data.scores : null;
+            }
+            if (quizRes.ok) {
+                const data = await quizRes.json();
+                if (Array.isArray(data.quizzes) && data.quizzes.length) {
+                    remoteQuizzes = data.quizzes;
+                    quizzes = data.quizzes.map(quiz => normalizeQuiz(quiz, { keepId: true })).filter(quiz => quiz.id && !validateQuiz(quiz).length);
+                    persistQuizzes();
+                } else {
+                    await publishQuizzes(publishedQuizzes);
+                }
             }
             const localAttempts = read(ls(), K.attempts, []);
             if (Array.isArray(localAttempts)) {
@@ -217,6 +231,15 @@ const Store = (() => {
         } catch (e) {}
         return quizzes;
     }
+    async function publishQuizzes(list) {
+        try {
+            await fetch(`${SHARED_API_URL}/api/quizzes`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ quizzes: list })
+            });
+        } catch (e) {}
+    }
     const getQuizzes = () => quizzes;
     const getQuiz = id => quizzes.find(q => q.id === id) || null;
     const quizzesFor = email => quizzes.filter(q => q.questions.length && isAllowed(q, email));
@@ -226,11 +249,13 @@ const Store = (() => {
         const i = quizzes.findIndex(x => x.id === q.id);
         if (i === -1) quizzes.push(q); else quizzes[i] = q;
         persistQuizzes();
+        publishQuizzes(quizzes);
         return q;
     }
     function deleteQuiz(id) {
         quizzes = quizzes.filter(q => q.id !== id);
         persistQuizzes();
+        publishQuizzes(quizzes);
     }
     function importQuizzes(data) {
         const list = Array.isArray(data) ? data : data && Array.isArray(data.quizzes) ? data.quizzes : [ data ];
@@ -248,6 +273,7 @@ const Store = (() => {
             added++;
         });
         persistQuizzes();
+        publishQuizzes(quizzes);
         return {
             added: added,
             errors: errors
@@ -256,6 +282,7 @@ const Store = (() => {
     function resetQuizzes() {
         quizzes = seed();
         persistQuizzes();
+        publishQuizzes(quizzes);
     }
     function buildPublishBundle() {
         return {
