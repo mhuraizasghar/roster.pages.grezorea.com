@@ -1,0 +1,101 @@
+Scope,Entity,Field,Type,Required,Description,Storage
+Client storage,localStorage key,qh.quizzes,JSON array,Yes,Normalized quiz records,localStorage
+Client storage,localStorage key,qh.attempts,JSON array,Yes,Submitted attempt snapshots,localStorage
+Client storage,localStorage key,qh.scores,JSON object,Yes,Best score rows grouped by quiz ID,localStorage
+Client storage,localStorage key,qh.progress,JSON object,No,In-progress attempts keyed by quiz ID and lower-case email,localStorage
+Client storage,localStorage key,qh.admin,JSON object,No,Contains password string for this browser only,localStorage
+Client storage,sessionStorage key,qh.student,JSON object,No,Current student email and name,sessionStorage
+Client storage,sessionStorage key,qh.adminAuth,Boolean,No,Admin login flag for this tab,sessionStorage
+Client storage,sessionStorage key,qh.lastAttempt,String,No,Most recently submitted attempt ID,sessionStorage
+Quiz,quiz,id,String,Yes,Quiz identifier,Published JSON; D1 quizzes.payload
+Quiz,quiz,title,String,Yes,Display title,Published JSON; D1 quizzes.payload
+Quiz,quiz,subject,String,No,Subject or category,Published JSON; D1 quizzes.payload
+Quiz,quiz,description,String,No,Student-facing description,Published JSON; D1 quizzes.payload
+Quiz,quiz,durationMinutes,Integer,Yes,Time limit from 1 to 180 minutes,Published JSON; D1 quizzes.payload
+Quiz,quiz,passMark,Integer,Yes,Required percentage from 0 to 100,Published JSON; D1 quizzes.payload
+Quiz,quiz,shuffle,Boolean,Yes,Whether question order is randomized,Published JSON; D1 quizzes.payload
+Quiz,quiz,maxAttempts,Integer,Yes,Zero means unlimited; otherwise 1 to 50,Published JSON; D1 quizzes.payload
+Quiz,quiz,allowedEmails,String array,Yes,Exact emails or @domain enrollment rules,Published JSON; D1 quizzes.payload
+Quiz,quiz,questions,Question array,Yes,Ordered question bank,Published JSON; D1 quizzes.payload
+Quiz,quiz,updatedAt,Unix milliseconds,Integer,Yes,Last update timestamp,Published JSON; D1 quizzes.updated_at
+Question,question,id,String,Yes,Question identifier,Quiz.questions
+Question,question,text,String,Yes,Question prompt,Quiz.questions
+Question,question,options,String array,Yes,Two to six distinct answer choices,Quiz.questions
+Question,question,correct,Integer,Yes,Zero-based index of the correct option,Quiz.questions
+Question,question,explanation,String,No,Optional explanation displayed in answer review,Quiz.questions
+Attempt,attempt,id,String,Yes,Unique submitted attempt ID,D1 attempts.id; payload JSON
+Attempt,attempt,quizId,String,Yes,Quiz identifier,D1 attempts.quiz_id; payload JSON
+Attempt,attempt,quizTitle,String,Yes,Quiz title snapshot at submission,payload JSON
+Attempt,attempt,email,String,Yes,Lower-case student email,D1 attempts.email; payload JSON
+Attempt,attempt,name,String,Yes,Student name snapshot,D1 attempts.name; payload JSON
+Attempt,attempt,score,Integer,Yes,Number of correct answers,payload JSON
+Attempt,attempt,total,Integer,Yes,Number of questions,payload JSON
+Attempt,attempt,percent,Number,Yes,Score percentage rounded to one decimal,payload JSON
+Attempt,attempt,passMark,Integer,Yes,Pass threshold snapshot,payload JSON
+Attempt,attempt,passed,Boolean,Yes,Whether percent meets passMark,payload JSON
+Attempt,attempt,startedAt,Unix milliseconds,Integer,Yes,Attempt start timestamp,payload JSON
+Attempt,attempt,submittedAt,Unix milliseconds,Integer,Yes,Submission timestamp,D1 attempts.submitted_at; payload JSON
+Attempt,attempt,timeTaken,Integer seconds,Yes,Elapsed time capped at quiz duration,payload JSON
+Attempt,attempt,autoSubmitted,Boolean,Yes,Whether timer submitted the attempt,payload JSON
+Attempt,attempt,items,Attempt item array,Yes,Question snapshots with chosen and correct answers,payload JSON
+Attempt item,attempt.items[],questionId,String,Yes,Question identifier snapshot,Attempt.items
+Attempt item,attempt.items[],text,String,Yes,Question text snapshot,Attempt.items
+Attempt item,attempt.items[],options,String array,Yes,Answer options snapshot,Attempt.items
+Attempt item,attempt.items[],correct,Integer,Yes,Zero-based correct option index,Attempt.items
+Attempt item,attempt.items[],chosen,Integer or null,Yes,Zero-based selected index or null when skipped,Attempt.items
+Attempt item,attempt.items[],explanation,String,No,Explanation snapshot,Attempt.items
+Attempt item,attempt.items[],isCorrect,Boolean,Yes,Whether selected index equals correct index,Attempt.items
+Score,score,attemptId,String,No,Attempt ID for the student's current best score,D1 scores.attempt_id
+Score,score,email,String,Yes,Lower-case student email; one row per quiz and email,D1 scores.email
+Score,score,name,String,Yes,Student display name,D1 scores.name
+Score,score,quizId,String,Yes,Quiz identifier,D1 scores.quiz_id
+Score,score,score,Integer,Yes,Correct answer count,D1 scores.score
+Score,score,total,Integer,Yes,Question count,D1 scores.total
+Score,score,percent,Number,Yes,Best score percentage,D1 scores.percent
+Score,score,timeTaken,Integer seconds,Yes,Time taken for best result,D1 scores.time_taken
+Score,score,submittedAt,Unix milliseconds,Integer,Yes,Submission timestamp,D1 scores.submitted_at
+Progress,progress,quizId,String,Yes,Quiz being attempted,localStorage qh.progress
+Progress,progress,email,String,Yes,Student email associated with the attempt,localStorage qh.progress
+Progress,progress,version,Unix milliseconds,Integer,Yes,Quiz updatedAt used to invalidate stale progress,localStorage qh.progress
+Progress,progress,order,String array,Yes,Question IDs in the order used for this attempt,localStorage qh.progress
+Progress,progress,answers,Object,Yes,Question ID to selected zero-based option index,localStorage qh.progress
+Progress,progress,current,Integer,Yes,Zero-based current question index,localStorage qh.progress
+Progress,progress,startedAt,Unix milliseconds,Integer,Yes,Attempt start timestamp,localStorage qh.progress
+Progress,progress,endsAt,Unix milliseconds,Integer,Yes,Absolute deadline used by the timer,localStorage qh.progress
+Student session,student,email,String,Yes,Lower-case email entered by the student,sessionStorage qh.student
+Student session,student,name,String,Yes,Student display name,sessionStorage qh.student
+Admin session,adminAuth,authenticated,Boolean,Yes,Tab-local admin login indicator,sessionStorage qh.adminAuth
+Admin settings,admin,password,String,Yes,Admin password stored in this browser; not server-side authentication,localStorage qh.admin
+Published bundle,published bundle,version,Integer,Yes,Bundle format version,data/published.json
+Published bundle,published bundle,generatedAt,ISO 8601 datetime,String,Yes,Bundle creation timestamp,data/published.json
+Published bundle,published bundle,quizzes,Quiz array,Yes,Quizzes shared by publishing the bundle,data/published.json
+Backup,backup,version,Integer,Yes,Backup format version,Downloaded JSON
+Backup,backup,exportedAt,ISO 8601 datetime,String,Yes,Backup creation timestamp,Downloaded JSON
+Backup,backup,quizzes,Quiz array,Yes,Quiz records,Downloaded JSON
+Backup,backup,attempts,Attempt array,Yes,Submitted attempts,Downloaded JSON
+Backup,backup,scores,Object,Yes,Best scores grouped by quiz ID,Downloaded JSON
+D1 table,quizzes,id,TEXT primary key,Yes,Quiz ID,migrations/0002_shared_quizzes.sql
+D1 table,quizzes,payload,TEXT JSON,Yes,Full quiz record,migrations/0002_shared_quizzes.sql
+D1 table,quizzes,updated_at,INTEGER,Yes,Quiz update timestamp in milliseconds,migrations/0002_shared_quizzes.sql
+D1 table,attempts,id,TEXT primary key,Yes,Attempt ID,migrations/0001_shared_attempts.sql
+D1 table,attempts,quiz_id,TEXT,Yes,Quiz ID,migrations/0001_shared_attempts.sql
+D1 table,attempts,email,TEXT,Yes,Student email,migrations/0001_shared_attempts.sql
+D1 table,attempts,name,TEXT,Yes,Student name,migrations/0001_shared_attempts.sql
+D1 table,attempts,payload,TEXT JSON,Yes,Full attempt snapshot,migrations/0001_shared_attempts.sql
+D1 table,attempts,submitted_at,INTEGER,Yes,Submission timestamp in milliseconds,migrations/0001_shared_attempts.sql
+D1 table,scores,quiz_id,TEXT,Yes,Quiz ID; composite primary key with email,migrations/0001_shared_attempts.sql
+D1 table,scores,email,TEXT,Yes,Student email; composite primary key with quiz_id,migrations/0001_shared_attempts.sql
+D1 table,scores,name,TEXT,Yes,Student display name,migrations/0001_shared_attempts.sql
+D1 table,scores,score,INTEGER,Yes,Correct answer count,migrations/0001_shared_attempts.sql
+D1 table,scores,total,INTEGER,Yes,Question count,migrations/0001_shared_attempts.sql
+D1 table,scores,percent,INTEGER,Yes,Score percentage column declared in migration,migrations/0001_shared_attempts.sql
+D1 table,scores,time_taken,INTEGER,Yes,Time taken in seconds,migrations/0001_shared_attempts.sql
+D1 table,scores,submitted_at,INTEGER,Yes,Submission timestamp in milliseconds,migrations/0001_shared_attempts.sql
+D1 table,scores,attempt_id,TEXT,No,Attempt ID for stored best score,migrations/0001_shared_attempts.sql
+API,GET /api/quizzes,response.quizzes,Quiz array,Yes,Published/shared quiz records,functions/api/quizzes.js
+API,POST /api/quizzes,request.quizzes,Quiz array,Yes,Replaces the shared quiz collection,functions/api/quizzes.js
+API,GET /api/attempts,response.attempts,Attempt array,Yes,Returns submitted attempt records,functions/api/attempts.js
+API,POST /api/attempts,request.attempt,Object,Yes,Stores one submitted attempt,functions/api/attempts.js
+API,GET /api/scores,response.scores,Object,Yes,Best scores grouped by quiz ID,functions/api/scores.js
+API,POST /api/scores,request.quizId,String,Yes,Quiz identifier for submitted score,functions/api/scores.js
+API,POST /api/scores,request.score,Object,Yes,Score fields for the student's best result,functions/api/scores.js

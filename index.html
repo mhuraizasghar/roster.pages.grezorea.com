@@ -21,6 +21,7 @@
       <a class="navbar-brand fw-bold" href="index.html"><i class="fa-solid fa-graduation-cap me-2"></i>QuizHub</a>
       <div class="ms-auto d-flex align-items-center gap-2">
         <span id="navUser" class="small text-muted d-none d-sm-inline"></span>
+        <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#studentGuide" aria-controls="studentGuide" aria-label="Open student guide"><i class="fa-regular fa-circle-question me-1" aria-hidden="true"></i><span class="d-none d-sm-inline">Guide</span></button>
         <button id="logoutBtn" class="btn btn-outline-secondary btn-sm d-none"><i class="fa-solid fa-right-from-bracket me-1"></i>Sign out</button>
         <a href="admin.html" class="btn btn-light btn-sm"><i class="fa-solid fa-user-shield me-1"></i>Admin</a>
       </div>
@@ -110,6 +111,23 @@
       </div>
     </section>
   </main>
+
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="studentGuide" aria-labelledby="studentGuideTitle">
+    <div class="offcanvas-header">
+      <h2 class="offcanvas-title h5" id="studentGuideTitle"><i class="fa-regular fa-circle-question me-2 text-primary" aria-hidden="true"></i>Student guide</h2>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close guide"></button>
+    </div>
+    <div class="offcanvas-body">
+      <ol class="ps-3">
+        <li class="mb-3"><strong>Sign in.</strong> Enter your name and the email address your instructor enrolled for the quiz.</li>
+        <li class="mb-3"><strong>Choose a quiz.</strong> Your dashboard lists quizzes available to your email and your previous attempts.</li>
+        <li class="mb-3"><strong>Read the instructions.</strong> Check the time limit and attempt limit before starting.</li>
+        <li class="mb-3"><strong>Answer and submit.</strong> Select an answer for each question. The timer submits automatically when time runs out.</li>
+        <li><strong>View your result.</strong> Open an attempt to see your score, correct answers, explanations and the high-score table.</li>
+      </ol>
+      <p class="small text-muted mb-0">Your answer review is private to your signed-in email and the admin.</p>
+    </div>
+  </div>
 
   <footer class="container pb-4 small text-muted text-center">QuizHub &middot; Online Quiz Application</footer>
 

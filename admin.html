@@ -18,6 +18,7 @@
     <div class="container">
       <a class="navbar-brand fw-bold" href="admin.html"><i class="fa-solid fa-user-shield me-2"></i>QuizHub Admin</a>
       <div class="ms-auto d-flex gap-2">
+        <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminGuide" aria-controls="adminGuide" aria-label="Open admin guide"><i class="fa-regular fa-circle-question me-1" aria-hidden="true"></i><span class="d-none d-sm-inline">Guide</span></button>
         <a href="index.html" class="btn btn-light btn-sm"><i class="fa-solid fa-house me-1"></i>Student site</a>
         <button id="adminLogout" class="btn btn-outline-secondary btn-sm d-none"><i class="fa-solid fa-right-from-bracket me-1"></i>Sign out</button>
       </div>
@@ -206,6 +207,24 @@
   </main>
 
   
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="adminGuide" aria-labelledby="adminGuideTitle">
+    <div class="offcanvas-header">
+      <h2 class="offcanvas-title h5" id="adminGuideTitle"><i class="fa-regular fa-circle-question me-2 text-primary" aria-hidden="true"></i>Admin guide</h2>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close guide"></button>
+    </div>
+    <div class="offcanvas-body">
+      <ol class="ps-3">
+        <li class="mb-3"><strong>Sign in.</strong> Enter the admin password. Change the demo password from <em>Publish &amp; settings</em>.</li>
+        <li class="mb-3"><strong>Create a quiz.</strong> In <em>Quizzes</em>, add a quiz, set its time and pass mark, then add questions, options and the correct answer.</li>
+        <li class="mb-3"><strong>Enroll students.</strong> Add student email addresses, or an allowed email domain, before saving.</li>
+        <li class="mb-3"><strong>Publish quiz changes.</strong> Use <em>Publish &amp; settings</em> to download <code>published.json</code> and publish it with the site so students on other devices can access the quiz.</li>
+        <li class="mb-3"><strong>Review results.</strong> Open <em>Results</em>, filter or search, then select <em>Review</em> to inspect a student's submitted answers.</li>
+        <li><strong>Export and back up.</strong> Export results as CSV; use backup and restore for quizzes and results stored in the browser.</li>
+      </ol>
+      <div class="alert alert-warning small mb-0" role="note"><i class="fa-solid fa-triangle-exclamation me-1" aria-hidden="true"></i>The current admin password is browser-side protection, not secure server authentication. Do not use this app for high-stakes exams.</div>
+    </div>
+  </div>
+
   <div class="modal fade" id="questionModal" tabindex="-1" aria-labelledby="qmTitle" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
       <div class="modal-header"><h2 class="modal-title h5" id="qmTitle">Question</h2>

@@ -285,6 +285,12 @@
     }
     $("#resQuiz").addEventListener("change", drawResults);
     $("#resSearch").addEventListener("input", drawResults);
+    $("#resBody").addEventListener("click", e => {
+        const reviewLink = e.target.closest('a[target="_blank"]');
+        if (!reviewLink) return;
+        e.preventDefault();
+        window.location.assign(reviewLink.href);
+    });
     const csvCell = v => {
         const s = String(v == null ? "" : v);
         return `"${(/^[=+\-@]/.test(s) ? "'" + s : s).replace(/"/g, '""')}"`;
