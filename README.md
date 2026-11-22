@@ -59,7 +59,7 @@ The test suite covers quiz scoring, email rules, result tables, imports, backups
 
 Quiz content and enrolment information are stored in `data/published.json` so they can be shared by publishing the file with the site.
 
-Student sessions, attempts, and high scores are stored in the browser using `localStorage`. Results are not stored on a shared server in this version.
+Student sessions use the browser, while submitted attempts and high scores are saved to Cloudflare D1 for global access. `localStorage` remains as an offline cache.
 
 ## Security note
 

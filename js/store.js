@@ -147,6 +147,8 @@ const Store = (() => {
         };
     }
     let quizzes = [];
+    let remoteAttempts = null;
+    let remoteScores = null;
     const seed = () => clone(globalThis.SEED_QUIZZES || []);
     const persistQuizzes = () => write(ls(), K.quizzes, quizzes);
     async function init() {
@@ -179,6 +181,38 @@ const Store = (() => {
                 });
                 if (changed) persistQuizzes();
             }
+        } catch (e) {}
+        try {
+            const [attemptRes, scoreRes] = await Promise.all([
+                fetch("/api/attempts", { cache: "no-store" }),
+                fetch("/api/scores", { cache: "no-store" })
+            ]);
+            if (attemptRes.ok) {
+                const data = await attemptRes.json();
+                remoteAttempts = Array.isArray(data.attempts) ? data.attempts : null;
+            }
+            if (scoreRes.ok) {
+                const data = await scoreRes.json();
+                remoteScores = data.scores && typeof data.scores === "object" ? data.scores : null;
+            }
+            const localAttempts = read(ls(), K.attempts, []);
+            if (Array.isArray(localAttempts)) {
+                await Promise.all(localAttempts.map(attempt => fetch("/api/attempts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ attempt: attempt })
+                }).catch(() => {})));
+            }
+            const localScores = read(ls(), K.scores, {});
+            const scorePosts = [];
+            Object.keys(localScores).forEach(quizId => {
+                (localScores[quizId] || []).forEach(score => scorePosts.push(fetch("/api/scores", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ quizId: quizId, score: score })
+                }).catch(() => {})));
+            });
+            await Promise.all(scorePosts);
         } catch (e) {}
         return quizzes;
     }
@@ -285,14 +319,26 @@ const Store = (() => {
             items: items
         };
     }
-    const getAttempts = () => read(ls(), K.attempts, []);
+    function getAttempts() {
+        const local = read(ls(), K.attempts, []);
+        if (!Array.isArray(remoteAttempts)) return local;
+        const merged = new Map(local.map(attempt => [attempt.id, attempt]).concat(remoteAttempts.map(attempt => [attempt.id, attempt])));
+        return [...merged.values()].sort((a, b) => (b.submittedAt || 0) - (a.submittedAt || 0));
+    }
     const getAttempt = id => getAttempts().find(a => a.id === id) || null;
     const attemptsFor = (email, quizId) => getAttempts().filter(a => a.email === String(email).toLowerCase() && a.quizId === quizId);
     function addAttempt(attempt) {
-        const all = getAttempts();
+        const all = read(ls(), K.attempts, []);
         all.push(attempt);
         write(ls(), K.attempts, all);
         addScore(attempt);
+        try {
+            fetch("/api/attempts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ attempt: attempt })
+            }).catch(() => {});
+        } catch (e) {}
         return attempt;
     }
     function clearAttempts() {
@@ -301,7 +347,7 @@ const Store = (() => {
     }
     const sortScores = (a, b) => b.percent - a.percent || a.timeTaken - b.timeTaken || a.submittedAt - b.submittedAt;
     function getScores(quizId) {
-        const all = read(ls(), K.scores, {});
+        const all = remoteScores && typeof remoteScores === "object" ? remoteScores : read(ls(), K.scores, {});
         return (all[quizId] || []).slice().sort(sortScores);
     }
     function addScore(attempt) {
@@ -322,6 +368,14 @@ const Store = (() => {
         list.sort(sortScores);
         all[attempt.quizId] = list.slice(0, MAX_SCORES);
         write(ls(), K.scores, all);
+        if (remoteScores) remoteScores = { ...remoteScores, [attempt.quizId]: all[attempt.quizId] };
+        try {
+            fetch("/api/scores", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ quizId: attempt.quizId, score: all[attempt.quizId].find(s => s.email === attempt.email) })
+            }).catch(() => {});
+        } catch (e) {}
         return all[attempt.quizId];
     }
     const setLastAttempt = id => write(ss(), S.lastAttempt, id);

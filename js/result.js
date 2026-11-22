@@ -67,7 +67,7 @@
     $("#lbQuizName").textContent = attempt.quizTitle;
     $("#lbBody").innerHTML = scoreRows(scores, attempt.email);
     const pos = scores.findIndex(s => s.email === attempt.email);
-    $("#rankNote").textContent = pos === -1 ? "Your best score is not in the top 10 yet." : `Your best result ranks #${pos + 1} of ${scores.length} on this device's leaderboard.`;
+    $("#rankNote").textContent = pos === -1 ? "Your best score is not in the top 10 yet." : `Your best result ranks #${pos + 1} of ${scores.length} on the global leaderboard.`;
     $("#printBtn").classList.remove("d-none");
     $("#printBtn").addEventListener("click", () => window.print());
     $("#resultView").classList.remove("d-none");

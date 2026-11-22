@@ -30,9 +30,9 @@ flowchart LR
 | Data | Where it lives | Shared across devices? |
 | --- | --- | --- |
 | Quizzes, questions, enrolled emails | `localStorage` + `data/published.json` in the repo | **Yes**, after the admin publishes |
-| Attempts, answers, scores | `localStorage` of the browser used | No (per browser) |
-| High-score table | `localStorage` | No (per browser) |
-| In-progress attempt (answers, deadline) | `localStorage` | No, by design |
+| Attempts, answers, scores | Cloudflare D1 with `localStorage` cache | Yes |
+| High-score table | Cloudflare D1 with `localStorage` cache | Yes |
+| In-progress attempt (answers, deadline) | `localStorage` | No, until submission |
 | Student / admin session | `sessionStorage` | No |
 
 ### Modules
@@ -57,8 +57,8 @@ flowchart LR
 ### Known limits of phase 1
 
 1. **No real security.** Quiz answers and the enrolment list are readable by anyone who can load the site. The admin password lives in the browser.
-2. **No central results.** The teacher cannot see what students on other devices submitted.
-3. **Scores can be forged** by anyone who edits their own `localStorage`.
+2. **The current sign-in is not strong authentication.** It verifies only the enrolment list, not proof of account ownership.
+3. **Quiz answers are visible in browser data.** Correct answers should be moved server-side before high-stakes exams.
 
 These are inherent to a serverless site and are the reason for phase 2.
 

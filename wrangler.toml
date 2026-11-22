@@ -1,0 +1,8 @@
+name = "quiz-project-students"
+pages_build_output_dir = "."
+compatibility_date = "2026-11-22"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "quiz-project-db"
+database_id = "b4c51b3b-eb85-47db-8e51-a2995dd01fe8"
