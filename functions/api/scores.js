@@ -1,5 +1,27 @@
+const allowedOrigins = new Set([
+  "https://quiz-project.students.pages.grezorea.com",
+  "https://quiz-project-students.pages.dev",
+  "http://localhost:8000",
+  "null"
+]);
+
+function corsHeaders(request) {
+  const origin = request.headers.get("Origin") || "null";
+  const allowed = allowedOrigins.has(origin) ? origin : "null";
+  return {
+    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  };
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
+  const headers = corsHeaders(request);
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers });
+  }
 
   if (request.method === "GET") {
     const { results } = await env.DB.prepare(
@@ -23,7 +45,7 @@ export async function onRequest(context) {
     }
 
     for (const quizId of Object.keys(scores)) scores[quizId] = scores[quizId].slice(0, 10);
-    return Response.json({ scores });
+    return Response.json({ scores }, { headers });
   }
 
   if (request.method === "POST") {
@@ -50,8 +72,8 @@ export async function onRequest(context) {
       String(score.attemptId || "")
     ).run();
 
-    return Response.json({ ok: true });
+    return Response.json({ ok: true }, { headers });
   }
 
-  return Response.json({ error: "Method not allowed" }, { status: 405 });
+  return Response.json({ error: "Method not allowed" }, { status: 405, headers });
 }

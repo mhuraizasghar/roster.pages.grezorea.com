@@ -15,6 +15,7 @@ const Store = (() => {
     const DEFAULT_ADMIN_PASSWORD = "admin123";
     const MAX_SCORES = 10;
     const PUBLISHED_URL = "data/published.json";
+    const SHARED_API_URL = "https://quiz-project-students.pages.dev";
     function makeArea(name) {
         try {
             const area = globalThis[name];
@@ -184,8 +185,8 @@ const Store = (() => {
         } catch (e) {}
         try {
             const [attemptRes, scoreRes] = await Promise.all([
-                fetch("/api/attempts", { cache: "no-store" }),
-                fetch("/api/scores", { cache: "no-store" })
+                fetch(`${SHARED_API_URL}/api/attempts`, { cache: "no-store" }),
+                fetch(`${SHARED_API_URL}/api/scores`, { cache: "no-store" })
             ]);
             if (attemptRes.ok) {
                 const data = await attemptRes.json();
@@ -197,7 +198,7 @@ const Store = (() => {
             }
             const localAttempts = read(ls(), K.attempts, []);
             if (Array.isArray(localAttempts)) {
-                await Promise.all(localAttempts.map(attempt => fetch("/api/attempts", {
+                await Promise.all(localAttempts.map(attempt => fetch(`${SHARED_API_URL}/api/attempts`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ attempt: attempt })
@@ -206,7 +207,7 @@ const Store = (() => {
             const localScores = read(ls(), K.scores, {});
             const scorePosts = [];
             Object.keys(localScores).forEach(quizId => {
-                (localScores[quizId] || []).forEach(score => scorePosts.push(fetch("/api/scores", {
+                (localScores[quizId] || []).forEach(score => scorePosts.push(fetch(`${SHARED_API_URL}/api/scores`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ quizId: quizId, score: score })
@@ -333,7 +334,7 @@ const Store = (() => {
         write(ls(), K.attempts, all);
         addScore(attempt);
         try {
-            fetch("/api/attempts", {
+            fetch(`${SHARED_API_URL}/api/attempts`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ attempt: attempt })
@@ -370,7 +371,7 @@ const Store = (() => {
         write(ls(), K.scores, all);
         if (remoteScores) remoteScores = { ...remoteScores, [attempt.quizId]: all[attempt.quizId] };
         try {
-            fetch("/api/scores", {
+            fetch(`${SHARED_API_URL}/api/scores`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ quizId: attempt.quizId, score: all[attempt.quizId].find(s => s.email === attempt.email) })
