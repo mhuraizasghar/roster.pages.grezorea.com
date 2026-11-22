@@ -1,95 +1,22 @@
-/*
- * Seed quiz: "Computer Basics" (20 multiple-choice questions).
- *
- * The app loads this array on first run and stores it in localStorage.
- * Admins can edit or replace it from admin.html. Each question has:
- *   id, text, options[] (2-6 choices), correct (0-based index), explanation (optional)
- */
-(function () {
-  const q = (n, text, options, correct, explanation) => ({
-    id: 'cb' + String(n).padStart(2, '0'),
-    text,
-    options,
-    correct,
-    explanation,
-  });
-
-  window.SEED_QUIZZES = [
-    {
-      id: 'computer-basics',
-      title: 'Computer Basics',
-      subject: 'Computer Fundamentals',
-      description:
-        'Hardware, software, memory, networks and security essentials every computing student should know.',
-      durationMinutes: 10,
-      passMark: 50,
-      shuffle: true,
-      maxAttempts: 0,
-      // Demo enrolment list. Replace with your students' emails in the Admin panel.
-      allowedEmails: ['student@example.com', 'demo@example.com'],
-      updatedAt: Date.UTC(2026, 10, 22),
-      questions: [
-        q(1, 'Which component is considered the "brain" of the computer?',
-          ['Monitor', 'CPU', 'Keyboard', 'Power supply'], 1,
-          'The Central Processing Unit executes instructions and coordinates the other components.'),
-        q(2, 'What does RAM stand for?',
-          ['Read Access Memory', 'Run Applied Memory', 'Rapid Auxiliary Module', 'Random Access Memory'], 3,
-          'RAM is Random Access Memory: fast, temporary working storage.'),
-        q(3, 'Which of the following is an output device?',
-          ['Scanner', 'Mouse', 'Printer', 'Microphone'], 2,
-          'A printer produces output from the computer. The others send input to it.'),
-        q(4, 'What is the decimal number 5 in binary?',
-          ['110', '011', '111', '101'], 3,
-          '5 = 4 + 1, which is 101 in binary.'),
-        q(5, 'Which of these is an operating system?',
-          ['Google Chrome', 'Linux', 'Microsoft Word', 'Python'], 1,
-          'Linux is an operating system kernel and family of OSes. Chrome and Word are applications; Python is a language.'),
-        q(6, 'What does HTML stand for?',
-          ['High Text Machine Language', 'Hyperlinks and Text Markup Language', 'HyperText Markup Language', 'Home Tool Markup Language'], 2,
-          'HTML is HyperText Markup Language, the standard language for structuring web pages.'),
-        q(7, 'Which storage unit is the largest?',
-          ['Kilobyte', 'Megabyte', 'Gigabyte', 'Terabyte'], 3,
-          'KB < MB < GB < TB. Each step is roughly 1,000 (or 1,024) times larger.'),
-        q(8, 'What is the main job of an operating system?',
-          ['Edit photos', 'Manage hardware and software resources', 'Browse the internet', 'Create spreadsheets'], 1,
-          'The OS manages memory, processes, files and devices so applications can run.'),
-        q(9, 'Which of the following is volatile memory?',
-          ['ROM', 'SSD', 'RAM', 'Hard disk'], 2,
-          'RAM loses its contents when power is removed, so it is volatile.'),
-        q(10, 'What does URL stand for?',
-          ['Universal Reference Link', 'Unified Remote Location', 'Uniform Retrieval Language', 'Uniform Resource Locator'], 3,
-          'A URL (Uniform Resource Locator) is the address of a resource on the web.'),
-        q(11, 'Which shortcut copies selected text on most Windows computers?',
-          ['Ctrl + V', 'Ctrl + C', 'Ctrl + X', 'Ctrl + Z'], 1,
-          'Ctrl + C copies, Ctrl + V pastes, Ctrl + X cuts and Ctrl + Z undoes.'),
-        q(12, 'Which protocol is used to load web pages securely?',
-          ['FTP', 'HTTP', 'HTTPS', 'SMTP'], 2,
-          'HTTPS is HTTP over TLS, which encrypts traffic between browser and server.'),
-        q(13, 'Which of the following is a programming language?',
-          ['Python', 'Ethernet', 'Bluetooth', 'JPEG'], 0,
-          'Python is a programming language. Ethernet and Bluetooth are networking standards; JPEG is an image format.'),
-        q(14, 'Which storage device has no moving parts?',
-          ['Hard disk drive', 'Floppy disk', 'Solid-state drive', 'CD-ROM'], 2,
-          'An SSD stores data in flash memory chips, so nothing spins or moves.'),
-        q(15, 'What is the purpose of a firewall?',
-          ['Speed up the CPU', 'Block unauthorised network access', 'Store backups', 'Increase screen resolution'], 1,
-          'A firewall filters network traffic according to security rules.'),
-        q(16, 'Which of the following is application software?',
-          ['Windows', 'BIOS', 'Microsoft Excel', 'Device driver'], 2,
-          'Excel is an application used by people to do tasks. Windows, BIOS and drivers are system software.'),
-        q(17, 'How many bits are there in one byte?',
-          ['4', '8', '16', '32'], 1,
-          'One byte is 8 bits.'),
-        q(18, 'Which of these is a web browser?',
-          ['Notepad', 'Photoshop', 'Firefox', 'Excel'], 2,
-          'Firefox is a web browser.'),
-        q(19, 'What does "WWW" stand for in a web address?',
-          ['Wireless Web Wire', 'Web Wide World', 'World Web Window', 'World Wide Web'], 3,
-          'WWW stands for World Wide Web.'),
-        q(20, 'Which type of malware attaches itself to files and spreads when they are shared?',
-          ['Virus', 'Router', 'Compiler', 'Driver'], 0,
-          'A computer virus attaches to legitimate files and replicates when those files are run or shared.'),
-      ],
-    },
-  ];
+(function() {
+    const q = (n, text, options, correct, explanation) => ({
+        id: "cb" + String(n).padStart(2, "0"),
+        text: text,
+        options: options,
+        correct: correct,
+        explanation: explanation
+    });
+    window.SEED_QUIZZES = [ {
+        id: "computer-basics",
+        title: "Computer Basics",
+        subject: "Computer Fundamentals",
+        description: "Hardware, software, memory, networks and security essentials every computing student should know.",
+        durationMinutes: 10,
+        passMark: 50,
+        shuffle: true,
+        maxAttempts: 0,
+        allowedEmails: [ "student@example.com", "demo@example.com" ],
+        updatedAt: Date.UTC(2026, 10, 22),
+        questions: [ q(1, 'Which component is considered the "brain" of the computer?', [ "Monitor", "CPU", "Keyboard", "Power supply" ], 1, "The Central Processing Unit executes instructions and coordinates the other components."), q(2, "What does RAM stand for?", [ "Read Access Memory", "Run Applied Memory", "Rapid Auxiliary Module", "Random Access Memory" ], 3, "RAM is Random Access Memory: fast, temporary working storage."), q(3, "Which of the following is an output device?", [ "Scanner", "Mouse", "Printer", "Microphone" ], 2, "A printer produces output from the computer. The others send input to it."), q(4, "What is the decimal number 5 in binary?", [ "110", "011", "111", "101" ], 3, "5 = 4 + 1, which is 101 in binary."), q(5, "Which of these is an operating system?", [ "Google Chrome", "Linux", "Microsoft Word", "Python" ], 1, "Linux is an operating system kernel and family of OSes. Chrome and Word are applications; Python is a language."), q(6, "What does HTML stand for?", [ "High Text Machine Language", "Hyperlinks and Text Markup Language", "HyperText Markup Language", "Home Tool Markup Language" ], 2, "HTML is HyperText Markup Language, the standard language for structuring web pages."), q(7, "Which storage unit is the largest?", [ "Kilobyte", "Megabyte", "Gigabyte", "Terabyte" ], 3, "KB < MB < GB < TB. Each step is roughly 1,000 (or 1,024) times larger."), q(8, "What is the main job of an operating system?", [ "Edit photos", "Manage hardware and software resources", "Browse the internet", "Create spreadsheets" ], 1, "The OS manages memory, processes, files and devices so applications can run."), q(9, "Which of the following is volatile memory?", [ "ROM", "SSD", "RAM", "Hard disk" ], 2, "RAM loses its contents when power is removed, so it is volatile."), q(10, "What does URL stand for?", [ "Universal Reference Link", "Unified Remote Location", "Uniform Retrieval Language", "Uniform Resource Locator" ], 3, "A URL (Uniform Resource Locator) is the address of a resource on the web."), q(11, "Which shortcut copies selected text on most Windows computers?", [ "Ctrl + V", "Ctrl + C", "Ctrl + X", "Ctrl + Z" ], 1, "Ctrl + C copies, Ctrl + V pastes, Ctrl + X cuts and Ctrl + Z undoes."), q(12, "Which protocol is used to load web pages securely?", [ "FTP", "HTTP", "HTTPS", "SMTP" ], 2, "HTTPS is HTTP over TLS, which encrypts traffic between browser and server."), q(13, "Which of the following is a programming language?", [ "Python", "Ethernet", "Bluetooth", "JPEG" ], 0, "Python is a programming language. Ethernet and Bluetooth are networking standards; JPEG is an image format."), q(14, "Which storage device has no moving parts?", [ "Hard disk drive", "Floppy disk", "Solid-state drive", "CD-ROM" ], 2, "An SSD stores data in flash memory chips, so nothing spins or moves."), q(15, "What is the purpose of a firewall?", [ "Speed up the CPU", "Block unauthorised network access", "Store backups", "Increase screen resolution" ], 1, "A firewall filters network traffic according to security rules."), q(16, "Which of the following is application software?", [ "Windows", "BIOS", "Microsoft Excel", "Device driver" ], 2, "Excel is an application used by people to do tasks. Windows, BIOS and drivers are system software."), q(17, "How many bits are there in one byte?", [ "4", "8", "16", "32" ], 1, "One byte is 8 bits."), q(18, "Which of these is a web browser?", [ "Notepad", "Photoshop", "Firefox", "Excel" ], 2, "Firefox is a web browser."), q(19, 'What does "WWW" stand for in a web address?', [ "Wireless Web Wire", "Web Wide World", "World Web Window", "World Wide Web" ], 3, "WWW stands for World Wide Web."), q(20, "Which type of malware attaches itself to files and spreads when they are shared?", [ "Virus", "Router", "Compiler", "Driver" ], 0, "A computer virus attaches to legitimate files and replicates when those files are run or shared.") ]
+    } ];
 })();

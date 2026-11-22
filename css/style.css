@@ -1,4 +1,4 @@
-/* QuizHub theme. Bootstrap 5.3 does the layout; this file adds the brand layer. */
+* QuizHub theme. Bootstrap 5.3 does the layout; this file adds the brand layer. *
 :root {
   --qh-primary: #3b5bdb;
   --qh-primary-dark: #2f4ac0;
@@ -37,7 +37,7 @@ body {
 
 .text-muted { color: var(--qh-muted) !important; }
 
-/* ---------- chrome ---------- */
+* ---------- chrome ---------- *
 .qh-nav {
   background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(10px);
@@ -102,7 +102,7 @@ body {
   background: var(--qh-primary-soft); color: var(--qh-primary); flex: none;
 }
 
-/* ---------- timer ---------- */
+* ---------- timer ---------- *
 .timer {
   display: inline-flex; align-items: center; padding: 0.45rem 0.95rem; border-radius: 999px;
   background: var(--qh-primary-soft); color: var(--qh-primary); font-weight: 700;
@@ -112,7 +112,7 @@ body {
 .timer.danger { background: var(--qh-bad-soft); color: var(--qh-bad); animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 0.4rem rgba(224, 49, 49, 0.14); } }
 
-/* ---------- answer options ---------- */
+* ---------- answer options ---------- *
 .opt {
   position: relative; display: flex; align-items: center; gap: 0.9rem; margin: 0;
   padding: 0.9rem 1rem; border: 2px solid var(--qh-border); border-radius: 0.9rem; background: #fff;
@@ -129,7 +129,7 @@ body {
 .opt:focus-within { outline: 3px solid rgba(59, 91, 219, 0.35); outline-offset: 2px; }
 .opt-text { flex: 1; overflow-wrap: anywhere; }
 
-/* ---------- question navigator ---------- */
+* ---------- question navigator ---------- *
 .qnav { display: grid; grid-template-columns: repeat(auto-fill, minmax(2.6rem, 1fr)); gap: 0.45rem; }
 .qnav button {
   aspect-ratio: 1; padding: 0; border: 2px solid var(--qh-border); background: #fff; border-radius: 0.7rem;
@@ -140,7 +140,7 @@ body {
 .qnav button:focus-visible { outline: 3px solid rgba(59, 91, 219, 0.35); outline-offset: 2px; }
 .legend-dot { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 0.25rem; margin-right: 0.35rem; vertical-align: -1px; }
 
-/* ---------- results ---------- */
+* ---------- results ---------- *
 .score-ring {
   --pct: 0; --ring: var(--qh-ok);
   width: 170px; height: 170px; border-radius: 50%; display: grid; place-items: center; flex: none;
@@ -174,7 +174,7 @@ body {
 
 .rank-1 { color: #f5b301; } .rank-2 { color: #9aa3b5; } .rank-3 { color: #c77c3d; }
 
-/* ---------- admin ---------- */
+* ---------- admin ---------- *
 .admin-pills .nav-link { color: var(--qh-muted); font-weight: 500; border-radius: 0.75rem; }
 .admin-pills .nav-link.active { background: var(--qh-primary); color: #fff; }
 .sticky-actions {
@@ -190,7 +190,7 @@ body {
 
 .hero-title { font-size: clamp(2rem, 4vw, 3rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
 
-/* ---------- print (result page) ---------- */
+* ---------- print (result page) ---------- *
 @media print {
   body { background: #fff; }
   .qh-nav, .no-print, .btn, .toast-container { display: none !important; }
