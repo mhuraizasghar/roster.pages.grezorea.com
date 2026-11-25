@@ -43,6 +43,14 @@ async function ensureTable(env) {
   }
 }
 
+function safeJson(str, fallback) {
+  try {
+    return str ? JSON.parse(str) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const headers = corsHeaders(request);
@@ -53,9 +61,10 @@ export async function onRequest(context) {
 
   // Fallback if D1 is not bound in local environment
   if (!env || !env.DB) {
-    return Response.json({ ok: false, error: "Database binding unavailable. Local fallback active." }, { headers });
+    return Response.json({ ok: false, error: "Database binding unavailable. Local fallback active." }, { status: 503, headers });
   }
 
+  try {
   await ensureTable(env);
   const url = new URL(request.url);
 
@@ -72,12 +81,9 @@ export async function onRequest(context) {
       ).all();
 
       const rooms = (results || []).map(row => {
-        const participants = JSON.parse(row.participants || "[]");
-        let questionsCount = 0;
-        try {
-          const payload = JSON.parse(row.payload || "{}");
-          questionsCount = Array.isArray(payload.questions) ? payload.questions.length : 0;
-        } catch (e) {}
+        const participants = safeJson(row.participants, []);
+        const payload = safeJson(row.payload, {});
+        const questionsCount = Array.isArray(payload.questions) ? payload.questions.length : 0;
         return {
           code: row.code,
           quizId: row.quiz_id,
@@ -103,11 +109,14 @@ export async function onRequest(context) {
       ).all();
 
       const reports = (results || []).map(r => {
-        try {
-          return JSON.parse(r.payload);
-        } catch (e) {
-          return { id: r.id, roomCode: r.room_code, quizId: r.quiz_id, subject: r.subject, title: r.title, finishedAt: r.finished_at };
-        }
+        return safeJson(r.payload, {
+          id: r.id,
+          roomCode: r.room_code,
+          quizId: r.quiz_id,
+          subject: r.subject,
+          title: r.title,
+          finishedAt: r.finished_at
+        });
       });
       return Response.json({ ok: true, reports }, { headers });
     }
@@ -126,9 +135,9 @@ export async function onRequest(context) {
       return Response.json({ error: "Room not found" }, { status: 404, headers });
     }
 
-    const payload = JSON.parse(row.payload || "{}");
-    const participants = JSON.parse(row.participants || "[]");
-    const responses = JSON.parse(row.responses || "{}");
+    const payload = safeJson(row.payload, {});
+    const participants = safeJson(row.participants, []);
+    const responses = safeJson(row.responses, {});
 
     return Response.json({
       ok: true,
@@ -184,18 +193,145 @@ export async function onRequest(context) {
         now
       ).run();
 
-      return Response.json({ ok: true, code: newCode }, { headers });
+      return Response.json({ ok: true, code: newCode, updatedAt: now }, { headers });
     }
 
-    // Load existing room for remaining actions
+    // 7. DELETE / CLOSE ROOM (idempotent — runs before room lookup)
+    if (action === "delete") {
+      if (code) {
+        await env.DB.prepare("DELETE FROM live_rooms WHERE code = ?").bind(code).run();
+      }
+      return Response.json({ ok: true, deleted: code }, { headers });
+    }
+
+    // 8. DELETE SAVED REPORT (does not require room to still exist)
+    if (action === "delete_report") {
+      const repId = String(body.id || "");
+      if (repId) {
+        await env.DB.prepare("DELETE FROM live_reports WHERE id = ?").bind(repId).run();
+      }
+      return Response.json({ ok: true, deleted: repId }, { headers });
+    }
+
+    // 3. JOIN ROOM (CAS retry loop to avoid lost joins on simultaneous scans)
+    if (action === "join") {
+      const studentName = String(body.studentName || "").trim();
+      if (!studentName) {
+        return Response.json({ error: "Student name required" }, { status: 400, headers });
+      }
+      const normName = studentName.toLowerCase();
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const row = await env.DB.prepare("SELECT * FROM live_rooms WHERE code = ?").bind(code).first();
+        if (!row) {
+          return Response.json({ error: "Room not found" }, { status: 404, headers });
+        }
+
+        const participants = safeJson(row.participants, []);
+        const prevUpdatedAt = Number(row.updated_at || 0);
+        const nextNow = Math.max(Date.now(), prevUpdatedAt + 1);
+        let participantId = String(body.participantId || `p_${nextNow.toString(36)}_${Math.random().toString(36).slice(2, 6)}`);
+
+        const existingById = participants.find(p => p.id === participantId);
+        const existingByName = !existingById && participants.find(
+          p => String(p.name || "").trim().toLowerCase() === normName
+        );
+
+        if (existingById) {
+          return Response.json({ ok: true, participantId, studentName, code, participants, updatedAt: prevUpdatedAt }, { headers });
+        }
+
+        if (existingByName) {
+          participantId = existingByName.id;
+          existingByName.name = studentName;
+          existingByName.joinedAt = nextNow;
+          existingByName.active = true;
+        } else {
+          participants.push({
+            id: participantId,
+            name: studentName,
+            joinedAt: nextNow,
+            active: true
+          });
+        }
+
+        const res = await env.DB.prepare(
+          "UPDATE live_rooms SET participants = ?, updated_at = ? WHERE code = ? AND updated_at = ?"
+        ).bind(JSON.stringify(participants), nextNow, code, prevUpdatedAt).run();
+
+        if (res && res.meta && res.meta.changes > 0) {
+          return Response.json({ ok: true, participantId, studentName, code, participants, updatedAt: nextNow }, { headers });
+        }
+      }
+      return Response.json({ error: "Concurrent update conflict, please retry" }, { status: 409, headers });
+    }
+
+    // 3b. LEAVE ROOM (CAS retry loop)
+    if (action === "leave") {
+      const { participantId } = body;
+      if (!participantId) {
+        return Response.json({ ok: true }, { headers });
+      }
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const row = await env.DB.prepare("SELECT * FROM live_rooms WHERE code = ?").bind(code).first();
+        if (!row) {
+          return Response.json({ ok: true, participants: [] }, { headers });
+        }
+        const participants = safeJson(row.participants, []);
+        const updated = participants.filter(p => p.id !== participantId);
+        const prevUpdatedAt = Number(row.updated_at || 0);
+        const nextNow = Math.max(Date.now(), prevUpdatedAt + 1);
+
+        const res = await env.DB.prepare(
+          "UPDATE live_rooms SET participants = ?, updated_at = ? WHERE code = ? AND updated_at = ?"
+        ).bind(JSON.stringify(updated), nextNow, code, prevUpdatedAt).run();
+
+        if (res && res.meta && res.meta.changes > 0) {
+          return Response.json({ ok: true, participants: updated, updatedAt: nextNow }, { headers });
+        }
+      }
+      return Response.json({ error: "Concurrent update conflict" }, { status: 409, headers });
+    }
+
+    // 5. SUBMIT ANSWER FOR CURRENT QUESTION (CAS retry loop to avoid lost student answers)
+    if (action === "answer") {
+      const { participantId, questionIndex, answerIndex } = body;
+      if (!participantId || questionIndex === undefined || answerIndex === undefined) {
+        return Response.json({ error: "Missing answer parameters" }, { status: 400, headers });
+      }
+
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const row = await env.DB.prepare("SELECT * FROM live_rooms WHERE code = ?").bind(code).first();
+        if (!row) {
+          return Response.json({ error: "Room not found" }, { status: 404, headers });
+        }
+
+        const responses = safeJson(row.responses, {});
+        if (!responses[participantId]) {
+          responses[participantId] = {};
+        }
+        responses[participantId][questionIndex] = Number(answerIndex);
+
+        const prevUpdatedAt = Number(row.updated_at || 0);
+        const nextNow = Math.max(Date.now(), prevUpdatedAt + 1);
+
+        const res = await env.DB.prepare(
+          "UPDATE live_rooms SET responses = ?, updated_at = ? WHERE code = ? AND updated_at = ?"
+        ).bind(JSON.stringify(responses), nextNow, code, prevUpdatedAt).run();
+
+        if (res && res.meta && res.meta.changes > 0) {
+          return Response.json({ ok: true, questionIndex, answerIndex, updatedAt: nextNow }, { headers });
+        }
+      }
+      return Response.json({ error: "Concurrent update conflict, please retry" }, { status: 409, headers });
+    }
+
+    // Load existing room for instructor actions
     const row = await env.DB.prepare("SELECT * FROM live_rooms WHERE code = ?").bind(code).first();
     if (!row) {
       return Response.json({ error: "Room not found" }, { status: 404, headers });
     }
-
-    const participants = JSON.parse(row.participants || "[]");
-    const responses = JSON.parse(row.responses || "{}");
-    const now = Date.now();
+    const now = Math.max(Date.now(), Number(row.updated_at || 0) + 1);
 
     // 2. SWITCH QUIZ / SUBJECT IN ROOM (Before or during session)
     if (action === "switch_quiz") {
@@ -213,60 +349,7 @@ export async function onRequest(context) {
         code
       ).run();
 
-      return Response.json({ ok: true, code, quizId: newQuiz.id }, { headers });
-    }
-
-    // 3. JOIN ROOM (Name only, zero auth)
-    if (action === "join") {
-      const studentName = String(body.studentName || "").trim();
-      let participantId = String(body.participantId || `p_${now.toString(36)}_${Math.random().toString(36).slice(2, 6)}`);
-
-      if (!studentName) {
-        return Response.json({ error: "Student name required" }, { status: 400, headers });
-      }
-
-      // Deduplicate by ID first, then by case-insensitive name (prevent duplicates on rejoin)
-      const normName = studentName.toLowerCase();
-      const existingById = participants.find(p => p.id === participantId);
-      const existingByName = !existingById && participants.find(
-        p => String(p.name || "").trim().toLowerCase() === normName
-      );
-
-      if (existingByName) {
-        // Rejoin: keep existing ID slot so responses/state remain consistent without duplicate
-        participantId = existingByName.id;
-        existingByName.name = studentName;
-        existingByName.joinedAt = now;
-        existingByName.active = true;
-        await env.DB.prepare(
-          "UPDATE live_rooms SET participants = ?, updated_at = ? WHERE code = ?"
-        ).bind(JSON.stringify(participants), now, code).run();
-      } else if (!existingById) {
-        participants.push({
-          id: participantId,
-          name: studentName,
-          joinedAt: now,
-          active: true
-        });
-        await env.DB.prepare(
-          "UPDATE live_rooms SET participants = ?, updated_at = ? WHERE code = ?"
-        ).bind(JSON.stringify(participants), now, code).run();
-      }
-
-      return Response.json({ ok: true, participantId, studentName, code, participants, updatedAt: now }, { headers });
-    }
-
-    // 3b. LEAVE ROOM (Student exited mid-session)
-    if (action === "leave") {
-      const { participantId } = body;
-      if (participantId) {
-        const updated = participants.filter(p => p.id !== participantId);
-        await env.DB.prepare(
-          "UPDATE live_rooms SET participants = ?, updated_at = ? WHERE code = ?"
-        ).bind(JSON.stringify(updated), now, code).run();
-        return Response.json({ ok: true, participants: updated, updatedAt: now }, { headers });
-      }
-      return Response.json({ ok: true }, { headers });
+      return Response.json({ ok: true, code, quizId: newQuiz.id, updatedAt: now }, { headers });
     }
 
     // 4. START OR NAVIGATE QUESTIONS (Admin teacher-paced control)
@@ -278,26 +361,7 @@ export async function onRequest(context) {
         "UPDATE live_rooms SET current_index = ?, status = ?, updated_at = ? WHERE code = ?"
       ).bind(nextIndex, newStatus, now, code).run();
 
-      return Response.json({ ok: true, currentIndex: nextIndex, status: newStatus }, { headers });
-    }
-
-    // 5. SUBMIT ANSWER FOR CURRENT QUESTION (Student interaction)
-    if (action === "answer") {
-      const { participantId, questionIndex, answerIndex } = body;
-      if (!participantId || questionIndex === undefined || answerIndex === undefined) {
-        return Response.json({ error: "Missing answer parameters" }, { status: 400, headers });
-      }
-
-      if (!responses[participantId]) {
-        responses[participantId] = {};
-      }
-      responses[participantId][questionIndex] = Number(answerIndex);
-
-      await env.DB.prepare(
-        "UPDATE live_rooms SET responses = ?, updated_at = ? WHERE code = ?"
-      ).bind(JSON.stringify(responses), now, code).run();
-
-      return Response.json({ ok: true, questionIndex, answerIndex }, { headers });
+      return Response.json({ ok: true, currentIndex: nextIndex, status: newStatus, updatedAt: now }, { headers });
     }
 
     // 6. FINISH & SUBMIT LIVE QUIZ
@@ -326,26 +390,14 @@ export async function onRequest(context) {
         }
       }
 
-      return Response.json({ ok: true, status: "finished" }, { headers });
-    }
-
-    // 7. DELETE / CLOSE ROOM
-    if (action === "delete") {
-      await env.DB.prepare("DELETE FROM live_rooms WHERE code = ?").bind(code).run();
-      return Response.json({ ok: true, deleted: code }, { headers });
-    }
-
-    // 8. DELETE SAVED REPORT
-    if (action === "delete_report") {
-      const repId = body.id || "";
-      if (repId) {
-        await env.DB.prepare("DELETE FROM live_reports WHERE id = ?").bind(repId).run();
-      }
-      return Response.json({ ok: true, deleted: repId }, { headers });
+      return Response.json({ ok: true, status: "finished", updatedAt: now }, { headers });
     }
 
     return Response.json({ error: "Unknown action" }, { status: 400, headers });
   }
 
   return Response.json({ error: "Method not allowed" }, { status: 405, headers });
+  } catch (err) {
+    return Response.json({ ok: false, error: err && err.message ? err.message : "Database error" }, { status: 500, headers });
+  }
 }
