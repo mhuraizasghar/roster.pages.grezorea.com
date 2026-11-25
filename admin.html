@@ -3,122 +3,295 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin | QuizHub</title>
+  <title>Admin Dashboard | QuizHub</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
   <link href="css/style.css" rel="stylesheet">
 </head>
-<body>
-  <nav class="navbar qh-nav sticky-top">
-    <div class="container">
-      <a class="navbar-brand fw-bold" href="admin.html"><i class="fa-solid fa-user-shield me-2"></i>QuizHub Admin</a>
-      <div class="ms-auto d-flex gap-2">
-        <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminGuide" aria-controls="adminGuide" aria-label="Open admin guide"><i class="fa-regular fa-circle-question me-1" aria-hidden="true"></i><span class="d-none d-sm-inline">Guide</span></button>
-        <a href="index.html" class="btn btn-light btn-sm"><i class="fa-solid fa-house me-1"></i>Student site</a>
-        <button id="adminLogout" class="btn btn-outline-secondary btn-sm d-none"><i class="fa-solid fa-right-from-bracket me-1"></i>Sign out</button>
+<body class="bg-white">
+
+  <!-- Minimalist Admin Container -->
+  <main class="container py-3">
+
+    <!-- Minimal Text-Based Top Action Bar (No bulky navbar) -->
+    <header class="admin-topbar">
+      <div class="d-flex align-items-center gap-2">
+        <a href="admin.html" class="admin-brand">
+          <i class="fa-solid fa-user-shield text-primary"></i>
+          <span>QuizHub Admin</span>
+        </a>
+        <span class="admin-badge">Instructor Control</span>
       </div>
-    </div>
-  </nav>
 
-  <main class="container py-4">
+      <!-- Integrated Text-based Action Buttons -->
+      <nav class="d-flex align-items-center gap-1" aria-label="Admin quick actions">
+        <a href="index.html" class="admin-text-btn">
+          <i class="fa-solid fa-house"></i>
+          <span>Home Site</span>
+        </a>
+        <a href="student.html" class="admin-text-btn">
+          <i class="fa-solid fa-graduation-cap"></i>
+          <span>Student Portal</span>
+        </a>
+        <a href="live.html" class="admin-text-btn text-success">
+          <i class="fa-solid fa-tower-broadcast"></i>
+          <span>Live Room</span>
+        </a>
+        <button class="admin-text-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminGuide" aria-label="Open admin guide">
+          <i class="fa-regular fa-circle-question"></i>
+          <span>Guide</span>
+        </button>
+        <button id="adminLogout" class="admin-text-btn text-danger d-none" type="button">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          <span>Sign out</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- Global Loading Spinner -->
     <div id="loading" class="text-center py-5">
-      <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading…</span></div>
+      <div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading…</span></div>
     </div>
 
-    
-    <section id="loginView" class="d-none">
-      <div class="card qh-card mx-auto" style="max-width: 440px;">
-        <div class="card-body p-4 p-lg-5">
-          <div class="feature-icon mb-3" style="width:3.2rem;height:3.2rem;"><i class="fa-solid fa-lock fa-lg"></i></div>
-          <h1 class="h4">Admin sign in</h1>
-          <p class="text-muted">Manage quizzes, enrolled student emails and results.</p>
-          <div id="loginAlert" class="alert alert-danger d-none" role="alert">Incorrect password.</div>
+    <!-- ========================================== -->
+    <!-- ADMIN SIGN IN VIEW (Secure, no exposed password) -->
+    <!-- ========================================== -->
+    <section id="loginView" class="d-none py-5">
+      <div class="card qh-card mx-auto shadow-sm" style="max-width: 400px;">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="feature-icon" style="width:2.5rem;height:2.5rem;">
+              <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+              <h1 class="h6 mb-0 fw-bold">Admin Sign In</h1>
+              <span class="small text-muted">Instructor &amp; Exam Controller Access</span>
+            </div>
+          </div>
+
+          <div id="loginAlert" class="alert alert-danger py-2 px-3 small d-none" role="alert">Incorrect password. Please try again.</div>
+
           <form id="loginForm">
-            <label for="adminPassword" class="form-label">Password</label>
-            <input id="adminPassword" type="password" class="form-control form-control-lg mb-3" autocomplete="current-password" required>
-            <button class="btn btn-primary btn-lg w-100" type="submit">Sign in</button>
+            <div class="mb-3">
+              <label for="adminPassword" class="form-label">Admin Password</label>
+              <input id="adminPassword" type="password" class="form-control" autocomplete="current-password" placeholder="Enter password" required>
+            </div>
+            <button class="btn btn-primary w-100 mb-2" type="submit">
+              <i class="fa-solid fa-arrow-right-to-bracket me-1"></i>Access Dashboard
+            </button>
           </form>
-          <p id="defaultHint" class="small text-muted mt-3 mb-0 d-none"><i class="fa-solid fa-circle-info me-1"></i>First run: the default password is <code>admin123</code>. Change it under Settings.</p>
+
+          <div class="pt-3 mt-3 border-top text-center">
+            <a href="index.html" class="small text-muted text-decoration-none">
+              <i class="fa-solid fa-arrow-left me-1"></i>Return to public website
+            </a>
+          </div>
         </div>
       </div>
     </section>
 
-    
-    <section id="appView" class="d-none">
-      <ul class="nav nav-pills admin-pills gap-1 mb-4" id="tabs">
-        <li class="nav-item"><button class="nav-link" data-view="quizzesView"><i class="fa-solid fa-clipboard-question me-2"></i>Quizzes</button></li>
-        <li class="nav-item"><button class="nav-link" data-view="resultsView"><i class="fa-solid fa-chart-column me-2"></i>Results</button></li>
-        <li class="nav-item"><button class="nav-link" data-view="settingsView"><i class="fa-solid fa-gear me-2"></i>Publish &amp; settings</button></li>
-      </ul>
 
-      
-      <div id="quizzesView" data-view-panel class="d-none">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-          <h1 class="h4 mb-0">Quizzes</h1>
-          <div class="d-flex gap-2">
-            <button id="importQuizBtn" class="btn btn-outline-primary"><i class="fa-solid fa-file-import me-2"></i>Import JSON</button>
-            <input type="file" id="importQuizFile" accept=".json,application/json" class="d-none">
-            <button id="newQuizBtn" class="btn btn-primary"><i class="fa-solid fa-plus me-2"></i>New quiz</button>
+    <!-- ========================================== -->
+    <!-- ADMIN DASHBOARD APP VIEW                   -->
+    <!-- ========================================== -->
+    <section id="appView" class="d-none">
+
+      <!-- Live Top Metrics / KPI Bar for Admin -->
+      <div class="row g-3 mb-4" id="adminDashboardKPIs">
+        <div class="col-6 col-md">
+          <div class="kpi-card">
+            <div class="kpi-label">Active Quizzes</div>
+            <div class="kpi-value text-primary" id="kpiQuizzes">0</div>
+            <div class="kpi-sub">Total question banks</div>
           </div>
         </div>
+        <div class="col-6 col-md">
+          <div class="kpi-card">
+            <div class="kpi-label">Total Questions</div>
+            <div class="kpi-value" id="kpiQuestions">0</div>
+            <div class="kpi-sub">Across all quizzes</div>
+          </div>
+        </div>
+        <div class="col-6 col-md">
+          <div class="kpi-card">
+            <div class="kpi-label">Enrolled Students</div>
+            <div class="kpi-value text-info" id="kpiEnrolled">0</div>
+            <div class="kpi-sub">Whitelisted accounts</div>
+          </div>
+        </div>
+        <div class="col-6 col-md">
+          <div class="kpi-card">
+            <div class="kpi-label">Submissions</div>
+            <div class="kpi-value text-secondary" id="kpiAttempts">0</div>
+            <div class="kpi-sub">Recorded attempts</div>
+          </div>
+        </div>
+        <div class="col-6 col-md">
+          <div class="kpi-card">
+            <div class="kpi-label">Pass Rate</div>
+            <div class="kpi-value text-success" id="kpiPassRate">0%</div>
+            <div class="kpi-sub">Passing grades</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Segmented Navigation Pills -->
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <ul class="nav admin-pills gap-1" id="tabs">
+          <li class="nav-item">
+            <button class="nav-link active" data-view="quizzesView">
+              <i class="fa-solid fa-clipboard-question me-1"></i>Quizzes
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-view="liveRoomsView">
+              <i class="fa-solid fa-tower-broadcast me-1 text-success"></i>Live Classrooms &amp; Results
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-view="resultsView">
+              <i class="fa-solid fa-chart-column me-1"></i>Results &amp; Analytics
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-view="settingsView">
+              <i class="fa-solid fa-gear me-1"></i>Publish &amp; Settings
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- TAB 1: QUIZZES VIEW -->
+      <div id="quizzesView" data-view-panel class="d-none">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <h2 class="h5 mb-0 fw-bold">Quiz Directory</h2>
+            <input type="text" id="quizSearchInput" class="form-control form-control-sm" placeholder="Filter quizzes..." style="width: 180px;">
+          </div>
+          <div class="d-flex gap-2">
+            <button id="openLaunchLiveModalBtn" class="btn btn-outline-success btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#launchLiveModal">
+              <i class="fa-solid fa-tower-broadcast me-1"></i>Launch Live Room
+            </button>
+            <button id="importQuizBtn" class="btn btn-outline-secondary btn-sm">
+              <i class="fa-solid fa-file-import me-1"></i>Import JSON
+            </button>
+            <input type="file" id="importQuizFile" accept=".json,application/json" class="d-none">
+            <button id="newQuizBtn" class="btn btn-primary btn-sm">
+              <i class="fa-solid fa-plus me-1"></i>Create Quiz
+            </button>
+          </div>
+        </div>
+
         <div class="card qh-card">
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-              <thead><tr><th>Quiz</th><th class="text-center">Questions</th><th class="text-center">Students</th><th class="text-center">Time</th><th>Updated</th><th></th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Quiz Details</th>
+                  <th class="text-center">Questions</th>
+                  <th class="text-center">Enrolled</th>
+                  <th class="text-center">Duration</th>
+                  <th>Last Modified</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
               <tbody id="quizTable"></tbody>
             </table>
           </div>
         </div>
       </div>
 
-      
+      <!-- TAB 2: QUIZ EDITOR VIEW -->
       <div id="editorView" data-view-panel class="d-none">
-        <div class="d-flex align-items-center gap-2 mb-3">
-          <button id="backBtn" class="btn btn-light btn-sm"><i class="fa-solid fa-arrow-left me-1"></i>Quizzes</button>
-          <h1 class="h4 mb-0" id="editorTitle">Edit quiz</h1>
+        <div class="d-flex align-items-center justify-content-between gap-2 mb-3 pb-2 border-bottom">
+          <div class="d-flex align-items-center gap-2">
+            <button id="backBtn" class="btn btn-outline-secondary btn-sm">
+              <i class="fa-solid fa-arrow-left me-1"></i>Back to Quizzes
+            </button>
+            <h2 class="h5 mb-0 fw-bold" id="editorTitle">Edit Quiz</h2>
+          </div>
+          <div class="d-flex gap-2">
+            <button id="cancelEditBtn" class="btn btn-outline-secondary btn-sm">Cancel</button>
+            <button id="saveQuizBtn" class="btn btn-primary btn-sm">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Save Quiz
+            </button>
+          </div>
         </div>
-        <div id="editorErrors" class="alert alert-danger d-none" role="alert"></div>
+
+        <div id="editorErrors" class="alert alert-danger py-2 px-3 small d-none" role="alert"></div>
+
         <div class="row g-4">
           <div class="col-lg-8">
             <div class="card qh-card mb-4">
-              <div class="card-header">Details</div>
+              <div class="card-header">General Information &amp; Rules</div>
               <div class="card-body">
                 <div class="row g-3">
-                  <div class="col-md-7"><label class="form-label" for="qzTitle">Title</label><input id="qzTitle" class="form-control" maxlength="80"></div>
-                  <div class="col-md-5"><label class="form-label" for="qzSubject">Subject</label><input id="qzSubject" class="form-control" maxlength="60"></div>
-                  <div class="col-12"><label class="form-label" for="qzDesc">Description</label><textarea id="qzDesc" class="form-control" rows="2" maxlength="300"></textarea></div>
-                  <div class="col-6 col-md-3"><label class="form-label" for="qzDuration">Time (minutes)</label><input id="qzDuration" type="number" min="1" max="180" class="form-control"></div>
-                  <div class="col-6 col-md-3"><label class="form-label" for="qzPass">Pass mark (%)</label><input id="qzPass" type="number" min="0" max="100" class="form-control"></div>
-                  <div class="col-6 col-md-3"><label class="form-label" for="qzMax">Max attempts</label><input id="qzMax" type="number" min="0" max="50" class="form-control" aria-describedby="maxHelp"><div id="maxHelp" class="form-text">0 = unlimited</div></div>
-                  <div class="col-6 col-md-3 d-flex align-items-center"><div class="form-check form-switch mt-3"><input class="form-check-input" type="checkbox" role="switch" id="qzShuffle"><label class="form-check-label" for="qzShuffle">Shuffle questions</label></div></div>
+                  <div class="col-md-7">
+                    <label class="form-label" for="qzTitle">Quiz Title</label>
+                    <input id="qzTitle" class="form-control" placeholder="e.g. Introduction to Programming" maxlength="80">
+                  </div>
+                  <div class="col-md-5">
+                    <label class="form-label" for="qzSubject">Subject / Category</label>
+                    <input id="qzSubject" class="form-control" placeholder="e.g. Computer Science" maxlength="60">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label" for="qzDesc">Description</label>
+                    <textarea id="qzDesc" class="form-control" rows="2" placeholder="Brief outline of syllabus covered" maxlength="300"></textarea>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <label class="form-label" for="qzDuration">Time (Minutes)</label>
+                    <input id="qzDuration" type="number" min="1" max="180" class="form-control" value="10">
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <label class="form-label" for="qzPass">Pass Mark (%)</label>
+                    <input id="qzPass" type="number" min="0" max="100" class="form-control" value="50">
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <label class="form-label" for="qzMax">Max Attempts</label>
+                    <input id="qzMax" type="number" min="0" max="50" class="form-control" value="0" aria-describedby="maxHelp">
+                    <div id="maxHelp" class="form-text" style="font-size:0.75rem;">0 = unlimited</div>
+                  </div>
+                  <div class="col-6 col-md-3 d-flex align-items-center">
+                    <div class="form-check form-switch mt-3">
+                      <input class="form-check-input" type="checkbox" role="switch" id="qzShuffle">
+                      <label class="form-check-label small fw-semibold" for="qzShuffle">Shuffle Questions</label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
+            <!-- Question Bank Card -->
             <div class="card qh-card">
               <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Questions <span class="badge soft-badge ms-1" id="qCount">0</span></span>
-                <button id="addQuestionBtn" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus me-1"></i>Add question</button>
+                <span>Questions Bank <span class="badge soft-badge ms-1" id="qCount">0</span></span>
+                <button id="addQuestionBtn" class="btn btn-primary btn-sm">
+                  <i class="fa-solid fa-plus me-1"></i>Add Question
+                </button>
               </div>
               <div id="questionList"></div>
             </div>
           </div>
 
+          <!-- Enrolled Student Whitelist Card -->
           <div class="col-lg-4">
             <div class="card qh-card">
-              <div class="card-header"><i class="fa-solid fa-user-check me-2 text-primary"></i>Enrolled student emails</div>
+              <div class="card-header">
+                <i class="fa-solid fa-user-check me-2 text-primary"></i>Enrolled Students Whitelist
+              </div>
               <div class="card-body">
-                <p class="small text-muted">Only these emails can attempt this quiz. One per line, or comma separated. Use <code>@university.edu</code> to allow a whole domain.</p>
-                <textarea id="qzEmails" class="form-control font-monospace small" rows="9" placeholder="ali@university.edu&#10;sara@university.edu" aria-label="Enrolled emails"></textarea>
-                <div class="d-flex justify-content-between align-items-center mt-2">
+                <p class="small text-muted mb-2">
+                  Only enrolled emails can take this quiz. One per line or separated by comma. Enter <code>@au.edu.pk</code> to allow a whole university domain.
+                </p>
+                <textarea id="qzEmails" class="form-control font-monospace small" rows="9" placeholder="ali@university.edu&#10;sara@university.edu&#10;@au.edu.pk" aria-label="Enrolled emails"></textarea>
+                <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
                   <span class="small"><strong id="emailValid">0</strong> valid <span id="emailInvalidWrap" class="text-danger d-none">· <strong id="emailInvalidCount">0</strong> invalid</span></span>
                   <div class="btn-group btn-group-sm">
-                    <button id="emailFileBtn" class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-upload me-1"></i>.txt / .csv</button>
+                    <button id="emailFileBtn" class="btn btn-outline-secondary" type="button"><i class="fa-solid fa-upload me-1"></i>.csv</button>
                     <button id="emailClearBtn" class="btn btn-outline-secondary" type="button">Clear</button>
                   </div>
                   <input type="file" id="emailFile" accept=".txt,.csv,text/plain,text/csv" class="d-none">
@@ -128,76 +301,211 @@
             </div>
           </div>
         </div>
+
         <div class="sticky-actions mt-4">
           <div class="d-flex gap-2 justify-content-end">
-            <button id="cancelEditBtn" class="btn btn-light">Cancel</button>
-            <button id="saveQuizBtn" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-2"></i>Save quiz</button>
+            <button id="cancelEditBtn2" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('cancelEditBtn').click()">Cancel</button>
+            <button id="saveQuizBtn2" class="btn btn-primary btn-sm" onclick="document.getElementById('saveQuizBtn').click()">
+              <i class="fa-solid fa-floppy-disk me-1"></i>Save Quiz
+            </button>
           </div>
         </div>
       </div>
 
-      
-      <div id="resultsView" data-view-panel class="d-none">
+      <!-- TAB 2: LIVE ROOMS & RESULTS VIEW -->
+      <div id="liveRoomsView" data-view-panel class="d-none">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-          <h1 class="h4 mb-0">Results</h1>
-          <div class="d-flex flex-wrap gap-2">
-            <select id="resQuiz" class="form-select w-auto" aria-label="Filter by quiz"></select>
-            <input id="resSearch" class="form-control w-auto" placeholder="Search name or email" aria-label="Search results">
-            <button id="exportCsvBtn" class="btn btn-outline-primary"><i class="fa-solid fa-file-csv me-2"></i>Export CSV</button>
+          <div>
+            <h2 class="h5 mb-0 fw-bold">
+              <i class="fa-solid fa-tower-broadcast me-2 text-success"></i>Live Classrooms &amp; Session Results
+            </h2>
+            <p class="small text-muted mb-0">Manage running teacher-paced Socrative live rooms and inspect evaluation scorecards.</p>
+          </div>
+          <div class="d-flex gap-2">
+            <button id="refreshLiveTabBtn" class="btn btn-outline-secondary btn-sm" type="button">
+              <i class="fa-solid fa-rotate me-1"></i>Refresh
+            </button>
+            <button class="btn btn-success btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#launchLiveModal">
+              <i class="fa-solid fa-play me-1"></i>Launch Live Room
+            </button>
           </div>
         </div>
+
+        <!-- 1. Currently Active Live Rooms -->
+        <div class="card qh-card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><span class="live-dot me-2"></span>Currently Active Live Classrooms</span>
+            <span class="badge text-bg-success small" id="activeRoomsCountBadge">0 Running</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Room Code</th>
+                  <th>Subject &amp; Quiz</th>
+                  <th>Status</th>
+                  <th class="text-center">Connected Students</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="liveTabActiveRoomsBody">
+                <tr><td colspan="5" class="text-center text-muted py-4">No live classrooms currently in session. Click "Launch Live Room" to start one.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. Saved Live Session Reports & Scorecards -->
+        <div class="card qh-card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fa-solid fa-file-waveform me-2 text-primary"></i>Saved Live Session Reports &amp; Scorecards</span>
+            <div class="d-flex align-items-center gap-2">
+              <input type="text" id="liveReportsSearch" class="form-control form-control-sm" placeholder="Filter reports..." style="width: 180px;">
+              <span class="badge soft-badge" id="liveReportsCountBadge">0 Saved</span>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Room Code</th>
+                  <th>Subject &amp; Quiz</th>
+                  <th class="text-center">Students</th>
+                  <th class="text-center">Avg Score</th>
+                  <th class="text-center">Pass Rate</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="liveReportsBody">
+                <tr><td colspan="7" class="text-center text-muted py-4">No saved live classroom reports yet. When a teacher finishes a live session, its complete scorecard is stored here.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: RESULTS VIEW -->
+      <div id="resultsView" data-view-panel class="d-none">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <h2 class="h5 mb-0 fw-bold">Student Submissions &amp; Grades</h2>
+          <div class="d-flex flex-wrap gap-2">
+            <select id="resQuiz" class="form-select form-select-sm w-auto" aria-label="Filter by quiz"></select>
+            <input id="resSearch" class="form-control form-control-sm w-auto" placeholder="Search name or email" aria-label="Search results">
+            <select id="resFilterStatus" class="form-select form-select-sm w-auto" aria-label="Filter by status">
+              <option value="">All Statuses</option>
+              <option value="passed">Passed Only</option>
+              <option value="failed">Failed Only</option>
+            </select>
+            <button id="exportCsvBtn" class="btn btn-outline-primary btn-sm">
+              <i class="fa-solid fa-file-csv me-1"></i>Export CSV
+            </button>
+          </div>
+        </div>
+
         <div class="row g-3 mb-3" id="resStats"></div>
+
         <div class="card qh-card">
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-              <thead><tr><th>Date</th><th>Student</th><th>Quiz</th><th class="text-end">Score</th><th class="text-end">%</th><th class="text-end">Time</th><th></th></tr></thead>
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Student Info</th>
+                  <th>Quiz Title</th>
+                  <th class="text-end">Raw Score</th>
+                  <th class="text-end">Percentage</th>
+                  <th class="text-end">Time Taken</th>
+                  <th class="text-end">Review</th>
+                </tr>
+              </thead>
               <tbody id="resBody"></tbody>
             </table>
           </div>
         </div>
-        <p class="small text-muted mt-3"><i class="fa-solid fa-circle-info me-1"></i>Results are saved in the browser where the quiz was taken. See Publish &amp; settings for how this works across devices.</p>
+        <p class="small text-muted mt-2 mb-4">
+          <i class="fa-solid fa-circle-info me-1"></i>Submissions are stored securely in browser storage. Use Publish &amp; Settings to sync across devices.
+        </p>
+
+        <!-- Saved Live Classroom Reports & Scorecards Section -->
+        <div class="card qh-card shadow-sm mb-4" id="liveReportsCard">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="fa-solid fa-tower-broadcast me-2 text-success"></i>Saved Live Classroom Evaluation Reports</span>
+            <span class="badge soft-badge" id="liveReportsCountBadge">0 Reports</span>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Room Code</th>
+                  <th>Subject &amp; Quiz</th>
+                  <th class="text-center">Participants</th>
+                  <th class="text-end">Class Avg</th>
+                  <th class="text-end">Pass Rate</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="liveReportsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
-      
+      <!-- TAB 4: PUBLISH & SETTINGS VIEW -->
       <div id="settingsView" data-view-panel class="d-none">
-        <h1 class="h4 mb-3">Publish &amp; settings</h1>
+        <h2 class="h5 mb-3 fw-bold">Publish &amp; Administrative Settings</h2>
         <div class="row g-4">
           <div class="col-lg-7">
             <div class="card qh-card mb-4">
-              <div class="card-header"><i class="fa-solid fa-cloud-arrow-up me-2 text-primary"></i>Publish quizzes to all devices</div>
+              <div class="card-header"><i class="fa-solid fa-cloud-arrow-up me-2 text-primary"></i>Publish Quizzes to Production</div>
               <div class="card-body">
-                <ol class="text-muted">
-                  <li>Click <strong>Download published.json</strong>.</li>
-                  <li>Replace <code>data/published.json</code> in your GitHub repository with it and commit.</li>
-                  <li>After GitHub Pages redeploys, students on any device see the new quizzes and enrolment lists.</li>
+                <ol class="small text-muted ps-3 mb-3">
+                  <li class="mb-2">Click <strong>Download published.json</strong> below to export your latest quiz bank.</li>
+                  <li class="mb-2">Commit the file into your GitHub repository under <code>data/published.json</code>.</li>
+                  <li>GitHub Pages or Cloudflare automatically deploys the updated tests to all student devices worldwide.</li>
                 </ol>
-                <button id="publishBtn" class="btn btn-primary"><i class="fa-solid fa-download me-2"></i>Download published.json</button>
+                <button id="publishBtn" class="btn btn-primary btn-sm">
+                  <i class="fa-solid fa-download me-1"></i>Download published.json
+                </button>
               </div>
             </div>
+
             <div class="card qh-card">
-              <div class="card-header"><i class="fa-solid fa-box-archive me-2 text-primary"></i>Backup &amp; restore</div>
+              <div class="card-header"><i class="fa-solid fa-box-archive me-2 text-primary"></i>Backup &amp; Data Restore</div>
               <div class="card-body">
-                <p class="text-muted">Back up quizzes, results and high scores from this browser, or restore them on another computer.</p>
+                <p class="small text-muted mb-3">Export an encrypted snapshot of quizzes, student attempts, and leaderboards to transfer between computers.</p>
                 <div class="d-flex flex-wrap gap-2">
-                  <button id="backupBtn" class="btn btn-outline-primary"><i class="fa-solid fa-download me-2"></i>Export backup</button>
-                  <button id="restoreBtn" class="btn btn-outline-primary"><i class="fa-solid fa-upload me-2"></i>Restore backup</button>
+                  <button id="backupBtn" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-download me-1"></i>Export Backup JSON</button>
+                  <button id="restoreBtn" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-upload me-1"></i>Restore Backup</button>
                   <input type="file" id="restoreFile" accept=".json,application/json" class="d-none">
-                  <button id="resetBtn" class="btn btn-outline-danger ms-lg-auto"><i class="fa-solid fa-rotate-left me-2"></i>Reset to demo quiz</button>
+                  <button id="resetBtn" class="btn btn-outline-danger btn-sm ms-lg-auto"><i class="fa-solid fa-rotate-left me-1"></i>Reset to Default Quizzes</button>
                 </div>
               </div>
             </div>
           </div>
+
           <div class="col-lg-5">
             <div class="card qh-card">
-              <div class="card-header"><i class="fa-solid fa-key me-2 text-primary"></i>Change admin password</div>
+              <div class="card-header"><i class="fa-solid fa-key me-2 text-primary"></i>Change Admin Password</div>
               <div class="card-body">
-                <div id="pwAlert" class="alert d-none" role="alert"></div>
+                <div id="pwAlert" class="alert py-2 px-3 small d-none" role="alert"></div>
                 <form id="pwForm">
-                  <div class="mb-3"><label class="form-label" for="pwCurrent">Current password</label><input id="pwCurrent" type="password" class="form-control" autocomplete="current-password" required></div>
-                  <div class="mb-3"><label class="form-label" for="pwNew">New password</label><input id="pwNew" type="password" class="form-control" autocomplete="new-password" minlength="6" required></div>
-                  <button class="btn btn-primary" type="submit">Update password</button>
+                  <div class="mb-3">
+                    <label class="form-label" for="pwCurrent">Current Password</label>
+                    <input id="pwCurrent" type="password" class="form-control" autocomplete="current-password" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label" for="pwNew">New Password</label>
+                    <input id="pwNew" type="password" class="form-control" autocomplete="new-password" minlength="6" required>
+                  </div>
+                  <button class="btn btn-primary btn-sm" type="submit">
+                    <i class="fa-solid fa-check me-1"></i>Update Password
+                  </button>
                 </form>
-                <p class="small text-muted mt-3 mb-0">This password is stored in this browser only. It protects the admin screen on a shared computer but is not server-side security. See ARCHITECTURE.md for the production plan.</p>
+                <p class="small text-muted mt-3 mb-0" style="font-size:0.75rem;">
+                  Admin password is saved in local browser storage to protect the admin console on shared classroom PCs.
+                </p>
               </div>
             </div>
           </div>
@@ -206,50 +514,132 @@
     </section>
   </main>
 
-  
+  <!-- ADMIN GUIDE OFFCANVAS -->
   <div class="offcanvas offcanvas-end" tabindex="-1" id="adminGuide" aria-labelledby="adminGuideTitle">
-    <div class="offcanvas-header">
-      <h2 class="offcanvas-title h5" id="adminGuideTitle"><i class="fa-regular fa-circle-question me-2 text-primary" aria-hidden="true"></i>Admin guide</h2>
+    <div class="offcanvas-header border-bottom">
+      <h2 class="offcanvas-title h6 fw-bold" id="adminGuideTitle"><i class="fa-regular fa-circle-question me-2 text-primary"></i>Admin Guide &amp; Controls</h2>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close guide"></button>
     </div>
-    <div class="offcanvas-body">
-      <ol class="ps-3">
-        <li class="mb-3"><strong>Sign in.</strong> Enter the admin password. Change the demo password from <em>Publish &amp; settings</em>.</li>
-        <li class="mb-3"><strong>Create a quiz.</strong> In <em>Quizzes</em>, add a quiz, set its time and pass mark, then add questions, options and the correct answer.</li>
-        <li class="mb-3"><strong>Enroll students.</strong> Add student email addresses, or an allowed email domain, before saving.</li>
-        <li class="mb-3"><strong>Publish quiz changes.</strong> Use <em>Publish &amp; settings</em> to download <code>published.json</code> and publish it with the site so students on other devices can access the quiz.</li>
-        <li class="mb-3"><strong>Review results.</strong> Open <em>Results</em>, filter or search, then select <em>Review</em> to inspect a student's submitted answers.</li>
-        <li><strong>Export and back up.</strong> Export results as CSV; use backup and restore for quizzes and results stored in the browser.</li>
+    <div class="offcanvas-body small">
+      <ol class="ps-3 mb-4">
+        <li class="mb-2"><strong>Manage Quizzes:</strong> Create quizzes, configure duration and pass thresholds, and input questions.</li>
+        <li class="mb-2"><strong>Enrolment Lists:</strong> Whitelist student emails or entire domains (e.g. <code>@au.edu.pk</code>).</li>
+        <li class="mb-2"><strong>Review Submissions:</strong> Inspect complete question-by-question student answers and auto-submit stamps.</li>
+        <li class="mb-2"><strong>Publishing:</strong> Export <code>published.json</code> and commit to git for global student distribution.</li>
       </ol>
-      <div class="alert alert-warning small mb-0" role="note"><i class="fa-solid fa-triangle-exclamation me-1" aria-hidden="true"></i>The current admin password is browser-side protection, not secure server authentication. Do not use this app for high-stakes exams.</div>
+      <div class="alert alert-warning small mb-0">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i>Always change the default password after initial setup under Settings.
+      </div>
     </div>
   </div>
 
+  <!-- QUESTION BUILDER MODAL -->
   <div class="modal fade" id="questionModal" tabindex="-1" aria-labelledby="qmTitle" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
-      <div class="modal-header"><h2 class="modal-title h5" id="qmTitle">Question</h2>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
-      <div class="modal-body">
-        <div id="qmError" class="alert alert-danger d-none" role="alert"></div>
-        <div class="mb-3"><label class="form-label" for="qmText">Question</label><textarea id="qmText" class="form-control" rows="2"></textarea></div>
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <label class="form-label mb-0">Answer options <span class="text-muted fw-normal small">(select the correct one)</span></label>
-          <button id="qmAddOption" type="button" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-plus me-1"></i>Add option</button>
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header border-bottom">
+          <h2 class="modal-title h6 fw-bold" id="qmTitle">Question</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <div id="qmOptions" role="radiogroup" aria-label="Answer options"></div>
-        <div class="mt-3"><label class="form-label" for="qmExplain">Explanation <span class="text-muted fw-normal small">(optional, shown in the review)</span></label><textarea id="qmExplain" class="form-control" rows="2"></textarea></div>
+        <div class="modal-body small">
+          <div id="qmError" class="alert alert-danger py-2 px-3 small d-none" role="alert"></div>
+          <div class="mb-3">
+            <label class="form-label" for="qmText">Question Text</label>
+            <textarea id="qmText" class="form-control" rows="2" placeholder="e.g. Which of the following is true regarding stacks?"></textarea>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label mb-0">Answer Options <span class="text-muted fw-normal small">(select the radio button for the correct answer)</span></label>
+            <button id="qmAddOption" type="button" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-plus me-1"></i>Add Option</button>
+          </div>
+          <div id="qmOptions" role="radiogroup" aria-label="Answer options"></div>
+          <div class="mt-3">
+            <label class="form-label" for="qmExplain">Explanation <span class="text-muted fw-normal small">(optional, shown in student review)</span></label>
+            <textarea id="qmExplain" class="form-control" rows="2" placeholder="Explain why the marked answer is correct..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-top">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="qmSave" class="btn btn-primary btn-sm">Save Question</button>
+        </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" id="qmSave" class="btn btn-primary">Save question</button>
+    </div>
+  </div>
+
+  <!-- LAUNCH LIVE CLASSROOM MODAL -->
+  <div class="modal fade" id="launchLiveModal" tabindex="-1" aria-labelledby="llmTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-bottom">
+          <h2 class="modal-title h6 fw-bold" id="llmTitle">
+            <i class="fa-solid fa-tower-broadcast me-2 text-success"></i>Launch Live Room (Socrative Mode)
+          </h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body small">
+          <p class="text-muted mb-3">
+            Select the quiz / subject for this live session. A unique QR code will be generated for students to scan and join.
+          </p>
+
+          <div class="mb-3">
+            <label for="launchSubjectSelect" class="form-label fw-bold">Select Subject / Quiz</label>
+            <select id="launchSubjectSelect" class="form-select"></select>
+          </div>
+
+          <div class="mb-3">
+            <label for="launchRoomCodeInput" class="form-label fw-bold">Custom Room Code (Optional)</label>
+            <input id="launchRoomCodeInput" class="form-control font-monospace text-uppercase" placeholder="Leave empty for auto (e.g. AU-2026)" maxlength="12">
+            <div class="form-text" style="font-size:0.75rem;">Students will use this code or the QR code to connect.</div>
+          </div>
+        </div>
+        <div class="modal-footer border-top">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="confirmLaunchLiveBtn" class="btn btn-success btn-sm">
+            <i class="fa-solid fa-play me-1"></i>Create &amp; Open Live Room
+          </button>
+        </div>
       </div>
-    </div></div>
+    </div>
+  </div>
+
+  <!-- VIEW LIVE SESSION SCORECARD MODAL -->
+  <div class="modal fade" id="viewScorecardModal" tabindex="-1" aria-labelledby="vsmTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header border-bottom">
+          <div>
+            <h2 class="modal-title h6 fw-bold" id="vsmTitle">Live Classroom Evaluation Scorecard</h2>
+            <span class="small text-muted" id="vsmSubtitle">Room AU-XXXX</span>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3"><div class="stat-tile text-center"><div class="num text-primary" id="vsmTotal">0</div><div class="small text-muted">Students</div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-tile text-center"><div class="num text-success" id="vsmAvg">0%</div><div class="small text-muted">Class Average</div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-tile text-center"><div class="num text-info" id="vsmPass">0%</div><div class="small text-muted">Pass Rate</div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-tile text-center"><div class="num" id="vsmQuestions">0</div><div class="small text-muted">Questions</div></div></div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="vsmTable">
+              <thead><tr id="vsmTableHeader"></tr></thead>
+              <tbody id="vsmTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer border-top">
+          <button type="button" id="vsmExportBtn" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-file-csv me-1"></i>Export CSV</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/common.js"></script>
   <script src="data/questions.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/room-sync.js"></script>
   <script src="js/admin.js"></script>
 </body>
 </html>

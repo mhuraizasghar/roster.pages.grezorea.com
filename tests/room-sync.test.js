@@ -1,0 +1,102 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+
+function fakeStorage() {
+  const m = new Map();
+  return {
+    getItem: k => m.has(k) ? m.get(k) : null,
+    setItem: (k, v) => m.set(k, String(v)),
+    removeItem: k => m.delete(k),
+    clear: () => m.clear()
+  };
+}
+
+globalThis.localStorage = fakeStorage();
+globalThis.sessionStorage = fakeStorage();
+globalThis.fetch = async () => { throw new Error("offline"); };
+
+const RoomSync = require("../js/room-sync.js");
+
+const sampleQuiz = {
+  id: "quiz-test",
+  title: "Test Live Quiz",
+  subject: "Computer Science",
+  passMark: 50,
+  questions: [
+    {
+      id: "q1",
+      text: "What is 2 + 2?",
+      options: ["3", "4", "5", "6"],
+      correct: 1,
+      explanation: "2 + 2 equals 4"
+    },
+    {
+      id: "q2",
+      text: "What is the capital of France?",
+      options: ["London", "Berlin", "Paris", "Madrid"],
+      correct: 2,
+      explanation: "Paris is the capital of France"
+    }
+  ]
+};
+
+test("RoomSync: create room, verify code and initial state", async () => {
+  const room = await RoomSync.createRoom(sampleQuiz, "TEST-1001");
+  assert.equal(room.code, "TEST-1001");
+  assert.equal(room.status, "lobby");
+  assert.equal(room.currentIndex, 0);
+  assert.equal(room.questions.length, 2);
+  assert.equal(room.participants.length, 0);
+});
+
+test("RoomSync: student joins room with name only (no auth)", async () => {
+  const { room, participant } = await RoomSync.joinRoom("TEST-1001", "Ali Hassan");
+  assert.equal(participant.name, "Ali Hassan");
+  assert.ok(participant.id);
+  assert.equal(room.participants.length, 1);
+  assert.equal(room.participants[0].name, "Ali Hassan");
+});
+
+test("RoomSync: teacher-paced navigation", async () => {
+  // Start quiz -> question 0
+  let room = await RoomSync.navigate("TEST-1001", 0, "active");
+  assert.equal(room.status, "active");
+  assert.equal(room.currentIndex, 0);
+
+  // Advance to question 1
+  room = await RoomSync.navigate("TEST-1001", 1, "active");
+  assert.equal(room.currentIndex, 1);
+
+  // Previous to question 0
+  room = await RoomSync.navigate("TEST-1001", 0, "active");
+  assert.equal(room.currentIndex, 0);
+});
+
+test("RoomSync: student submits answers and computeResults calculates accuracy", async () => {
+  const participant = RoomSync.getStoredParticipant();
+
+  // Student answers Q1 with Option 1 (4 - correct)
+  await RoomSync.submitAnswer("TEST-1001", participant.id, 0, 1);
+
+  // Student answers Q2 with Option 0 (London - wrong)
+  await RoomSync.submitAnswer("TEST-1001", participant.id, 1, 0);
+
+  // Teacher finishes room
+  const finished = await RoomSync.finishRoom("TEST-1001");
+  assert.equal(finished.status, "finished");
+
+  const results = RoomSync.computeResults(finished);
+  assert.equal(results.summary.totalJoined, 1);
+  assert.equal(results.studentResults.length, 1);
+
+  const student = results.studentResults[0];
+  assert.equal(student.name, "Ali Hassan");
+  assert.equal(student.score, 1);
+  assert.equal(student.total, 2);
+  assert.equal(student.percent, 50);
+  assert.equal(student.passed, true);
+  assert.equal(student.wrongCount, 1);
+
+  assert.equal(student.questionBreakdown[0].isCorrect, true);
+  assert.equal(student.questionBreakdown[1].isCorrect, false);
+});

@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Classroom Room | QuizHub</title>
+  <meta name="description" content="Join real-time teacher-paced live quiz rooms without account authorization.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+  <style>
+    .live-pulse {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: livePulse 1.6s infinite;
+      vertical-align: 1px;
+      margin-right: 6px;
+    }
+    @keyframes livePulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .teacher-badge {
+      font-size: 0.75rem;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+      border-radius: 0.25rem;
+      padding: 0.25rem 0.6rem;
+      font-weight: 600;
+    }
+    .opt.locked {
+      cursor: not-allowed !important;
+      opacity: 0.88;
+    }
+    .opt.locked:hover {
+      border-color: var(--qh-border) !important;
+      background: #fff !important;
+    }
+    .opt.locked.selected {
+      border-color: #10b981 !important;
+      background: #ecfdf5 !important;
+    }
+    .opt.locked.selected .opt-key {
+      background: #10b981 !important;
+      color: #fff !important;
+    }
+  </style>
+</head>
+<body class="bg-white">
+
+  <!-- Minimalist Top Navbar -->
+  <nav class="navbar qh-nav sticky-top">
+    <div class="container">
+      <a class="navbar-brand fw-bold d-flex align-items-center" href="index.html">
+        <i class="fa-solid fa-graduation-cap me-2 text-primary"></i>QuizHub
+        <span class="badge bg-light text-dark border ms-2 small font-monospace">
+          <span class="live-pulse"></span>Live Room
+        </span>
+      </a>
+
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <span id="navLiveRoomCode" class="badge soft-badge font-monospace d-none"></span>
+        <span id="navStudentName" class="small fw-semibold text-secondary d-none"></span>
+        <button id="leaveRoomBtn" class="btn btn-outline-secondary btn-sm d-none">
+          <i class="fa-solid fa-arrow-right-from-bracket me-1"></i>Leave
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+
+    <!-- Global Loading Spinner -->
+    <div id="loading" class="text-center py-5 d-none">
+      <div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading…</span></div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 1. JOIN ROOM VIEW (Name only, Zero Auth)   -->
+    <!-- ========================================== -->
+    <section id="joinView" class="py-4 py-md-5">
+      <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-5">
+          <div class="card qh-card shadow-sm">
+            <div class="card-body p-4 p-md-5">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="feature-icon" style="width:2.5rem;height:2.5rem;">
+                  <i class="fa-solid fa-qrcode text-primary"></i>
+                </div>
+                <div>
+                  <h1 class="h5 mb-0 fw-bold">Join Live Classroom</h1>
+                  <span class="small text-muted">Scan QR or enter Room Code</span>
+                </div>
+              </div>
+
+              <div id="joinAlert" class="alert alert-danger py-2 px-3 small d-none" role="alert"></div>
+
+              <form id="joinForm">
+                <div class="mb-3">
+                  <label for="roomCodeInput" class="form-label">Room Code</label>
+                  <input id="roomCodeInput" class="form-control font-monospace text-uppercase fw-bold" placeholder="e.g. AU-2026" required maxlength="15" autocomplete="off">
+                  <div class="form-text" style="font-size:0.75rem;">Provided on your classroom projector or QR code.</div>
+                </div>
+
+                <div class="mb-4">
+                  <label for="studentNameInput" class="form-label">Your Name</label>
+                  <input id="studentNameInput" class="form-control" placeholder="Enter your full name" required maxlength="60" autocomplete="name">
+                  <div class="form-text" style="font-size:0.75rem;">No email or account required. Just your real name.</div>
+                </div>
+
+                <button class="btn btn-primary w-100" type="submit" id="joinSubmitBtn">
+                  <i class="fa-solid fa-arrow-right-to-bracket me-1"></i>Enter Live Room
+                </button>
+              </form>
+
+              <div class="pt-3 mt-4 border-top text-center">
+                <a href="index.html" class="small text-muted text-decoration-none">
+                  <i class="fa-solid fa-arrow-left me-1"></i>Back to QuizHub Home
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Running Classrooms Card for Students -->
+          <div class="card qh-card shadow-sm mt-4 d-none" id="activeRoomsStudentCard">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span><span class="live-pulse"></span>Live Classrooms in Session</span>
+              <span class="badge soft-badge" id="activeRoomsCountBadge">0 Active</span>
+            </div>
+            <div class="card-body p-3">
+              <div class="small text-muted mb-2">Classrooms currently broadcasting. Click to join directly:</div>
+              <div class="d-grid gap-2" id="activeRoomsStudentList">
+                <!-- Dynamically populated -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2. LOBBY VIEW (Waiting for Instructor)     -->
+    <!-- ========================================== -->
+    <section id="lobbyView" class="d-none py-5">
+      <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-5 text-center">
+          <div class="card qh-card shadow-sm p-4 p-md-5">
+            <div class="mb-3">
+              <span class="badge soft-badge px-3 py-2 fs-6 font-monospace" id="lobbyRoomBadge">AU-2026</span>
+            </div>
+            <h2 class="h5 fw-bold mb-1" id="lobbySubjectTitle">Subject Assessment</h2>
+            <p class="small text-muted mb-4">You are successfully connected to the room.</p>
+
+            <div class="p-3 bg-light rounded border mb-4 text-start">
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="small text-muted">Participant:</span>
+                <span class="small fw-bold text-primary" id="lobbyStudentName">Ali Hassan</span>
+              </div>
+              <div class="d-flex align-items-center justify-content-between">
+                <span class="small text-muted">Room Status:</span>
+                <span class="badge bg-success-subtle text-success small">Ready in Lobby</span>
+              </div>
+            </div>
+
+            <div class="py-3">
+              <div class="spinner-grow text-primary mb-2" role="status" style="width:2rem;height:2rem;">
+                <span class="visually-hidden">Waiting…</span>
+              </div>
+              <div class="fw-semibold text-dark">Waiting for instructor to launch Question 1...</div>
+              <div class="small text-muted mt-1">Keep this tab open. The first question will appear automatically.</div>
+            </div>
+
+            <div class="pt-3 mt-3 border-top d-flex align-items-center justify-content-between small text-muted">
+              <span><i class="fa-solid fa-users me-1 text-primary"></i>Students Joined: <strong id="lobbyParticipantsCount">1</strong></span>
+              <span class="text-secondary"><i class="fa-solid fa-shield-halved me-1"></i>Teacher-Paced Mode</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. QUESTION VIEW (Teacher-Paced Question)  -->
+    <!-- ========================================== -->
+    <section id="questionView" class="d-none">
+      <div class="row justify-content-center">
+        <div class="col-lg-8">
+          
+          <!-- Top Teacher-Paced Progress Bar -->
+          <div class="card qh-card mb-3 p-3 shadow-sm">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary px-2 py-1" id="qCurrentBadge">Question 1 of 10</span>
+                <span class="small text-muted font-monospace" id="qSubjectBadge">Computer Science</span>
+              </div>
+              <div class="teacher-badge">
+                <i class="fa-solid fa-lock me-1"></i>Paced by Instructor
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Question Card -->
+          <div class="card qh-card shadow-sm mb-4">
+            <div class="card-body p-4 p-md-5">
+              <h2 class="h5 fw-bold mb-4" id="qText">Question Text Loading...</h2>
+
+              <div class="d-grid gap-2 mb-4" id="qOptionsList" role="radiogroup">
+                <!-- Dynamically rendered options -->
+              </div>
+
+              <!-- Submit / Saved Status Bar -->
+              <div class="pt-3 border-top d-flex flex-wrap align-items-center justify-content-between gap-2">
+                <div id="qAnswerStatus" class="small text-muted">
+                  <i class="fa-solid fa-circle-info me-1"></i>Select an option and submit your response.
+                </div>
+                <button type="button" id="submitAnswerBtn" class="btn btn-primary btn-sm px-4" disabled>
+                  <i class="fa-solid fa-check me-1"></i>Submit Answer
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-light rounded border text-center small text-muted">
+            <i class="fa-solid fa-hand-point-up text-primary me-1"></i>
+            Questions advance only when your teacher moves forward or backward on their control screen.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 4. FINISHED VIEW (Instant Personal Result) -->
+    <!-- ========================================== -->
+    <section id="finishedView" class="d-none py-4">
+      <div class="row justify-content-center">
+        <div class="col-lg-8">
+          <div class="card qh-card shadow-sm mb-4 text-center p-4 p-md-5">
+            <div class="feature-icon mx-auto mb-3" style="width:3.2rem;height:3.2rem;background:#ecfdf5;color:#059669;">
+              <i class="fa-solid fa-flag-checkered fa-lg"></i>
+            </div>
+            <h1 class="h4 fw-bold mb-1">Live Assessment Finished!</h1>
+            <p class="small text-muted mb-4">Your instructor has submitted the session. Here is your personal report.</p>
+
+            <div class="row g-3 justify-content-center mb-4">
+              <div class="col-6 col-md-3">
+                <div class="stat-tile">
+                  <div class="num text-primary" id="resScore">0/0</div>
+                  <div class="small text-muted">Your Score</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="stat-tile">
+                  <div class="num" id="resPercent">0%</div>
+                  <div class="small text-muted">Percentage</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="stat-tile">
+                  <div class="num text-success" id="resCorrect">0</div>
+                  <div class="small text-muted">Correct</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="stat-tile">
+                  <div class="num text-danger" id="resWrong">0</div>
+                  <div class="small text-muted">Wrong</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="resPassBadge" class="mb-4"></div>
+
+            <a href="index.html" class="btn btn-outline-secondary btn-sm mx-auto" style="max-width:200px;">
+              <i class="fa-solid fa-house me-1"></i>Back to Home
+            </a>
+          </div>
+
+          <!-- Question-by-Question Review List -->
+          <div class="card qh-card shadow-sm">
+            <div class="card-header fw-bold">
+              <i class="fa-solid fa-list-check me-2 text-primary"></i>Your Question-by-Question Review
+            </div>
+            <div class="card-body p-4" id="reviewList">
+              <!-- Review cards -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/room-sync.js"></script>
+  <script src="js/live-student.js"></script>
+</body>
+</html>

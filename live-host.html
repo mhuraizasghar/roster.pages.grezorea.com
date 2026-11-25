@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Room Host Controller | QuizHub</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%93%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
+  <link href="css/style.css" rel="stylesheet">
+  <style>
+    .qr-container {
+      background: #ffffff;
+      padding: 1.25rem;
+      border: 1px solid var(--qh-border);
+      border-radius: 0.5rem;
+      display: inline-block;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .qr-container:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.12);
+    }
+    .participant-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.75rem;
+      background: #f8fafc;
+      border: 1px solid var(--qh-border);
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--qh-ink);
+    }
+    .participant-pill.answered {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #065f46;
+    }
+    .participant-avatar {
+      width: 1.35rem;
+      height: 1.35rem;
+      border-radius: 50%;
+      background: var(--qh-primary);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+    }
+    .live-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+      animation: hostDot 1.6s infinite;
+      margin-right: 5px;
+    }
+    @keyframes hostDot {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+    .matrix-check { color: #10b981; font-weight: bold; }
+    .matrix-cross { color: #ef4444; font-weight: bold; }
+
+    /* Fullscreen Projector Overlay */
+    .fullscreen-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: #ffffff;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+  </style>
+</head>
+<body class="bg-white">
+
+  <!-- Host Controller Header Bar -->
+  <header class="border-bottom py-2 bg-white sticky-top">
+    <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <a href="admin.html" class="admin-brand fs-6">
+          <i class="fa-solid fa-user-shield text-primary"></i>
+          <span>Live Room Controller</span>
+        </a>
+        <span class="badge bg-light text-dark border font-monospace" id="headerRoomCode">CODE</span>
+        <span class="badge bg-success-subtle text-success small d-none d-md-inline" id="headerLiveStatus">
+          <span class="live-dot"></span>Broadcasting Live
+        </span>
+      </div>
+
+      <div class="d-flex align-items-center gap-2">
+        <button id="fullscreenQrTriggerBtn" class="btn btn-outline-primary btn-sm" title="Expand Fullscreen QR Code">
+          <i class="fa-solid fa-expand me-1"></i>Fullscreen QR Mode
+        </button>
+        <button id="openAnswerKeyHeaderBtn" class="btn btn-outline-secondary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#privateAnswerKeyOffcanvas">
+          <i class="fa-solid fa-key me-1"></i>Private Answer Key
+        </button>
+        <a href="admin.html" class="btn btn-outline-secondary btn-sm">
+          <i class="fa-solid fa-arrow-left me-1"></i>Admin Dashboard
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container py-4">
+
+    <!-- Global Loading Spinner -->
+    <div id="loading" class="text-center py-5">
+      <div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading…</span></div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 1. LOBBY & QR CODE STAGE                   -->
+    <!-- ========================================== -->
+    <section id="hostLobbyView" class="d-none">
+      <div class="row g-4 align-items-center mb-4">
+        <div class="col-lg-6 text-center text-lg-start">
+          <span class="badge soft-badge mb-2 font-monospace" id="lobbySubjectBadge">Subject</span>
+          <h1 class="h3 fw-bold mb-2" id="lobbyQuizTitle">Live Assessment</h1>
+          <p class="text-muted small mb-3">
+            Students scan the QR code with their mobile camera or visit the link to join. No password or email required.
+          </p>
+
+          <!-- Subject / Quiz Selector (Switch Quiz on the fly before launching) -->
+          <div class="p-3 bg-light rounded border mb-3" style="max-width: 480px;">
+            <label for="lobbyQuizSelect" class="form-label small fw-bold text-dark mb-1">
+              <i class="fa-solid fa-book-open me-1 text-primary"></i>Selected Quiz / Subject:
+            </label>
+            <div class="d-flex gap-2">
+              <select id="lobbyQuizSelect" class="form-select form-select-sm fw-semibold" aria-label="Select Subject / Quiz">
+                <!-- Dynamically loaded quizzes -->
+              </select>
+            </div>
+            <div class="small text-muted mt-1" style="font-size:0.75rem;">You can switch the quiz anytime before starting.</div>
+          </div>
+
+          <div class="p-3 bg-light rounded border mb-4" style="max-width: 480px;">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="small text-muted">Room Code:</span>
+              <span class="h4 mb-0 fw-bold font-monospace text-primary" id="lobbyBigRoomCode">AU-2026</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+              <span class="small text-muted text-truncate me-2" id="lobbyJoinUrlText">...</span>
+              <button id="copyJoinUrlBtn" class="btn btn-outline-primary btn-sm flex-none">
+                <i class="fa-regular fa-copy me-1"></i>Copy Link
+              </button>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap align-items-center gap-3">
+            <button id="startQuizBtn" class="btn btn-primary btn-lg">
+              <i class="fa-solid fa-play me-2"></i>Launch Question 1 to Students
+            </button>
+            <span class="small text-muted"><strong id="joinedStudentsCount">0</strong> students connected</span>
+          </div>
+        </div>
+
+        <!-- Big Projector QR Code Display (Clickable for full screen) -->
+        <div class="col-lg-6 text-center">
+          <div class="qr-container" id="qrCardBox" title="Click to view full screen">
+            <div id="qrcodeBox" class="d-flex justify-content-center mb-2"></div>
+            <div class="small fw-bold text-dark"><i class="fa-solid fa-camera me-1 text-primary"></i>Scan to Join Live Room</div>
+            <div class="small text-muted font-monospace" style="font-size:0.75rem;">Click to open Fullscreen Projector</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Participant Waiting List -->
+      <div class="card qh-card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="fa-solid fa-users me-2 text-primary"></i>Connected Students (<span id="participantHeaderCount">0</span>)</span>
+          <span class="small text-muted">Names update in real-time as students join</span>
+        </div>
+        <div class="card-body p-4">
+          <div id="participantsLobbyGrid" class="d-flex flex-wrap gap-2">
+            <span class="text-muted small">No students have joined yet. Waiting for QR scans...</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2. ACTIVE LIVE CONTROLLER (Teacher-Paced)  -->
+    <!-- ========================================== -->
+    <section id="hostActiveView" class="d-none">
+      
+      <!-- Top Action Navigation Toolbar -->
+      <div class="card qh-card shadow-sm p-3 mb-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+          <div class="d-flex align-items-center gap-2">
+            <button id="prevQuestionBtn" class="btn btn-outline-secondary btn-sm" title="Previous Question">
+              <i class="fa-solid fa-arrow-left me-1"></i>Previous
+            </button>
+            
+            <!-- Quick Question Jump Selector -->
+            <select id="jumpQuestionSelect" class="form-select form-select-sm w-auto fw-bold" aria-label="Jump to Question">
+              <!-- Populated dynamically -->
+            </select>
+
+            <button id="nextQuestionBtn" class="btn btn-primary btn-sm" title="Next Question">
+              Next Question<i class="fa-solid fa-arrow-right ms-1"></i>
+            </button>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <!-- Private Answer Key Button (Separated from projector screen) -->
+            <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#privateAnswerKeyOffcanvas">
+              <i class="fa-solid fa-key me-1 text-warning"></i>Private Answer Key
+            </button>
+
+            <!-- Reveal to Class Button (Teacher can optionally reveal answer on projector AFTER students submit) -->
+            <button id="revealToScreenBtn" class="btn btn-outline-secondary btn-sm">
+              <i class="fa-regular fa-eye me-1"></i>Reveal Answer on Screen
+            </button>
+
+            <button id="finishLiveQuizBtn" class="btn btn-outline-danger btn-sm">
+              <i class="fa-solid fa-flag-checkered me-1"></i>Finish &amp; End Exam
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <!-- Left: Question Display & Option Response Breakdown (Projector Safe) -->
+        <div class="col-lg-8">
+          <div class="card qh-card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span class="badge soft-badge font-monospace" id="hostQIndexBadge">Question 1 of 10</span>
+              <span class="small text-muted" id="hostQSubject">Subject</span>
+            </div>
+            <div class="card-body p-4">
+              <h2 class="h5 fw-bold mb-4" id="hostQText">Question text loading...</h2>
+
+              <!-- Live Option Response Distribution Bars (Neutral by default so students cannot cheat) -->
+              <div class="d-grid gap-3" id="hostOptionsBreakdown">
+                <!-- Dynamically populated -->
+              </div>
+
+              <!-- Question Explanation (Visible only when teacher explicitly clicks Reveal) -->
+              <div id="hostExplanationBox" class="explain mt-4 d-none">
+                <i class="fa-solid fa-lightbulb text-warning me-1"></i><strong class="text-dark">Answer &amp; Explanation:</strong>
+                <span id="hostExplanationText"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Real-time Response Progress & Connected Students -->
+        <div class="col-lg-4">
+          <!-- Real-Time Response Tracker Card -->
+          <div class="card qh-card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span><i class="fa-solid fa-chart-pie me-2 text-primary"></i>Live Response Tracker</span>
+              <span class="badge bg-primary" id="responseRateBadge">0%</span>
+            </div>
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small text-muted">Answers Submitted:</span>
+                <span class="fw-bold"><span id="answeredCount">0</span> / <span id="totalStudentsCount">0</span></span>
+              </div>
+              <div class="progress mb-3" style="height: 8px;">
+                <div class="progress-bar" id="responseProgressBar" role="progressbar" style="width: 0%;"></div>
+              </div>
+
+              <div class="small text-muted border-top pt-2">
+                <span class="d-flex align-items-center justify-content-between mb-1">
+                  <span><i class="fa-solid fa-circle-check text-success me-1"></i>Submitted:</span>
+                  <strong class="text-success" id="counterSubmitted">0</strong>
+                </span>
+                <span class="d-flex align-items-center justify-content-between">
+                  <span><i class="fa-regular fa-clock text-warning me-1"></i>Pending / Thinking:</span>
+                  <strong class="text-warning" id="counterPending">0</strong>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Participant Status Pills -->
+          <div class="card qh-card shadow-sm">
+            <div class="card-header">
+              <i class="fa-solid fa-users me-2 text-primary"></i>Student Status
+            </div>
+            <div class="card-body p-3" style="max-height: 340px; overflow-y: auto;">
+              <div id="participantStatusList" class="d-flex flex-wrap gap-1">
+                <!-- Student chips -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. COMPREHENSIVE CLASS REPORT & RESULTS   -->
+    <!-- ========================================== -->
+    <section id="hostResultsView" class="d-none">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4 pb-2 border-bottom">
+        <div>
+          <span class="badge soft-badge mb-1">Session Complete</span>
+          <h1 class="h4 fw-bold mb-0">Class Performance &amp; Evaluation Report</h1>
+        </div>
+        <div class="d-flex gap-2">
+          <button id="exportHostCsvBtn" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-file-csv me-1"></i>Export CSV
+          </button>
+          <a href="admin.html" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-check me-1"></i>Close &amp; Return to Dashboard
+          </a>
+        </div>
+      </div>
+
+      <!-- Class Metric Overview KPI Tiles -->
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="kpi-card">
+            <div class="kpi-label">Students Participated</div>
+            <div class="kpi-value text-primary" id="reportTotalJoined">0</div>
+            <div class="kpi-sub">Total verified in room</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi-card">
+            <div class="kpi-label">Class Average</div>
+            <div class="kpi-value text-success" id="reportAverageScore">0%</div>
+            <div class="kpi-sub">Overall class accuracy</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi-card">
+            <div class="kpi-label">Pass Rate</div>
+            <div class="kpi-value text-info" id="reportPassRate">0%</div>
+            <div class="kpi-sub">Students meeting threshold</div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="kpi-card">
+            <div class="kpi-label">Total Questions</div>
+            <div class="kpi-value text-secondary" id="reportTotalQuestions">0</div>
+            <div class="kpi-sub">Exam question count</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Student Results Breakdown Matrix Table -->
+      <div class="card qh-card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><i class="fa-solid fa-table-list me-2 text-primary"></i>Student Scorecard &amp; Question Matrix</span>
+          <span class="small text-muted">Sorted by highest score</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" id="reportTable">
+            <thead>
+              <tr id="reportTableHeader">
+                <th>#</th>
+                <th>Student Name</th>
+                <th class="text-end">Raw Score</th>
+                <th class="text-end">Percentage</th>
+                <th class="text-center">Status</th>
+                <!-- Dynamically append Q1, Q2, Q3... headers -->
+              </tr>
+            </thead>
+            <tbody id="reportTableBody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- FULLSCREEN PROJECTOR QR OVERLAY            -->
+  <!-- ========================================== -->
+  <div id="fullscreenQrOverlay" class="fullscreen-overlay d-none">
+    <button type="button" id="closeFullscreenOverlayBtn" class="btn btn-outline-secondary btn-sm position-absolute top-0 end-0 m-4">
+      <i class="fa-solid fa-compress me-1"></i>Exit Fullscreen (<kbd>ESC</kbd>)
+    </button>
+    <div class="text-center">
+      <span class="badge soft-badge fs-6 px-3 py-1 mb-2 font-monospace" id="fsSubjectBadge">Computer Science</span>
+      <h1 class="h3 fw-bold mb-3" id="fsQuizTitle">Live Assessment</h1>
+
+      <div class="p-4 bg-white border rounded shadow-sm d-inline-block mb-3">
+        <div id="fsQrcodeBox" class="d-flex justify-content-center mb-2"></div>
+      </div>
+
+      <div class="display-3 fw-bold font-monospace text-primary mb-1" id="fsRoomCode">AU-2026</div>
+      <p class="text-muted mb-3 fs-5">Visit <strong class="text-dark font-monospace"><span id="fsJoinUrl"></span></strong></p>
+
+      <div class="badge bg-light text-dark border fs-6 px-4 py-2">
+        <i class="fa-solid fa-users me-2 text-primary"></i>Students Connected: <strong id="fsStudentsCount">0</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- PRIVATE INSTRUCTOR ANSWER KEY OFFCANVAS     -->
+  <!-- ========================================== -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="privateAnswerKeyOffcanvas" aria-labelledby="pakTitle" style="width: 440px;">
+    <div class="offcanvas-header border-bottom">
+      <div>
+        <h2 class="offcanvas-title h6 fw-bold" id="pakTitle">
+          <i class="fa-solid fa-key me-2 text-warning"></i>Private Answer Key
+        </h2>
+        <span class="small text-danger fw-semibold">Confidential Teacher View (Do not project)</span>
+      </div>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body small" id="privateAnswerKeyList">
+      <!-- Populated dynamically with all questions & answers -->
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/qrcode.min.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/room-sync.js"></script>
+  <script src="js/live-host.js"></script>
+</body>
+</html>

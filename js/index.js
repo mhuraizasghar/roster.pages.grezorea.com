@@ -1,106 +1,96 @@
 (async function() {
     "use strict";
-    const {$: $, esc: esc, fmtDate: fmtDate, scoreRows: scoreRows} = U;
     await Store.init();
-    $("#loading").classList.add("d-none");
-    const loginView = $("#loginView");
-    const studentView = $("#studentView");
-    const loginForm = $("#loginForm");
-    const loginAlert = $("#loginAlert");
-    const nextParam = new URLSearchParams(location.search).get("next");
-    const safeNext = nextParam && /^quiz\.html\?id=[\w.-]+$/.test(nextParam) ? nextParam : null;
-    function render() {
-        const student = Store.getStudent();
-        loginView.classList.toggle("d-none", !!student);
-        studentView.classList.toggle("d-none", !student);
-        $("#logoutBtn").classList.toggle("d-none", !student);
-        $("#navUser").classList.toggle("d-none", !student);
-        if (student) {
-            $("#navUser").textContent = student.email;
-            renderStudent(student);
+
+    // Check if student is signed in
+    const student = Store.getStudent();
+    if (student) {
+        const banner = document.getElementById("loggedInBanner");
+        const emailSpan = document.getElementById("loggedInUserEmail");
+        if (banner && emailSpan) {
+            emailSpan.textContent = student.email;
+            banner.classList.remove("d-none");
         }
     }
-    function setValidity(input, ok) {
-        input.classList.toggle("is-invalid", !ok);
-        return ok;
-    }
-    loginForm.addEventListener("submit", e => {
-        e.preventDefault();
-        loginAlert.classList.add("d-none");
-        const nameInput = $("#nameInput");
-        const emailInput = $("#emailInput");
-        const name = nameInput.value.trim();
-        const email = emailInput.value.trim().toLowerCase();
-        const nameOk = setValidity(nameInput, name.length >= 2);
-        const emailOk = setValidity(emailInput, Store.isEmail(email));
-        if (!nameOk || !emailOk) return;
-        if (!Store.quizzesFor(email).length) {
-            loginAlert.textContent = "This email is not enrolled in any quiz yet. Ask your instructor to add it, then try again.";
-            loginAlert.classList.remove("d-none");
-            return;
-        }
-        Store.setStudent({
-            email: email,
-            name: name
+
+    // Interactive Video / Simulation Mockup Logic
+    let currentStep = 1;
+    let autoTourTimer = null;
+    const totalSteps = 4;
+    const timers = ["00:15 / 01:00", "00:30 / 01:00", "00:45 / 01:00", "01:00 / 01:00"];
+
+    function setStep(step) {
+        currentStep = Math.max(1, Math.min(totalSteps, step));
+        
+        // Update tabs
+        document.querySelectorAll(".video-step-tab").forEach(tab => {
+            const s = Number(tab.dataset.step);
+            tab.classList.toggle("active", s === currentStep);
         });
-        if (safeNext) {
-            location.href = safeNext;
-            return;
+
+        // Update simulation frames
+        for (let i = 1; i <= totalSteps; i++) {
+            const frame = document.getElementById(`simStep${i}`);
+            if (frame) {
+                frame.classList.toggle("d-none", i !== currentStep);
+            }
         }
-        render();
+
+        // Update progress indicators
+        const stepNum = document.getElementById("currentStepNum");
+        if (stepNum) stepNum.textContent = currentStep;
+
+        const progressBar = document.getElementById("simProgressBar");
+        if (progressBar) progressBar.style.width = `${(currentStep / totalSteps) * 100}%`;
+
+        const timerDisplay = document.getElementById("videoTimerDisplay");
+        if (timerDisplay) timerDisplay.textContent = timers[currentStep - 1];
+    }
+
+    // Step tabs click event
+    document.querySelectorAll(".video-step-tab").forEach(tab => {
+        tab.addEventListener("click", () => {
+            stopAutoTour();
+            setStep(Number(tab.dataset.step));
+        });
     });
-    $("#logoutBtn").addEventListener("click", () => {
-        Store.clearStudent();
-        loginForm.reset();
-        render();
-    });
-    function quizCard(q, student) {
-        const used = Store.attemptsFor(student.email, q.id).length;
-        const resuming = !!Store.getProgress(q.id, student.email);
-        const locked = !resuming && q.maxAttempts > 0 && used >= q.maxAttempts;
-        const attemptsText = q.maxAttempts > 0 ? `${used}/${q.maxAttempts} attempts used` : `${used} attempt${used === 1 ? "" : "s"}`;
-        const quizUrl = `quiz.html?id=${encodeURIComponent(q.id)}`;
-        return `<div class="col-md-6 col-xl-3">\n      <div class="card qh-card quiz-card h-100" ${locked ? "" : `role="link" tabindex="0" data-quiz-url="${esc(quizUrl)}"`}><div class="card-body p-3 d-flex flex-column">\n        <span class="badge soft-badge align-self-start mb-2">${esc(q.subject || "General")}</span>\n        <h3 class="h6 mb-2">${esc(q.title)}</h3>\n        <p class="text-muted small flex-grow-1 mb-2">${esc(q.description)}</p>\n        <ul class="list-inline small text-muted mb-2">\n          <li class="list-inline-item me-2"><i class="fa-regular fa-circle-question me-1"></i>${q.questions.length} questions</li>\n          <li class="list-inline-item me-2"><i class="fa-regular fa-clock me-1"></i>${q.durationMinutes} min</li>\n          <li class="list-inline-item"><i class="fa-solid fa-flag-checkered me-1"></i>Pass ${q.passMark}%</li>\n        </ul>\n        <div class="small text-muted mb-2">${attemptsText}</div>\n        ${locked ? '<button class="btn btn-secondary btn-sm w-100" disabled><i class="fa-solid fa-lock me-2"></i>No attempts left</button>' : `<a class="btn btn-primary btn-sm quiz-action w-100" href="${esc(quizUrl)}">\n           <i class="fa-solid ${resuming ? "fa-play" : "fa-rocket"} me-2"></i>${resuming ? "Resume quiz" : "Start quiz"}</a>`}\n      </div></div></div>`;
+
+    const nextBtn = document.getElementById("simNextBtn");
+    if (nextBtn) {
+        nextBtn.addEventListener("click", () => {
+            stopAutoTour();
+            setStep(currentStep >= totalSteps ? 1 : currentStep + 1);
+        });
     }
-    function renderStudent(student) {
-        $("#welcomeName").textContent = student.name;
-        const quizzes = Store.quizzesFor(student.email);
-        $("#quizGrid").innerHTML = quizzes.length ? quizzes.map(q => quizCard(q, student)).join("") : '<div class="col-12"><div class="alert alert-warning mb-0">No quizzes are available for your email right now.</div></div>';
-        $("#quizGrid").onclick = event => {
-            if (event.target.closest("a, button")) return;
-            const card = event.target.closest(".quiz-card[data-quiz-url]");
-            if (card) location.href = card.dataset.quizUrl;
-        }; 
-        $("#quizGrid").onkeydown = event => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-            const card = event.target.closest(".quiz-card[data-quiz-url]");
-            if (!card) return;
-            event.preventDefault();
-            location.href = card.dataset.quizUrl;
-        };
-        const attempts = Store.getAttempts().filter(a => a.email === student.email).sort((a, b) => b.submittedAt - a.submittedAt).slice(0, 10);
-        $("#attemptsBody").innerHTML = attempts.length ? attempts.map(a => `<tr>\n              <td class="fw-medium">${esc(a.quizTitle)}</td>\n              <td class="text-muted small">${esc(fmtDate(a.submittedAt))}</td>\n              <td class="text-end">${a.score}/${a.total}</td>\n              <td class="text-end"><span class="badge ${a.passed ? "text-bg-success" : "text-bg-danger"}">${a.percent}%</span></td>\n              <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="result.html?attempt=${encodeURIComponent(a.id)}">Review</a></td>\n            </tr>`).join("") : '<tr><td colspan="5" class="text-center text-muted py-4">You have not attempted a quiz yet.</td></tr>';
-        const select = $("#lbQuiz");
-        const previous = select.value;
-        select.innerHTML = quizzes.map(q => `<option value="${esc(q.id)}">${esc(q.title)}</option>`).join("");
-        if (quizzes.some(q => q.id === previous)) select.value = previous;
-        renderLeaderboard();
+
+    const prevBtn = document.getElementById("simPrevBtn");
+    if (prevBtn) {
+        prevBtn.addEventListener("click", () => {
+            stopAutoTour();
+            setStep(currentStep <= 1 ? totalSteps : currentStep - 1);
+        });
     }
-    function renderLeaderboard() {
-        const student = Store.getStudent();
-        const quizId = $("#lbQuiz").value;
-        $("#lbBody").innerHTML = scoreRows(quizId ? Store.getScores(quizId) : [], student && student.email);
-    }
-    $("#lbQuiz").addEventListener("change", renderLeaderboard);
-    setInterval(async () => {
-        await Store.refreshShared();
-        render();
-    }, 30000);
-    document.addEventListener("visibilitychange", async () => {
-        if (document.visibilityState === "visible") {
-            await Store.refreshShared();
-            render();
+
+    function stopAutoTour() {
+        if (autoTourTimer) {
+            clearInterval(autoTourTimer);
+            autoTourTimer = null;
+            const playBtn = document.getElementById("simPlayPauseBtn");
+            if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-play me-1"></i>Auto Tour';
         }
-    });
-    render();
+    }
+
+    const playBtn = document.getElementById("simPlayPauseBtn");
+    if (playBtn) {
+        playBtn.addEventListener("click", () => {
+            if (autoTourTimer) {
+                stopAutoTour();
+            } else {
+                playBtn.innerHTML = '<i class="fa-solid fa-pause me-1"></i>Pause Tour';
+                autoTourTimer = setInterval(() => {
+                    setStep(currentStep >= totalSteps ? 1 : currentStep + 1);
+                }, 2800);
+            }
+        });
+    }
 })();

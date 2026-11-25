@@ -12,7 +12,7 @@
     const student = Store.getStudent();
     const quizId = new URLSearchParams(location.search).get("id");
     if (!student) {
-        location.replace("index.html" + (quizId ? "?next=" + encodeURIComponent("quiz.html?id=" + quizId) : ""));
+        location.replace("student.html" + (quizId ? "?next=" + encodeURIComponent("quiz.html?id=" + quizId) : ""));
         return;
     }
     const quiz = Store.getQuiz(quizId);
