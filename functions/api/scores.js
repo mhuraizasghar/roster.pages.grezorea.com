@@ -67,11 +67,23 @@ export async function onRequest(context) {
 
     if (request.method === "POST") {
       const raw = await request.text();
+      if (raw.length > 65536) {
+        return Response.json({ error: "Payload too large" }, { status: 413, headers });
+      }
       const body = raw ? JSON.parse(raw) : {};
       const { quizId, score } = body || {};
-      if (!quizId || !score || !score.email) {
-        return Response.json({ error: "Invalid score" }, { status: 400, headers });
+      const email = String(score && score.email || "").trim().toLowerCase();
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      const cleanQuizId = String(quizId || "").trim();
+      const totalVal = Number(score && score.total);
+      const scoreVal = Number(score && score.score);
+      if (!cleanQuizId || !/^[a-zA-Z0-9_-]{1,80}$/.test(cleanQuizId) || !score || !EMAIL_RE.test(email) || !Number.isInteger(totalVal) || totalVal <= 0 || !Number.isInteger(scoreVal) || scoreVal < 0 || scoreVal > totalVal) {
+        return Response.json({ error: "Invalid score payload" }, { status: 400, headers });
       }
+
+      const computedPercent = Math.round((scoreVal / totalVal) * 100);
+      const cleanName = String(score.name || "").replace(/[\x00-\x1F\x7F]/g, "").trim().slice(0, 80);
+      const timeTakenVal = Math.max(0, Math.min(86400, Math.trunc(Number(score.timeTaken || 0))));
 
       await env.DB.prepare(
         "INSERT INTO scores (quiz_id, email, name, score, total, percent, time_taken, submitted_at, attempt_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) " +
@@ -79,15 +91,15 @@ export async function onRequest(context) {
         "time_taken=excluded.time_taken, submitted_at=excluded.submitted_at, attempt_id=excluded.attempt_id " +
         "WHERE excluded.percent > scores.percent OR (excluded.percent = scores.percent AND excluded.time_taken < scores.time_taken)"
       ).bind(
-        String(quizId),
-        String(score.email).toLowerCase(),
-        String(score.name || ""),
-        Number(score.score || 0),
-        Number(score.total || 0),
-        Number(score.percent || 0),
-        Number(score.timeTaken || 0),
+        cleanQuizId,
+        email,
+        cleanName,
+        scoreVal,
+        totalVal,
+        computedPercent,
+        timeTakenVal,
         Number(score.submittedAt || Date.now()),
-        String(score.attemptId || "")
+        String(score.attemptId || "").slice(0, 80)
       ).run();
 
       return Response.json({ ok: true }, { headers });

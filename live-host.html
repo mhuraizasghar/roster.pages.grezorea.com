@@ -130,6 +130,33 @@
       <div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading…</span></div>
     </div>
 
+    <!-- Instructor Authentication Gate (Protects Answer Key & Host Controls) -->
+    <section id="hostAuthView" class="d-none py-5">
+      <div class="card qh-card mx-auto shadow-sm" style="max-width: 400px;">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="feature-icon" style="width:2.5rem;height:2.5rem;">
+              <i class="fa-solid fa-shield-halved text-primary"></i>
+            </div>
+            <div>
+              <h1 class="h6 mb-0 fw-bold">Instructor Access Required</h1>
+              <span class="small text-muted">Verify admin password to host &amp; view answer key</span>
+            </div>
+          </div>
+          <div id="hostAuthAlert" class="alert alert-danger d-none py-2 small" role="alert">Incorrect admin password.</div>
+          <form id="hostAuthForm" novalidate>
+            <div class="mb-3">
+              <label for="hostAuthPassword" class="form-label small fw-medium">Admin Password</label>
+              <input id="hostAuthPassword" type="password" class="form-control" placeholder="Enter admin password" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="fa-solid fa-unlock me-1"></i>Unlock Host Controller
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
     <!-- ========================================== -->
     <!-- 1. LOBBY & QR CODE STAGE                   -->
     <!-- ========================================== -->

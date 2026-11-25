@@ -161,7 +161,7 @@ const RoomSync = (() => {
     return room;
   }
 
-  async function getRoom(code, expectedSeq) {
+  async function getRoom(code, expectedSeq, role) {
     const cleanCode = String(code || "").toUpperCase().trim();
     if (!cleanCode) return null;
 
@@ -169,7 +169,8 @@ const RoomSync = (() => {
     let apiRoom = null;
     try {
       const sep = API_URL.includes("?") ? "&" : "?";
-      const res = await fetch(`${API_URL}${sep}code=${encodeURIComponent(cleanCode)}&_t=${Date.now()}`, {
+      const roleParam = role === "host" ? "&role=host" : "";
+      const res = await fetch(`${API_URL}${sep}code=${encodeURIComponent(cleanCode)}${roleParam}&_t=${Date.now()}`, {
         cache: "no-store"
       });
       // Discard stale in-flight GET if a newer local mutation started while fetching
@@ -603,8 +604,9 @@ const RoomSync = (() => {
   // ----------------------------------------------------
   // Real-Time Subscription
   // ----------------------------------------------------
-  function subscribe(code, onUpdate) {
+  function subscribe(code, onUpdate, options = {}) {
     const cleanCode = String(code || "").toUpperCase().trim();
+    const role = options && options.role === "host" ? "host" : undefined;
     let active = true;
     let pollTimer = null;
     let inFlight = false;
@@ -643,7 +645,7 @@ const RoomSync = (() => {
       inFlight = true;
       const reqSeq = getSeq(cleanCode);
       try {
-        const room = await getRoom(cleanCode, reqSeq);
+        const room = await getRoom(cleanCode, reqSeq, role);
         if (room && active && getSeq(cleanCode) === reqSeq) {
           onUpdate(room);
         }

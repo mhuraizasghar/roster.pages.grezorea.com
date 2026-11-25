@@ -6,6 +6,7 @@
   await Store.init();
   $("#loading").classList.add("d-none");
 
+  const hostAuthView = $("#hostAuthView");
   const hostLobbyView = $("#hostLobbyView");
   const hostActiveView = $("#hostActiveView");
   const hostResultsView = $("#hostResultsView");
@@ -16,6 +17,25 @@
   let qrCodeInstance = null;
   let fsQrInstance = null;
   let revealedOnScreen = false; // By default, DO NOT reveal correct answer on projector screen
+  let lastRenderKey = "";
+  let jumpSelectKey = "";
+
+  // Require instructor/admin authentication before loading host controls or Private Answer Key
+  if (!Store.isAdminAuthed()) {
+    hostAuthView.classList.remove("d-none");
+    await new Promise(resolve => {
+      $("#hostAuthForm").addEventListener("submit", e => {
+        e.preventDefault();
+        const ok = Store.adminLogin($("#hostAuthPassword").value);
+        $("#hostAuthAlert").classList.toggle("d-none", ok);
+        if (ok) {
+          $("#hostAuthPassword").value = "";
+          hostAuthView.classList.add("d-none");
+          resolve();
+        }
+      });
+    });
+  }
 
   // Read URL parameters
   const urlParams = new URLSearchParams(location.search);
@@ -27,7 +47,7 @@
 
   if (roomCode && quizId) {
     // Check if an active room with this code already exists before creating with custom code
-    const existing = await RoomSync.getRoom(roomCode);
+    const existing = await RoomSync.getRoom(roomCode, undefined, "host");
     if (existing && existing.status !== "deleted") {
       currentRoom = existing;
     } else {
@@ -52,9 +72,9 @@
     roomCode = currentRoom.code;
     history.replaceState(null, "", `live-host.html?room=${encodeURIComponent(roomCode)}`);
   } else if (roomCode) {
-    currentRoom = await RoomSync.getRoom(roomCode);
-    if (!currentRoom) {
-      alert(`Room ${roomCode} not found.`);
+    currentRoom = await RoomSync.getRoom(roomCode, undefined, "host");
+    if (!currentRoom || currentRoom.status === "deleted") {
+      alert(`Room ${roomCode} not found or has ended.`);
       location.href = "admin.html";
       return;
     }
@@ -98,7 +118,7 @@
   renderPrivateAnswerKey(currentRoom);
 
   // Subscribe to real-time events
-  unsubscribeSync = RoomSync.subscribe(currentRoom.code, handleLiveRoomUpdate);
+  unsubscribeSync = RoomSync.subscribe(currentRoom.code, handleLiveRoomUpdate, { role: "host" });
   handleLiveRoomUpdate(currentRoom);
 
   // ----------------------------------------------------
@@ -162,8 +182,8 @@
         correctLevel: QRCode.CorrectLevel.H
       });
     } else {
-      qrBox.innerHTML = `<a href="${url}" target="_blank" class="btn btn-outline-primary btn-sm">Direct Join Link</a>`;
-      fsBox.innerHTML = `<a href="${url}" target="_blank" class="btn btn-primary">Open Join Link</a>`;
+      qrBox.innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary btn-sm">Direct Join Link</a>`;
+      fsBox.innerHTML = `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Open Join Link</a>`;
     }
   }
 
@@ -210,12 +230,16 @@
   // ----------------------------------------------------
   // Real-Time Room State Dispatcher
   // ----------------------------------------------------
-  let lastRenderKey = "";
-  let jumpSelectKey = "";
-
   function handleLiveRoomUpdate(room, forceRender = false) {
     if (!room) return;
     currentRoom = room;
+
+    if (room.status === "deleted") {
+      if (unsubscribeSync) unsubscribeSync();
+      alert("This live room has been closed.");
+      location.href = "admin.html";
+      return;
+    }
 
     const participantsCount = (room.participants || []).length;
     $("#joinedStudentsCount").textContent = participantsCount;
@@ -266,7 +290,7 @@
       grid.innerHTML = participants.map(p => {
         const initial = (p.name || "?").charAt(0).toUpperCase();
         return `<div class="participant-pill">
-          <span class="participant-avatar">${initial}</span>
+          <span class="participant-avatar">${esc(initial)}</span>
           <span>${esc(p.name)}</span>
         </div>`;
       }).join("");
@@ -328,7 +352,7 @@
 
       const initial = (p.name || "?").charAt(0).toUpperCase();
       return `<div class="participant-pill ${hasAnswered ? "answered" : ""}">
-        <span class="participant-avatar">${initial}</span>
+        <span class="participant-avatar">${esc(initial)}</span>
         <span>${esc(p.name)}</span>
         ${hasAnswered ? '<i class="fa-solid fa-check text-success ms-1 small"></i>' : ''}
       </div>`;

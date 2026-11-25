@@ -48,19 +48,24 @@ export async function onRequest(context) {
 
     if (request.method === "POST") {
       const raw = await request.text();
+      if (raw.length > 262144) {
+        return Response.json({ error: "Payload too large" }, { status: 413, headers });
+      }
       const body = raw ? JSON.parse(raw) : {};
       const attempt = body && body.attempt;
-      if (!attempt || !attempt.id || !attempt.quizId || !attempt.email) {
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      const email = String(attempt && attempt.email || "").trim().toLowerCase();
+      if (!attempt || !attempt.id || !attempt.quizId || !EMAIL_RE.test(email)) {
         return Response.json({ error: "Invalid attempt" }, { status: 400, headers });
       }
 
       await env.DB.prepare(
         "INSERT OR REPLACE INTO attempts (id, quiz_id, email, name, payload, submitted_at) VALUES (?, ?, ?, ?, ?, ?)"
       ).bind(
-        String(attempt.id),
-        String(attempt.quizId),
-        String(attempt.email).toLowerCase(),
-        String(attempt.name || ""),
+        String(attempt.id).slice(0, 80),
+        String(attempt.quizId).slice(0, 80),
+        email,
+        String(attempt.name || "").replace(/[\x00-\x1F\x7F]/g, "").trim().slice(0, 80),
         JSON.stringify(attempt),
         Number(attempt.submittedAt || Date.now())
       ).run();

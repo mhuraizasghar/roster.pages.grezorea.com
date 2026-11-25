@@ -45,8 +45,14 @@ export async function onRequest(context) {
 
     if (request.method === "POST") {
       const raw = await request.text();
+      if (raw.length > 1048576) {
+        return Response.json({ error: "Payload too large" }, { status: 413, headers });
+      }
       const body = raw ? JSON.parse(raw) : {};
-      const quizzes = Array.isArray(body && body.quizzes) ? body.quizzes : [];
+      if (!body || !Array.isArray(body.quizzes)) {
+        return Response.json({ error: "Invalid quizzes payload" }, { status: 400, headers });
+      }
+      const quizzes = body.quizzes;
 
       const stmts = [env.DB.prepare("DELETE FROM quizzes")];
       const seenIds = new Set();

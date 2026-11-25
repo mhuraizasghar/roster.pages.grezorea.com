@@ -207,3 +207,86 @@ test("RoomSync: subscribe dispatches instant local updates and 404 cloud deletio
     delete require.cache[require.resolve("../js/room-sync.js")];
   }
 });
+
+test("Security: live room API rejects SQLi room codes, XSS/prototype keys, answer tampering & hides answers for students", async () => {
+  const { onRequest } = await import("../functions/api/room.js");
+
+  // Minimal in-memory D1 mock supporting prepared statements
+  const rooms = new Map();
+  const mockDb = {
+    prepare(sql) {
+      let args = [];
+      return {
+        bind(...a) { args = a; return this; },
+        async run() {
+          if (sql.includes("INSERT OR REPLACE INTO live_rooms")) {
+            rooms.set(args[0], {
+              code: args[0], quiz_id: args[1], subject: args[2], title: args[3],
+              status: "lobby", current_index: 0, payload: args[4],
+              participants: "[]", responses: "{}", created_at: args[5], updated_at: args[6]
+            });
+          } else if (sql.includes("UPDATE live_rooms SET participants = ?, updated_at = ? WHERE code = ? AND updated_at = ?")) {
+            const row = rooms.get(args[2]);
+            if (row && row.updated_at === args[3]) {
+              row.participants = args[0]; row.updated_at = args[1];
+              return { meta: { changes: 1 } };
+            }
+            return { meta: { changes: 0 } };
+          } else if (sql.includes("UPDATE live_rooms SET current_index = ?, status = ?, updated_at = ? WHERE code = ?")) {
+            const row = rooms.get(args[3]);
+            if (row) { row.current_index = args[0]; row.status = args[1]; row.updated_at = args[2]; }
+          } else if (sql.includes("UPDATE live_rooms SET responses = ?, updated_at = ? WHERE code = ? AND updated_at = ?")) {
+            const row = rooms.get(args[2]);
+            if (row && row.updated_at === args[3]) {
+              row.responses = args[0]; row.updated_at = args[1];
+              return { meta: { changes: 1 } };
+            }
+            return { meta: { changes: 0 } };
+          }
+          return { meta: { changes: 1 } };
+        },
+        async first() {
+          if (sql.includes("FROM live_rooms WHERE code = ?")) return rooms.get(args[0]) || null;
+          return null;
+        },
+        async all() { return { results: [] }; }
+      };
+    }
+  };
+
+  const makeReq = (url, method = "GET", body = null) => new Request(url, {
+    method,
+    headers: { "Origin": "https://quiz-project.students.pages.grezorea.com", "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined
+  });
+
+  // 1. SQL injection room code rejected with 400
+  const sqliRes = await onRequest({ request: makeReq("https://x.test/api/room?code=' OR 1=1--"), env: { DB: mockDb } });
+  assert.equal(sqliRes.status, 400);
+
+  // 2. Create valid room and test student GET strips correct answers & explanation
+  await onRequest({ request: makeReq("https://x.test/api/room", "POST", { action: "create", code: "SEC-101", quiz: sampleQuiz }), env: { DB: mockDb } });
+  const studentGet = await (await onRequest({ request: makeReq("https://x.test/api/room?code=SEC-101"), env: { DB: mockDb } })).json();
+  assert.equal(studentGet.room.questions[0].correct, undefined);
+  assert.equal(studentGet.room.questions[0].explanation, undefined);
+
+  // Host GET includes answers
+  const hostGet = await (await onRequest({ request: makeReq("https://x.test/api/room?code=SEC-101&role=host"), env: { DB: mockDb } })).json();
+  assert.equal(hostGet.room.questions[0].correct, 1);
+
+  // 3. Unregistered / prototype-pollution participant cannot submit answers
+  await onRequest({ request: makeReq("https://x.test/api/room", "POST", { action: "navigate", code: "SEC-101", currentIndex: 0, status: "active" }), env: { DB: mockDb } });
+  const protoAns = await onRequest({ request: makeReq("https://x.test/api/room", "POST", { action: "answer", code: "SEC-101", participantId: "__proto__", questionIndex: 0, answerIndex: 1 }), env: { DB: mockDb } });
+  assert.equal(protoAns.status, 400);
+
+  const fakeUserAns = await onRequest({ request: makeReq("https://x.test/api/room", "POST", { action: "answer", code: "SEC-101", participantId: "p_attacker_999", questionIndex: 0, answerIndex: 1 }), env: { DB: mockDb } });
+  assert.equal(fakeUserAns.status, 403);
+
+  // 4. Valid student joins, submits once, and cannot tamper/overwrite locked answer
+  const joinRes = await (await onRequest({ request: makeReq("https://x.test/api/room", "POST", { action: "join", code: "SEC-101", studentName: "Valid Student" }), env: { DB: mockDb } })).json();
+  const pid = joinRes.participantId;
+  await onRequest({ request: makeReq("https://x.test/api/room", "POST", { action: "answer", code: "SEC-101", participantId: pid, questionIndex: 0, answerIndex: 0 }), env: { DB: mockDb } });
+  const tamperRes = await (await onRequest({ request: makeReq("https://x.test/api/room", "POST", { action: "answer", code: "SEC-101", participantId: pid, questionIndex: 0, answerIndex: 1 }), env: { DB: mockDb } })).json();
+  assert.equal(tamperRes.locked, true);
+  assert.equal(tamperRes.answerIndex, 0);
+});

@@ -123,8 +123,8 @@ export async function onRequest(context) {
 
     // Single room state
     const code = (url.searchParams.get("code") || "").trim().toUpperCase();
-    if (!code) {
-      return Response.json({ error: "Room code required" }, { status: 400, headers });
+    if (!code || !/^[A-Z0-9_-]{2,24}$/.test(code)) {
+      return Response.json({ error: "Valid room code required" }, { status: 400, headers });
     }
 
     const row = await env.DB.prepare(
@@ -138,6 +138,13 @@ export async function onRequest(context) {
     const payload = safeJson(row.payload, {});
     const participants = safeJson(row.participants, []);
     const responses = safeJson(row.responses, {});
+    const isHostRequest = url.searchParams.get("role") === "host";
+    const includeAnswers = isHostRequest || row.status === "finished";
+    const questions = Array.isArray(payload.questions)
+      ? payload.questions.map(q => includeAnswers
+        ? q
+        : { id: q.id, text: q.text, options: q.options || [] })
+      : [];
 
     return Response.json({
       ok: true,
@@ -148,8 +155,8 @@ export async function onRequest(context) {
         title: row.title,
         status: row.status, // 'lobby' | 'active' | 'finished'
         currentIndex: row.current_index,
-        questionsCount: payload.questions ? payload.questions.length : 0,
-        questions: payload.questions || [],
+        questionsCount: questions.length,
+        questions: questions,
         passMark: payload.passMark || 50,
         description: payload.description || "",
         participants: participants,
@@ -166,18 +173,30 @@ export async function onRequest(context) {
     let body = {};
     try {
       const raw = await request.text();
+      if (raw.length > 524288) {
+        return Response.json({ error: "Payload too large" }, { status: 413, headers });
+      }
       body = raw ? JSON.parse(raw) : {};
     } catch (e) {
       return Response.json({ error: "Invalid JSON" }, { status: 400, headers });
     }
 
+    const CODE_RE = /^[A-Z0-9_-]{2,24}$/;
+    const SAFE_ID_RE = /^[a-zA-Z0-9_-]{3,48}$/;
+    const RESERVED_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+    const cleanText = (v, max = 120) => String(v || "").replace(/[\x00-\x1F\x7F]/g, "").trim().slice(0, max);
+
     const action = body.action;
     const code = String(body.code || "").trim().toUpperCase();
+
+    if (action !== "create" && action !== "delete_report" && (!code || !CODE_RE.test(code))) {
+      return Response.json({ error: "Invalid room code format" }, { status: 400, headers });
+    }
 
     // 1. CREATE LIVE ROOM
     if (action === "create") {
       const quiz = body.quiz || {};
-      const newCode = code || `AU-${Math.floor(1000 + Math.random() * 9000)}`;
+      const newCode = (code && CODE_RE.test(code)) ? code : `AU-${Math.floor(1000 + Math.random() * 9000)}`;
       const now = Date.now();
 
       await env.DB.prepare(`
@@ -185,9 +204,9 @@ export async function onRequest(context) {
         VALUES (?, ?, ?, ?, 'lobby', 0, ?, '[]', '{}', ?, ?)
       `).bind(
         newCode,
-        String(quiz.id || "live_quiz"),
-        String(quiz.subject || "General"),
-        String(quiz.title || "Live Assessment"),
+        cleanText(quiz.id || "live_quiz", 80),
+        cleanText(quiz.subject || "General", 80),
+        cleanText(quiz.title || "Live Assessment", 160),
         JSON.stringify(quiz),
         now,
         now
@@ -206,7 +225,7 @@ export async function onRequest(context) {
 
     // 8. DELETE SAVED REPORT (does not require room to still exist)
     if (action === "delete_report") {
-      const repId = String(body.id || "");
+      const repId = cleanText(body.id || "", 80);
       if (repId) {
         await env.DB.prepare("DELETE FROM live_reports WHERE id = ?").bind(repId).run();
       }
@@ -215,9 +234,9 @@ export async function onRequest(context) {
 
     // 3. JOIN ROOM (CAS retry loop to avoid lost joins on simultaneous scans)
     if (action === "join") {
-      const studentName = String(body.studentName || "").trim();
-      if (!studentName) {
-        return Response.json({ error: "Student name required" }, { status: 400, headers });
+      const studentName = cleanText(body.studentName || "", 80);
+      if (studentName.length < 2) {
+        return Response.json({ error: "Student name must be at least 2 characters" }, { status: 400, headers });
       }
       const normName = studentName.toLowerCase();
 
@@ -226,11 +245,17 @@ export async function onRequest(context) {
         if (!row) {
           return Response.json({ error: "Room not found" }, { status: 404, headers });
         }
+        if (row.status !== "lobby" && row.status !== "active") {
+          return Response.json({ error: "Session has already ended" }, { status: 409, headers });
+        }
 
         const participants = safeJson(row.participants, []);
         const prevUpdatedAt = Number(row.updated_at || 0);
         const nextNow = Math.max(Date.now(), prevUpdatedAt + 1);
-        let participantId = String(body.participantId || `p_${nextNow.toString(36)}_${Math.random().toString(36).slice(2, 6)}`);
+        const reqPid = body.participantId ? String(body.participantId).trim() : "";
+        let participantId = (reqPid && SAFE_ID_RE.test(reqPid) && !RESERVED_KEYS.has(reqPid))
+          ? reqPid
+          : `p_${nextNow.toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 
         const existingById = participants.find(p => p.id === participantId);
         const existingByName = !existingById && participants.find(
@@ -238,7 +263,7 @@ export async function onRequest(context) {
         );
 
         if (existingById) {
-          return Response.json({ ok: true, participantId, studentName, code, participants, updatedAt: prevUpdatedAt }, { headers });
+          return Response.json({ ok: true, participantId, studentName: existingById.name, code, participants, updatedAt: prevUpdatedAt }, { headers });
         }
 
         if (existingByName) {
@@ -247,6 +272,9 @@ export async function onRequest(context) {
           existingByName.joinedAt = nextNow;
           existingByName.active = true;
         } else {
+          if (participants.length >= 500) {
+            return Response.json({ error: "Room capacity reached" }, { status: 429, headers });
+          }
           participants.push({
             id: participantId,
             name: studentName,
@@ -268,8 +296,8 @@ export async function onRequest(context) {
 
     // 3b. LEAVE ROOM (CAS retry loop)
     if (action === "leave") {
-      const { participantId } = body;
-      if (!participantId) {
+      const participantId = String(body.participantId || "").trim();
+      if (!participantId || !SAFE_ID_RE.test(participantId) || RESERVED_KEYS.has(participantId)) {
         return Response.json({ ok: true }, { headers });
       }
       for (let attempt = 0; attempt < 5; attempt++) {
@@ -293,11 +321,13 @@ export async function onRequest(context) {
       return Response.json({ error: "Concurrent update conflict" }, { status: 409, headers });
     }
 
-    // 5. SUBMIT ANSWER FOR CURRENT QUESTION (CAS retry loop to avoid lost student answers)
+    // 5. SUBMIT ANSWER FOR CURRENT QUESTION (CAS retry loop + one-time answer lock + bounds validation)
     if (action === "answer") {
-      const { participantId, questionIndex, answerIndex } = body;
-      if (!participantId || questionIndex === undefined || answerIndex === undefined) {
-        return Response.json({ error: "Missing answer parameters" }, { status: 400, headers });
+      const participantId = String(body.participantId || "").trim();
+      const qIdx = Number(body.questionIndex);
+      const aIdx = Number(body.answerIndex);
+      if (!participantId || !SAFE_ID_RE.test(participantId) || RESERVED_KEYS.has(participantId) || !Number.isInteger(qIdx) || !Number.isInteger(aIdx) || qIdx < 0 || aIdx < 0) {
+        return Response.json({ error: "Invalid answer parameters" }, { status: 400, headers });
       }
 
       for (let attempt = 0; attempt < 5; attempt++) {
@@ -305,12 +335,31 @@ export async function onRequest(context) {
         if (!row) {
           return Response.json({ error: "Room not found" }, { status: 404, headers });
         }
+        if (row.status !== "active") {
+          return Response.json({ error: "Exam is not currently active" }, { status: 409, headers });
+        }
+
+        const participants = safeJson(row.participants, []);
+        if (!participants.some(p => p.id === participantId)) {
+          return Response.json({ error: "Participant not registered in room" }, { status: 403, headers });
+        }
+
+        const payload = safeJson(row.payload, {});
+        const questions = Array.isArray(payload.questions) ? payload.questions : [];
+        const q = questions[qIdx];
+        if (!q || !Array.isArray(q.options) || aIdx >= q.options.length) {
+          return Response.json({ error: "Answer option out of bounds" }, { status: 400, headers });
+        }
 
         const responses = safeJson(row.responses, {});
-        if (!responses[participantId]) {
+        if (!Object.prototype.hasOwnProperty.call(responses, participantId)) {
           responses[participantId] = {};
         }
-        responses[participantId][questionIndex] = Number(answerIndex);
+        // Enforce one-time submission lock on server
+        if (responses[participantId][qIdx] !== undefined) {
+          return Response.json({ ok: true, locked: true, questionIndex: qIdx, answerIndex: responses[participantId][qIdx] }, { headers });
+        }
+        responses[participantId][qIdx] = aIdx;
 
         const prevUpdatedAt = Number(row.updated_at || 0);
         const nextNow = Math.max(Date.now(), prevUpdatedAt + 1);
@@ -320,7 +369,7 @@ export async function onRequest(context) {
         ).bind(JSON.stringify(responses), nextNow, code, prevUpdatedAt).run();
 
         if (res && res.meta && res.meta.changes > 0) {
-          return Response.json({ ok: true, questionIndex, answerIndex, updatedAt: nextNow }, { headers });
+          return Response.json({ ok: true, questionIndex: qIdx, answerIndex: aIdx, updatedAt: nextNow }, { headers });
         }
       }
       return Response.json({ error: "Concurrent update conflict, please retry" }, { status: 409, headers });
@@ -341,9 +390,9 @@ export async function onRequest(context) {
         SET quiz_id = ?, subject = ?, title = ?, payload = ?, current_index = 0, responses = '{}', updated_at = ?
         WHERE code = ?
       `).bind(
-        String(newQuiz.id || "live_quiz"),
-        String(newQuiz.subject || "General"),
-        String(newQuiz.title || "Live Assessment"),
+        cleanText(newQuiz.id || "live_quiz", 80),
+        cleanText(newQuiz.subject || "General", 80),
+        cleanText(newQuiz.title || "Live Assessment", 160),
         JSON.stringify(newQuiz),
         now,
         code
@@ -354,8 +403,12 @@ export async function onRequest(context) {
 
     // 4. START OR NAVIGATE QUESTIONS (Admin teacher-paced control)
     if (action === "navigate") {
-      const nextIndex = Number(body.currentIndex || 0);
-      const newStatus = body.status || "active";
+      const payload = safeJson(row.payload, {});
+      const qCount = Array.isArray(payload.questions) ? payload.questions.length : 1;
+      const rawIdx = Number(body.currentIndex || 0);
+      const nextIndex = Number.isFinite(rawIdx) ? Math.max(0, Math.min(Math.max(0, qCount - 1), Math.trunc(rawIdx))) : 0;
+      const ALLOWED_STATUS = new Set(["lobby", "active", "finished"]);
+      const newStatus = ALLOWED_STATUS.has(body.status) ? body.status : "active";
 
       await env.DB.prepare(
         "UPDATE live_rooms SET current_index = ?, status = ?, updated_at = ? WHERE code = ?"

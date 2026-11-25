@@ -357,6 +357,8 @@
 
     const leaveEditor = () => showView("quizzesView");
     $("#cancelEditBtn").addEventListener("click", leaveEditor);
+    if ($("#cancelEditBtn2")) $("#cancelEditBtn2").addEventListener("click", leaveEditor);
+    if ($("#saveQuizBtn2")) $("#saveQuizBtn2").addEventListener("click", () => $("#saveQuizBtn").click());
     $("#backBtn").addEventListener("click", leaveEditor);
 
     function openQuestionModal(index) {
