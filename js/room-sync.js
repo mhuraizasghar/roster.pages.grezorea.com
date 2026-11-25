@@ -10,7 +10,15 @@ const RoomSync = (() => {
   const INDEX_KEY = "qh.live.active_index";
   const REPORTS_KEY = "qh.live.reports";
   const PARTICIPANT_KEY = "qh.live.participant";
-  const API_URL = "/api/room";
+  const CLOUD_API_ORIGIN = "https://quiz-project-students.pages.dev";
+  const isPagesHost = typeof location !== "undefined" && Boolean(location.hostname) && (
+    location.hostname.endsWith(".pages.dev") ||
+    location.hostname.includes("pages.grezorea.com")
+  );
+  const API_URL = typeof location === "undefined"
+    ? "/api/room"
+    : (isPagesHost ? "/api/room" : `${CLOUD_API_ORIGIN}/api/room`);
+  const getApiUrl = () => API_URL;
 
   // Check if BroadcastChannel is available
   function getChannel(code) {
@@ -100,15 +108,22 @@ const RoomSync = (() => {
 
     writeLocal(code, room);
 
-    // Try cloud API in background
-    try {
-      await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "create", code, quiz })
-      });
-    } catch (err) {}
+    // CRITICAL: Retry API until D1 confirms — required for cross-device access
+    let apiOk = false;
+    for (let attempt = 0; attempt < 4 && !apiOk; attempt++) {
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "create", code, quiz })
+        });
+        if (res.ok) apiOk = true;
+      } catch (err) {
+        if (attempt < 3) await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+      }
+    }
 
+    room._syncedToCloud = apiOk;
     return room;
   }
 
@@ -116,24 +131,33 @@ const RoomSync = (() => {
     const cleanCode = String(code || "").toUpperCase().trim();
     if (!cleanCode) return null;
 
-    let room = readLocal(cleanCode);
-
+    // ALWAYS try the API first — this is the source of truth for cross-device access
+    let apiRoom = null;
     try {
-      const res = await fetch(`${API_URL}?code=${encodeURIComponent(cleanCode)}`, {
-        headers: { "Cache-Control": "no-cache" }
+      const sep = API_URL.includes("?") ? "&" : "?";
+      const res = await fetch(`${API_URL}${sep}code=${encodeURIComponent(cleanCode)}&_t=${Date.now()}`, {
+        cache: "no-store"
       });
       if (res.ok) {
         const data = await res.json();
         if (data.ok && data.room) {
-          if (!room || (data.room.updatedAt && data.room.updatedAt >= (room.updatedAt || 0))) {
-            room = { ...room, ...data.room };
-            writeLocal(cleanCode, room);
-          }
+          apiRoom = data.room;
+          writeLocal(cleanCode, apiRoom);
+        }
+      } else if (res.status === 404) {
+        // Authoritatively deleted or does not exist on server
+        const local = readLocal(cleanCode);
+        if (local && local._syncedToCloud) {
+          untrackActiveCode(cleanCode);
+          return null;
         }
       }
     } catch (e) {}
 
-    return room;
+    if (apiRoom) return apiRoom;
+
+    // Fallback to localStorage if API unavailable (offline / unit tests)
+    return readLocal(cleanCode);
   }
 
   // Switch Quiz / Subject in a room
@@ -193,31 +217,40 @@ const RoomSync = (() => {
 
     // 2. Fetch from cloud API
     try {
-      const res = await fetch(`${API_URL}?action=list`, {
-        headers: { "Cache-Control": "no-cache" }
+      const res = await fetch(`${API_URL}?action=list&_t=${Date.now()}`, {
+        cache: "no-store"
       });
       if (res.ok) {
         const data = await res.json();
         if (data.ok && Array.isArray(data.rooms)) {
+          // Keep cloud rooms as source of truth alongside unsynced local-only rooms
+          const cloudCodes = new Set(data.rooms.map(r => r.code));
+          for (const [k, v] of roomMap.entries()) {
+            if (!cloudCodes.has(k) && v.status !== "lobby") {
+              roomMap.delete(k);
+            }
+          }
           data.rooms.forEach(r => {
-            roomMap.set(r.code, {
-              code: r.code,
-              quizId: r.quizId,
-              subject: r.subject,
-              title: r.title,
-              status: r.status,
-              currentIndex: r.currentIndex || 0,
-              totalQuestions: r.questionsCount || (r.questions ? r.questions.length : 0),
-              participantsCount: r.participantsCount || (r.participants ? r.participants.length : 0),
-              updatedAt: r.updatedAt
-            });
-            trackActiveCode(r.code);
+            if (r.status === "lobby" || r.status === "active") {
+              roomMap.set(r.code, {
+                code: r.code,
+                quizId: r.quizId,
+                subject: r.subject,
+                title: r.title,
+                status: r.status,
+                currentIndex: r.currentIndex || 0,
+                totalQuestions: r.questionsCount || (r.questions ? r.questions.length : 0),
+                participantsCount: r.participantsCount || (r.participants ? r.participants.length : 0),
+                updatedAt: r.updatedAt
+              });
+              trackActiveCode(r.code);
+            }
           });
         }
       }
     } catch (e) {}
 
-    const list = Array.from(roomMap.values());
+    const list = Array.from(roomMap.values()).filter(r => r.status === "lobby" || r.status === "active");
     list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
     return list;
   }
@@ -241,13 +274,50 @@ const RoomSync = (() => {
     } catch (e) {}
   }
 
+  async function leaveRoom(code, participantId, isUnload = false) {
+    const cleanCode = String(code || "").toUpperCase().trim();
+    if (!cleanCode || !participantId) {
+      clearStoredParticipant();
+      return;
+    }
+
+    // Update local: remove participant from list immediately
+    let room = readLocal(cleanCode);
+    if (room && room.participants) {
+      room.participants = room.participants.filter(p => p.id !== participantId);
+      room.updatedAt = Date.now();
+      writeLocal(cleanCode, room);
+    }
+    clearStoredParticipant();
+
+    const payload = JSON.stringify({ action: "leave", code: cleanCode, participantId });
+    try {
+      if (isUnload) {
+        if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+          navigator.sendBeacon(API_URL, new Blob([payload], { type: "application/json" }));
+        } else {
+          fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true }).catch(() => {});
+        }
+      } else {
+        await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload });
+      }
+    } catch (e) {}
+  }
+
   async function joinRoom(code, studentName) {
     const cleanCode = String(code || "").toUpperCase().trim();
     const name = String(studentName || "").trim();
     if (!cleanCode || !name) throw new Error("Room code and student name are required");
 
+    let room = await getRoom(cleanCode);
+    if (!room || room.status === "deleted") {
+      throw new Error("Room not found or has ended. Check the room code or QR code and try again.");
+    }
+
+    // Retrieve or create a stable participant identity for this session
     let participant = getStoredParticipant();
-    if (!participant || participant.name !== name) {
+    const normInput = name.toLowerCase();
+    if (!participant || participant.name.trim().toLowerCase() !== normInput || participant.code !== cleanCode) {
       participant = {
         id: `p_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
         name: name,
@@ -256,24 +326,34 @@ const RoomSync = (() => {
       setStoredParticipant(participant);
     }
 
-    let room = await getRoom(cleanCode);
-    if (!room) throw new Error("Room not found. Check the room code or QR code.");
-
     const now = Date.now();
-    const existing = (room.participants || []).find(p => p.id === participant.id);
-    if (!existing) {
+
+    // Deduplicate locally: match by participant ID first, then by case-insensitive name
+    const existingById = (room.participants || []).find(p => p.id === participant.id);
+    const existingByName = !existingById && (room.participants || []).find(
+      p => String(p.name || "").trim().toLowerCase() === normInput
+    );
+
+    if (existingByName) {
+      participant = { ...participant, id: existingByName.id, name: name };
+      existingByName.name = name;
+      existingByName.joinedAt = now;
+      setStoredParticipant(participant);
+    } else if (!existingById) {
       room.participants = room.participants || [];
       room.participants.push({
         id: participant.id,
         name: participant.name,
-        joinedAt: now
+        joinedAt: now,
+        active: true
       });
-      room.updatedAt = now;
-      writeLocal(cleanCode, room);
     }
+    room.updatedAt = now;
+    writeLocal(cleanCode, room);
 
+    // Sync join to cloud API and accept authoritative participant list back
     try {
-      await fetch(API_URL, {
+      const res = await fetch(API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -283,6 +363,20 @@ const RoomSync = (() => {
           participantId: participant.id
         })
       });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
+          if (data.participantId && data.participantId !== participant.id) {
+            participant.id = data.participantId;
+            setStoredParticipant(participant);
+          }
+          if (Array.isArray(data.participants)) {
+            room.participants = data.participants;
+            room.updatedAt = data.updatedAt || Date.now();
+            writeLocal(cleanCode, room);
+          }
+        }
+      }
     } catch (e) {}
 
     return { room, participant };
@@ -372,6 +466,31 @@ const RoomSync = (() => {
     }
   }
 
+  async function fetchReports() {
+    const localList = getReports();
+    try {
+      const res = await fetch(`${API_URL}?action=reports&_t=${Date.now()}`, {
+        cache: "no-store"
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.reports)) {
+          const map = new Map();
+          localList.forEach(r => map.set(r.id || r.roomCode, r));
+          data.reports.forEach(r => {
+            if (r && (r.id || r.roomCode)) {
+              map.set(r.id || r.roomCode, r);
+            }
+          });
+          const merged = Array.from(map.values()).sort((a, b) => (b.finishedAt || 0) - (a.finishedAt || 0));
+          localStorage.setItem(REPORTS_KEY, JSON.stringify(merged));
+          return merged;
+        }
+      }
+    } catch (e) {}
+    return localList;
+  }
+
   function getReport(idOrCode) {
     const list = getReports();
     return list.find(r => r.id === idOrCode || r.roomCode === idOrCode) || null;
@@ -380,8 +499,17 @@ const RoomSync = (() => {
   function deleteReport(idOrCode) {
     try {
       let list = getReports();
+      const target = list.find(r => r.id === idOrCode || r.roomCode === idOrCode);
       list = list.filter(r => r.id !== idOrCode && r.roomCode !== idOrCode);
       localStorage.setItem(REPORTS_KEY, JSON.stringify(list));
+      // Sync deletion to cloud
+      try {
+        fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "delete_report", id: target ? target.id : idOrCode })
+        }).catch(() => {});
+      } catch (e) {}
       return true;
     } catch (e) {
       return false;
@@ -572,11 +700,13 @@ const RoomSync = (() => {
   }
 
   return {
+    getApiUrl,
     createRoom,
     getRoom,
     switchQuiz,
     getActiveRooms,
     closeRoom,
+    leaveRoom,
     joinRoom,
     navigate,
     submitAnswer,
@@ -588,6 +718,7 @@ const RoomSync = (() => {
     computeResults,
     saveReport,
     getReports,
+    fetchReports,
     getReport,
     deleteReport
   };

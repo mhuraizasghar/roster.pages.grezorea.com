@@ -15,31 +15,37 @@
 </head>
 <body class="bg-white">
 
-  <!-- Minimalist Top Navigation -->
-  <nav class="navbar qh-nav sticky-top">
+  <!-- Responsive Top Navigation -->
+  <nav class="navbar navbar-expand-lg qh-nav sticky-top">
     <div class="container">
       <a class="navbar-brand fw-bold d-flex align-items-center" href="index.html">
         <i class="fa-solid fa-graduation-cap me-2 text-primary"></i>QuizHub
-        <span class="badge soft-badge ms-2 font-monospace">Student Portal</span>
+        <span class="badge soft-badge ms-2 d-none d-sm-inline-block font-monospace">Student Portal</span>
       </a>
 
-      <div class="ms-auto d-flex align-items-center gap-2">
-        <span id="navUser" class="small text-muted d-none d-sm-inline"></span>
-        <a href="live.html" class="btn btn-outline-success btn-sm">
-          <i class="fa-solid fa-qrcode me-1"></i>Live Room
-        </a>
-        <a href="index.html" class="btn btn-outline-secondary btn-sm">
-          <i class="fa-solid fa-house me-1"></i>Home
-        </a>
-        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#studentGuide" aria-controls="studentGuide" aria-label="Open student guide">
-          <i class="fa-regular fa-circle-question me-1"></i><span class="d-none d-sm-inline">Guide</span>
-        </button>
-        <button id="logoutBtn" class="btn btn-outline-secondary btn-sm d-none">
-          <i class="fa-solid fa-right-from-bracket me-1"></i>Sign out
-        </button>
-        <a href="admin.html" class="btn btn-outline-primary btn-sm">
-          <i class="fa-solid fa-user-shield me-1"></i>Admin
-        </a>
+      <button class="navbar-toggler border-0 shadow-none p-1" type="button" data-bs-toggle="collapse" data-bs-target="#studentNavCollapse" aria-controls="studentNavCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fa-solid fa-bars fs-5 text-secondary"></i>
+      </button>
+
+      <div class="collapse navbar-collapse" id="studentNavCollapse">
+        <div class="ms-lg-auto d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 mt-2 mt-lg-0">
+          <span id="navUser" class="small text-muted px-1 d-none d-lg-inline"></span>
+          <a href="live.html" class="btn btn-outline-success btn-sm">
+            <i class="fa-solid fa-qrcode me-1"></i>Live Room
+          </a>
+          <a href="index.html" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-house me-1"></i>Home
+          </a>
+          <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#studentGuide" aria-controls="studentGuide" aria-label="Open student guide">
+            <i class="fa-regular fa-circle-question me-1"></i>Guide
+          </button>
+          <button id="logoutBtn" class="btn btn-outline-danger btn-sm d-none">
+            <i class="fa-solid fa-right-from-bracket me-1"></i>Sign out
+          </button>
+          <a href="admin.html" class="btn btn-outline-primary btn-sm">
+            <i class="fa-solid fa-user-shield me-1"></i>Admin
+          </a>
+        </div>
       </div>
     </div>
   </nav>

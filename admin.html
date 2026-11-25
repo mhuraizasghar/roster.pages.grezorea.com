@@ -17,39 +17,47 @@
   <!-- Minimalist Admin Container -->
   <main class="container py-3">
 
-    <!-- Minimal Text-Based Top Action Bar (No bulky navbar) -->
-    <header class="admin-topbar">
-      <div class="d-flex align-items-center gap-2">
-        <a href="admin.html" class="admin-brand">
-          <i class="fa-solid fa-user-shield text-primary"></i>
-          <span>QuizHub Admin</span>
-        </a>
-        <span class="admin-badge">Instructor Control</span>
-      </div>
+    <!-- Minimal Responsive Top Action Bar (Collapsible on Mobile) -->
+    <header class="navbar navbar-expand-lg admin-topbar p-0 py-2 mb-3">
+      <div class="container-fluid px-0">
+        <div class="d-flex align-items-center gap-2">
+          <a href="admin.html" class="admin-brand">
+            <i class="fa-solid fa-user-shield text-primary"></i>
+            <span>QuizHub Admin</span>
+          </a>
+          <span class="admin-badge d-none d-sm-inline-block">Instructor Control</span>
+        </div>
 
-      <!-- Integrated Text-based Action Buttons -->
-      <nav class="d-flex align-items-center gap-1" aria-label="Admin quick actions">
-        <a href="index.html" class="admin-text-btn">
-          <i class="fa-solid fa-house"></i>
-          <span>Home Site</span>
-        </a>
-        <a href="student.html" class="admin-text-btn">
-          <i class="fa-solid fa-graduation-cap"></i>
-          <span>Student Portal</span>
-        </a>
-        <a href="live.html" class="admin-text-btn text-success">
-          <i class="fa-solid fa-tower-broadcast"></i>
-          <span>Live Room</span>
-        </a>
-        <button class="admin-text-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminGuide" aria-label="Open admin guide">
-          <i class="fa-regular fa-circle-question"></i>
-          <span>Guide</span>
+        <button class="navbar-toggler border-0 shadow-none p-1" type="button" data-bs-toggle="collapse" data-bs-target="#adminActionsCollapse" aria-controls="adminActionsCollapse" aria-expanded="false" aria-label="Toggle admin menu">
+          <i class="fa-solid fa-bars fs-5 text-secondary"></i>
         </button>
-        <button id="adminLogout" class="admin-text-btn text-danger d-none" type="button">
-          <i class="fa-solid fa-right-from-bracket"></i>
-          <span>Sign out</span>
-        </button>
-      </nav>
+
+        <!-- Integrated Text-based Action Buttons -->
+        <div class="collapse navbar-collapse" id="adminActionsCollapse">
+          <nav class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-1 ms-lg-auto pt-2 pt-lg-0" aria-label="Admin quick actions">
+            <a href="index.html" class="admin-text-btn">
+              <i class="fa-solid fa-house"></i>
+              <span>Home Site</span>
+            </a>
+            <a href="student.html" class="admin-text-btn">
+              <i class="fa-solid fa-graduation-cap"></i>
+              <span>Student Portal</span>
+            </a>
+            <a href="live.html" class="admin-text-btn text-success">
+              <i class="fa-solid fa-tower-broadcast"></i>
+              <span>Live Room</span>
+            </a>
+            <button class="admin-text-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminGuide" aria-label="Open admin guide">
+              <i class="fa-regular fa-circle-question"></i>
+              <span>Guide</span>
+            </button>
+            <button id="adminLogout" class="admin-text-btn text-danger d-none" type="button">
+              <i class="fa-solid fa-right-from-bracket"></i>
+              <span>Sign out</span>
+            </button>
+          </nav>
+        </div>
+      </div>
     </header>
 
     <!-- Global Loading Spinner -->
@@ -140,25 +148,25 @@
       </div>
 
       <!-- Segmented Navigation Pills -->
-      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <ul class="nav admin-pills gap-1" id="tabs">
+      <div class="admin-tabs-scroll mb-3">
+        <ul class="nav admin-pills gap-1 flex-nowrap" id="tabs">
           <li class="nav-item">
-            <button class="nav-link active" data-view="quizzesView">
+            <button class="nav-link active text-nowrap" data-view="quizzesView">
               <i class="fa-solid fa-clipboard-question me-1"></i>Quizzes
             </button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" data-view="liveRoomsView">
+            <button class="nav-link text-nowrap" data-view="liveRoomsView">
               <i class="fa-solid fa-tower-broadcast me-1 text-success"></i>Live Classrooms &amp; Results
             </button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" data-view="resultsView">
+            <button class="nav-link text-nowrap" data-view="resultsView">
               <i class="fa-solid fa-chart-column me-1"></i>Results &amp; Analytics
             </button>
           </li>
           <li class="nav-item">
-            <button class="nav-link" data-view="settingsView">
+            <button class="nav-link text-nowrap" data-view="settingsView">
               <i class="fa-solid fa-gear me-1"></i>Publish &amp; Settings
             </button>
           </li>
@@ -168,13 +176,16 @@
       <!-- TAB 1: QUIZZES VIEW -->
       <div id="quizzesView" data-view-panel class="d-none">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-          <div class="d-flex align-items-center gap-2">
+          <div class="d-flex flex-wrap align-items-center gap-2">
             <h2 class="h5 mb-0 fw-bold">Quiz Directory</h2>
             <input type="text" id="quizSearchInput" class="form-control form-control-sm" placeholder="Filter quizzes..." style="width: 180px;">
           </div>
-          <div class="d-flex gap-2">
+          <div class="d-flex flex-wrap gap-2">
             <button id="openLaunchLiveModalBtn" class="btn btn-outline-success btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#launchLiveModal">
               <i class="fa-solid fa-tower-broadcast me-1"></i>Launch Live Room
+            </button>
+            <button id="sampleQuizJsonBtn" class="btn btn-outline-secondary btn-sm" type="button" title="Download Sample JSON Template to build subject quizzes">
+              <i class="fa-solid fa-file-code me-1"></i>Sample JSON
             </button>
             <button id="importQuizBtn" class="btn btn-outline-secondary btn-sm">
               <i class="fa-solid fa-file-import me-1"></i>Import JSON

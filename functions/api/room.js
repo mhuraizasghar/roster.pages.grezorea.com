@@ -1,18 +1,10 @@
-const allowedOrigins = new Set([
-  "https://quiz-project.students.pages.grezorea.com",
-  "https://quiz-project-students.pages.dev",
-  "http://localhost:8000",
-  "http://127.0.0.1:8000",
-  "null"
-]);
-
 function corsHeaders(request) {
-  const origin = request.headers.get("Origin") || "null";
-  const allowed = allowedOrigins.has(origin) ? origin : "*";
+  const origin = request.headers.get("Origin") || "*";
   return {
-    "Access-Control-Allow-Origin": allowed,
+    "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Cache-Control, Pragma",
+    "Access-Control-Max-Age": "86400",
     "Cache-Control": "no-store, no-cache, must-revalidate"
   };
 }
@@ -76,7 +68,7 @@ export async function onRequest(context) {
     // List all running / active rooms
     if (action === "list") {
       const { results } = await env.DB.prepare(
-        "SELECT code, quiz_id, subject, title, status, current_index, participants, created_at, updated_at FROM live_rooms WHERE status != 'deleted' ORDER BY updated_at DESC LIMIT 20"
+        "SELECT code, quiz_id, subject, title, status, current_index, participants, created_at, updated_at FROM live_rooms WHERE status IN ('lobby', 'active') ORDER BY updated_at DESC LIMIT 20"
       ).all();
 
       const rooms = (results || []).map(row => {
@@ -143,6 +135,8 @@ export async function onRequest(context) {
         currentIndex: row.current_index,
         questionsCount: payload.questions ? payload.questions.length : 0,
         questions: payload.questions || [],
+        passMark: payload.passMark || 50,
+        description: payload.description || "",
         participants: participants,
         responses: responses,
         updatedAt: row.updated_at
@@ -218,27 +212,54 @@ export async function onRequest(context) {
     // 3. JOIN ROOM (Name only, zero auth)
     if (action === "join") {
       const studentName = String(body.studentName || "").trim();
-      const participantId = String(body.participantId || `p_${now.toString(36)}_${Math.random().toString(36).slice(2, 6)}`);
+      let participantId = String(body.participantId || `p_${now.toString(36)}_${Math.random().toString(36).slice(2, 6)}`);
 
       if (!studentName) {
         return Response.json({ error: "Student name required" }, { status: 400, headers });
       }
 
-      // Check if participant already in list
-      const existing = participants.find(p => p.id === participantId);
-      if (!existing) {
+      // Deduplicate by ID first, then by case-insensitive name (prevent duplicates on rejoin)
+      const normName = studentName.toLowerCase();
+      const existingById = participants.find(p => p.id === participantId);
+      const existingByName = !existingById && participants.find(
+        p => String(p.name || "").trim().toLowerCase() === normName
+      );
+
+      if (existingByName) {
+        // Rejoin: keep existing ID slot so responses/state remain consistent without duplicate
+        participantId = existingByName.id;
+        existingByName.name = studentName;
+        existingByName.joinedAt = now;
+        existingByName.active = true;
+        await env.DB.prepare(
+          "UPDATE live_rooms SET participants = ?, updated_at = ? WHERE code = ?"
+        ).bind(JSON.stringify(participants), now, code).run();
+      } else if (!existingById) {
         participants.push({
           id: participantId,
           name: studentName,
-          joinedAt: now
+          joinedAt: now,
+          active: true
         });
-
         await env.DB.prepare(
           "UPDATE live_rooms SET participants = ?, updated_at = ? WHERE code = ?"
         ).bind(JSON.stringify(participants), now, code).run();
       }
 
-      return Response.json({ ok: true, participantId, studentName, code }, { headers });
+      return Response.json({ ok: true, participantId, studentName, code, participants, updatedAt: now }, { headers });
+    }
+
+    // 3b. LEAVE ROOM (Student exited mid-session)
+    if (action === "leave") {
+      const { participantId } = body;
+      if (participantId) {
+        const updated = participants.filter(p => p.id !== participantId);
+        await env.DB.prepare(
+          "UPDATE live_rooms SET participants = ?, updated_at = ? WHERE code = ?"
+        ).bind(JSON.stringify(updated), now, code).run();
+        return Response.json({ ok: true, participants: updated, updatedAt: now }, { headers });
+      }
+      return Response.json({ ok: true }, { headers });
     }
 
     // 4. START OR NAVIGATE QUESTIONS (Admin teacher-paced control)

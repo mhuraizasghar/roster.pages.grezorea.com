@@ -100,3 +100,30 @@ test("RoomSync: student submits answers and computeResults calculates accuracy",
   assert.equal(student.questionBreakdown[0].isCorrect, true);
   assert.equal(student.questionBreakdown[1].isCorrect, false);
 });
+
+test("RoomSync: mid-exam leaveRoom removes student and rejoin prevents duplicates", async () => {
+  await RoomSync.createRoom(sampleQuiz, "EXIT-2026");
+
+  // Join two students
+  const { participant: p1 } = await RoomSync.joinRoom("EXIT-2026", "Sara Khan");
+  await RoomSync.joinRoom("EXIT-2026", "Bilal Ahmed");
+  let room = await RoomSync.getRoom("EXIT-2026");
+  assert.equal(room.participants.length, 2);
+
+  // Sara rejoins with different casing (without leaving first) -> no duplicate
+  await RoomSync.joinRoom("EXIT-2026", "sara khan");
+  room = await RoomSync.getRoom("EXIT-2026");
+  assert.equal(room.participants.length, 2);
+
+  // Sara exits mid-exam -> removed from participant list
+  await RoomSync.leaveRoom("EXIT-2026", p1.id);
+  room = await RoomSync.getRoom("EXIT-2026");
+  assert.equal(room.participants.length, 1);
+  assert.equal(room.participants[0].name, "Bilal Ahmed");
+  assert.equal(RoomSync.getStoredParticipant(), null);
+
+  // Sara rejoins again -> added back cleanly once (total 2, no duplicate)
+  await RoomSync.joinRoom("EXIT-2026", "Sara Khan");
+  room = await RoomSync.getRoom("EXIT-2026");
+  assert.equal(room.participants.length, 2);
+});

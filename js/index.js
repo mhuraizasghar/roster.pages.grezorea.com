@@ -2,6 +2,18 @@
     "use strict";
     await Store.init();
 
+    // Auto-close mobile navbar menu when clicking any navigation link
+    const navCollapse = document.getElementById("navMainCollapse");
+    if (navCollapse && typeof bootstrap !== "undefined") {
+        navCollapse.querySelectorAll("a").forEach(link => {
+            link.addEventListener("click", () => {
+                if (navCollapse.classList.contains("show")) {
+                    bootstrap.Collapse.getOrCreateInstance(navCollapse).hide();
+                }
+            });
+        });
+    }
+
     // Check if student is signed in
     const student = Store.getStudent();
     if (student) {

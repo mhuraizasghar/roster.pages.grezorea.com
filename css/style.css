@@ -849,12 +849,39 @@ body {
   .rev-card { break-inside: avoid; }
 }
 
+@media (max-width: 767.98px) {
+  .admin-tabs-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .admin-tabs-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .admin-pills {
+    display: inline-flex;
+    min-width: max-content;
+  }
+  .admin-topbar .admin-text-btn {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  .qh-nav .nav-link-custom {
+    display: block;
+    padding: 0.55rem 0.65rem;
+    font-size: 0.9rem;
+  }
+}
+
 @media (max-width: 575.98px) {
   .intro-actions { align-items: stretch; }
   .intro-cancel, .intro-begin { min-width: 0; }
   .intro-cancel { flex: 0 0 36%; }
   .intro-begin { flex: 1 1 auto; margin-left: 0; }
   .landing-section { padding-top: 2.75rem; padding-bottom: 2.75rem; }
+  .opt { padding: 0.65rem 0.8rem; }
+  .card-body { padding: 1rem !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

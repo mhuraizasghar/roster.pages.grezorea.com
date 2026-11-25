@@ -58,21 +58,21 @@
 </head>
 <body class="bg-white">
 
-  <!-- Minimalist Top Navbar -->
+  <!-- Minimalist Responsive Top Navbar -->
   <nav class="navbar qh-nav sticky-top">
-    <div class="container">
-      <a class="navbar-brand fw-bold d-flex align-items-center" href="index.html">
-        <i class="fa-solid fa-graduation-cap me-2 text-primary"></i>QuizHub
-        <span class="badge bg-light text-dark border ms-2 small font-monospace">
+    <div class="container flex-nowrap gap-2">
+      <a class="navbar-brand fw-bold d-flex align-items-center flex-shrink-0 me-0" href="index.html">
+        <i class="fa-solid fa-graduation-cap me-2 text-primary"></i><span>QuizHub</span>
+        <span class="badge bg-light text-dark border ms-2 small font-monospace d-none d-sm-inline-flex align-items-center">
           <span class="live-pulse"></span>Live Room
         </span>
       </a>
 
-      <div class="ms-auto d-flex align-items-center gap-2">
-        <span id="navLiveRoomCode" class="badge soft-badge font-monospace d-none"></span>
-        <span id="navStudentName" class="small fw-semibold text-secondary d-none"></span>
-        <button id="leaveRoomBtn" class="btn btn-outline-secondary btn-sm d-none">
-          <i class="fa-solid fa-arrow-right-from-bracket me-1"></i>Leave
+      <div class="ms-auto d-flex align-items-center gap-2 min-w-0">
+        <span id="navLiveRoomCode" class="badge soft-badge font-monospace d-none flex-shrink-0"></span>
+        <span id="navStudentName" class="small fw-semibold text-secondary text-truncate d-none" style="max-width: 140px;"></span>
+        <button id="leaveRoomBtn" class="btn btn-outline-danger btn-sm flex-shrink-0 d-none" title="Exit Live Room">
+          <i class="fa-solid fa-right-from-bracket me-sm-1"></i><span class="d-none d-sm-inline">Exit</span>
         </button>
       </div>
     </div>

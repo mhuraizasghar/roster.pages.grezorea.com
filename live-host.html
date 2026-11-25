@@ -90,29 +90,35 @@
 <body class="bg-white">
 
   <!-- Host Controller Header Bar -->
-  <header class="border-bottom py-2 bg-white sticky-top">
-    <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
+  <header class="navbar navbar-expand-lg border-bottom py-2 bg-white sticky-top">
+    <div class="container">
       <div class="d-flex align-items-center gap-2">
         <a href="admin.html" class="admin-brand fs-6">
           <i class="fa-solid fa-user-shield text-primary"></i>
-          <span>Live Room Controller</span>
+          <span>Live Host</span>
         </a>
         <span class="badge bg-light text-dark border font-monospace" id="headerRoomCode">CODE</span>
         <span class="badge bg-success-subtle text-success small d-none d-md-inline" id="headerLiveStatus">
-          <span class="live-dot"></span>Broadcasting Live
+          <span class="live-dot"></span>Live
         </span>
       </div>
 
-      <div class="d-flex align-items-center gap-2">
-        <button id="fullscreenQrTriggerBtn" class="btn btn-outline-primary btn-sm" title="Expand Fullscreen QR Code">
-          <i class="fa-solid fa-expand me-1"></i>Fullscreen QR Mode
-        </button>
-        <button id="openAnswerKeyHeaderBtn" class="btn btn-outline-secondary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#privateAnswerKeyOffcanvas">
-          <i class="fa-solid fa-key me-1"></i>Private Answer Key
-        </button>
-        <a href="admin.html" class="btn btn-outline-secondary btn-sm">
-          <i class="fa-solid fa-arrow-left me-1"></i>Admin Dashboard
-        </a>
+      <button class="navbar-toggler border-0 shadow-none p-1" type="button" data-bs-toggle="collapse" data-bs-target="#hostNavCollapse" aria-controls="hostNavCollapse" aria-expanded="false" aria-label="Toggle host actions">
+        <i class="fa-solid fa-bars fs-5 text-secondary"></i>
+      </button>
+
+      <div class="collapse navbar-collapse" id="hostNavCollapse">
+        <div class="d-flex flex-column flex-lg-row align-items-stretch align-items-lg-center gap-2 ms-lg-auto mt-2 mt-lg-0">
+          <button id="fullscreenQrTriggerBtn" class="btn btn-outline-primary btn-sm" title="Expand Fullscreen QR Code">
+            <i class="fa-solid fa-expand me-1"></i>Fullscreen QR
+          </button>
+          <button id="openAnswerKeyHeaderBtn" class="btn btn-outline-secondary btn-sm" data-bs-toggle="offcanvas" data-bs-target="#privateAnswerKeyOffcanvas">
+            <i class="fa-solid fa-key me-1"></i>Answer Key
+          </button>
+          <a href="admin.html" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i>Admin Dashboard
+          </a>
+        </div>
       </div>
     </div>
   </header>

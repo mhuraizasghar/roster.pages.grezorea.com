@@ -25,7 +25,23 @@
   // Initialize or load room
   const allQuizzes = Store.getQuizzes();
 
-  if (quizId) {
+  if (roomCode && quizId) {
+    // Check if an active room with this code already exists before creating with custom code
+    const existing = await RoomSync.getRoom(roomCode);
+    if (existing && existing.status !== "deleted") {
+      currentRoom = existing;
+    } else {
+      const quiz = Store.getQuiz(quizId);
+      if (!quiz) {
+        alert("Selected quiz not found.");
+        location.href = "admin.html";
+        return;
+      }
+      currentRoom = await RoomSync.createRoom(quiz, roomCode);
+    }
+    roomCode = currentRoom.code;
+    history.replaceState(null, "", `live-host.html?room=${encodeURIComponent(roomCode)}`);
+  } else if (quizId) {
     const quiz = Store.getQuiz(quizId);
     if (!quiz) {
       alert("Selected quiz not found.");
@@ -55,12 +71,22 @@
     }
   }
 
+  // Warn if cloud sync failed (students on other devices won't find the room)
+  if (currentRoom && currentRoom._syncedToCloud === false) {
+    const banner = document.createElement("div");
+    banner.className = "alert alert-warning alert-dismissible py-2 px-3 small mb-0 rounded-0 border-0 border-bottom";
+    banner.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i><strong>Cloud Sync Warning:</strong> Room could not reach the cloud database. Students on other devices may not be able to join. Check your internet connection and <a href="live-host.html?quiz=${encodeURIComponent(currentRoom.quizId || "")}" class="alert-link">retry creating the room</a>. <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="alert"></button>`;
+    document.body.prepend(banner);
+  }
+
   // Setup header
   $("#headerRoomCode").textContent = currentRoom.code;
 
-  // Compute join URL
-  const basePath = location.pathname.replace(/[^/]*$/, "");
-  const joinUrl = `${location.origin}${basePath}live.html?room=${encodeURIComponent(currentRoom.code)}`;
+  // Compute join URL (if running locally on localhost/file, point QR to cloud URL so phones can scan!)
+  const isLocalHost = !location.hostname || location.hostname === "localhost" || location.hostname === "127.0.0.1" || location.origin === "null";
+  const publicOrigin = isLocalHost ? "https://quiz-project-students.pages.dev" : location.origin;
+  const basePath = isLocalHost ? "/" : location.pathname.replace(/[^/]*$/, "");
+  const joinUrl = `${publicOrigin}${basePath}live.html?room=${encodeURIComponent(currentRoom.code)}`;
 
   // Populate Subject / Quiz Switcher in Lobby
   setupSubjectSwitcher();

@@ -15,6 +15,8 @@
   let unsubscribeSync = null;
   let selectedOption = null;
   let displayedQuestionIndex = -1;
+  let hasBeenSeenInRoom = false;
+  let exitSent = false;
 
   // Read URL parameters (e.g. ?room=AU-2026)
   const urlParams = new URLSearchParams(location.search);
@@ -27,10 +29,12 @@
   // Load active rooms list on student join screen
   loadActiveRoomsForStudent();
 
-  // Check if participant was already joined in this session
+  // Auto-reconnect only if matching the scanned room (or no new room code in URL)
   const storedParticipant = RoomSync.getStoredParticipant();
-  if (storedParticipant && storedParticipant.code) {
+  if (storedParticipant && storedParticipant.code && (!initialRoomCode || initialRoomCode === storedParticipant.code)) {
     connectToRoom(storedParticipant.code, storedParticipant.name);
+  } else if (storedParticipant && initialRoomCode && initialRoomCode !== storedParticipant.code) {
+    RoomSync.clearStoredParticipant();
   }
 
   async function loadActiveRoomsForStudent() {
@@ -103,9 +107,17 @@
 
   async function connectToRoom(code, name) {
     try {
+      exitSent = false;
+      hasBeenSeenInRoom = false;
+      displayedQuestionIndex = -1;
+      selectedOption = null;
+
       const res = await RoomSync.joinRoom(code, name);
       currentRoom = res.room;
       currentParticipant = res.participant;
+      if ((currentRoom.participants || []).some(p => p.id === currentParticipant.id)) {
+        hasBeenSeenInRoom = true;
+      }
 
       // Update Nav Bar
       $("#navLiveRoomCode").textContent = currentRoom.code;
@@ -121,9 +133,31 @@
       // Handle current state
       handleLiveRoomUpdate(currentRoom);
     } catch (err) {
+      RoomSync.clearStoredParticipant();
       joinAlert.textContent = err.message || "Failed to join room. Please check the code.";
       joinAlert.classList.remove("d-none");
     }
+  }
+
+  function resetToJoinScreen(notice) {
+    if (unsubscribeSync) { unsubscribeSync(); unsubscribeSync = null; }
+    RoomSync.clearStoredParticipant();
+    currentRoom = null;
+    currentParticipant = null;
+    selectedOption = null;
+    displayedQuestionIndex = -1;
+    hasBeenSeenInRoom = false;
+
+    $("#navLiveRoomCode").classList.add("d-none");
+    $("#navStudentName").classList.add("d-none");
+    $("#leaveRoomBtn").classList.add("d-none");
+
+    if (notice) {
+      joinAlert.textContent = notice;
+      joinAlert.classList.remove("d-none");
+    }
+    loadActiveRoomsForStudent();
+    showView("join");
   }
 
   // ----------------------------------------------------
@@ -132,6 +166,22 @@
   function handleLiveRoomUpdate(room) {
     if (!room) return;
     currentRoom = room;
+
+    if (room.status === "deleted") {
+      resetToJoinScreen("This live classroom session has been closed by the instructor.");
+      return;
+    }
+
+    if (currentParticipant) {
+      const stillInList = (room.participants || []).some(p => p.id === currentParticipant.id);
+      if (stillInList) {
+        hasBeenSeenInRoom = true;
+      } else if (hasBeenSeenInRoom && (room.status === "lobby" || room.status === "active")) {
+        // Student was removed / exited — require clean rejoin
+        resetToJoinScreen("You left or were removed from this live session. Enter your name to rejoin.");
+        return;
+      }
+    }
 
     if (room.status === "lobby") {
       showView("lobby");
@@ -325,20 +375,32 @@
   // ----------------------------------------------------
   // Leave Room Handler
   // ----------------------------------------------------
-  $("#leaveRoomBtn").addEventListener("click", () => {
-    if (confirm("Are you sure you want to exit the live room?")) {
-      if (unsubscribeSync) unsubscribeSync();
-      RoomSync.clearStoredParticipant();
-      currentRoom = null;
-      currentParticipant = null;
-
-      $("#navLiveRoomCode").classList.add("d-none");
-      $("#navStudentName").classList.add("d-none");
-      $("#leaveRoomBtn").classList.add("d-none");
-
-      loadActiveRoomsForStudent();
-      showView("join");
+  $("#leaveRoomBtn").addEventListener("click", async () => {
+    const isOngoing = currentRoom && (currentRoom.status === "lobby" || currentRoom.status === "active");
+    const msg = isOngoing
+      ? "Are you sure you want to exit the live exam? You will be removed from the student list and must rejoin to continue."
+      : "Exit this classroom results screen?";
+    if (confirm(msg)) {
+      exitSent = true;
+      if (unsubscribeSync) { unsubscribeSync(); unsubscribeSync = null; }
+      if (isOngoing && currentParticipant && currentRoom) {
+        await RoomSync.leaveRoom(currentRoom.code, currentParticipant.id, false);
+      } else {
+        RoomSync.clearStoredParticipant();
+      }
+      resetToJoinScreen();
     }
   });
+
+  // Remove student automatically if they exit mid-exam (close tab / navigate away)
+  function handleMidExamExitUnload() {
+    if (exitSent) return;
+    if (currentParticipant && currentRoom && (currentRoom.status === "lobby" || currentRoom.status === "active")) {
+      exitSent = true;
+      RoomSync.leaveRoom(currentRoom.code, currentParticipant.id, true);
+    }
+  }
+  window.addEventListener("pagehide", handleMidExamExitUnload);
+  window.addEventListener("beforeunload", handleMidExamExitUnload);
 
 })();

@@ -6,11 +6,12 @@ const allowedOrigins = new Set([
 ]);
 
 function corsHeaders(request) {
-  const origin = request.headers.get("Origin") || "null";
+  const origin = request.headers.get("Origin") || "*";
   return {
-    "Access-Control-Allow-Origin": allowedOrigins.has(origin) ? origin : "null",
+    "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type"
+    "Access-Control-Allow-Headers": "Content-Type, Cache-Control, Pragma",
+    "Cache-Control": "no-store"
   };
 }
 

@@ -14,13 +14,20 @@
   <link href="css/style.css" rel="stylesheet">
 </head>
 <body class="bg-white">
-  <nav class="navbar qh-nav sticky-top">
+  <nav class="navbar navbar-expand-md qh-nav sticky-top">
     <div class="container">
-      <a class="navbar-brand fw-bold" href="index.html"><i class="fa-solid fa-graduation-cap me-2 text-primary"></i>QuizHub</a>
-      <div class="ms-auto d-flex gap-2 no-print">
-        <button id="printBtn" class="btn btn-outline-secondary btn-sm d-none"><i class="fa-solid fa-print me-1"></i>Print</button>
-        <a href="index.html" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-house me-1"></i>Home</a>
-        <a href="student.html" class="btn btn-primary btn-sm"><i class="fa-solid fa-graduation-cap me-1"></i>Student Portal</a>
+      <a class="navbar-brand fw-bold d-flex align-items-center" href="index.html">
+        <i class="fa-solid fa-graduation-cap me-2 text-primary"></i>QuizHub
+      </a>
+      <button class="navbar-toggler border-0 shadow-none p-1 no-print" type="button" data-bs-toggle="collapse" data-bs-target="#resultNavCollapse" aria-controls="resultNavCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <i class="fa-solid fa-bars fs-5 text-secondary"></i>
+      </button>
+      <div class="collapse navbar-collapse no-print" id="resultNavCollapse">
+        <div class="ms-md-auto d-flex flex-column flex-md-row gap-2 mt-2 mt-md-0">
+          <button id="printBtn" class="btn btn-outline-secondary btn-sm d-none"><i class="fa-solid fa-print me-1"></i>Print Result</button>
+          <a href="index.html" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-house me-1"></i>Home</a>
+          <a href="student.html" class="btn btn-primary btn-sm"><i class="fa-solid fa-graduation-cap me-1"></i>Student Portal</a>
+        </div>
       </div>
     </div>
   </nav>

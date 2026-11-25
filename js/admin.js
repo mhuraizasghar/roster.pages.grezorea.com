@@ -167,6 +167,62 @@
         questions: []
     }, true));
 
+    if ($("#sampleQuizJsonBtn")) {
+        $("#sampleQuizJsonBtn").addEventListener("click", () => {
+            const sampleTemplate = {
+                title: "Applied Physics Midterm",
+                subject: "Physics",
+                description: "Sample subject quiz template. Customize title, subject, allowedEmails, and questions (correct is 0-indexed: 0 = Option A, 1 = Option B, 2 = Option C, 3 = Option D), then upload using 'Import JSON'.",
+                durationMinutes: 15,
+                passMark: 50,
+                shuffle: true,
+                maxAttempts: 0,
+                allowedEmails: [
+                    "@au.edu.pk",
+                    "student1@university.edu",
+                    "student2@university.edu"
+                ],
+                questions: [
+                    {
+                        text: "Which law states that Force equals Mass times Acceleration (F = ma)?",
+                        options: [
+                            "Newton's Second Law",
+                            "Newton's First Law",
+                            "Newton's Third Law",
+                            "Law of Universal Gravitation"
+                        ],
+                        correct: 0,
+                        explanation: "Newton's second law establishes F = ma, relating net force, mass, and acceleration."
+                    },
+                    {
+                        text: "What is the SI unit of electrical resistance?",
+                        options: [
+                            "Volt",
+                            "Ampere",
+                            "Ohm",
+                            "Watt"
+                        ],
+                        correct: 2,
+                        explanation: "Electrical resistance is measured in Ohms (Ω), named after Georg Simon Ohm."
+                    },
+                    {
+                        text: "What is the approximate acceleration due to gravity near Earth's surface?",
+                        options: [
+                            "8.9 m/s²",
+                            "9.8 m/s²",
+                            "10.5 m/s²",
+                            "11.2 m/s²"
+                        ],
+                        correct: 1,
+                        explanation: "Standard acceleration due to gravity on Earth is approximately 9.8 m/s²."
+                    }
+                ]
+            };
+            download("quizhub-subject-sample.json", JSON.stringify(sampleTemplate, null, 2));
+            toast("Downloaded quizhub-subject-sample.json template. Edit & click 'Import JSON' to add it!", "info");
+        });
+    }
+
     $("#importQuizBtn").addEventListener("click", () => $("#importQuizFile").click());
     $("#importQuizFile").addEventListener("change", async e => {
         const file = e.target.files[0];
@@ -526,7 +582,8 @@
     async function renderLiveRoomsView() {
         // 1. Render Active Live Classrooms
         try {
-            const activeRooms = await RoomSync.getActiveRooms();
+            const allRooms = await RoomSync.getActiveRooms();
+            const activeRooms = allRooms.filter(r => r.status === "lobby" || r.status === "active");
             const activeBadge = $("#activeRoomsCountBadge");
             if (activeBadge) activeBadge.textContent = `${activeRooms.length} Running`;
 
@@ -540,16 +597,16 @@
                             <td><span class="badge font-monospace bg-light text-dark border px-2 py-1 fs-6">${esc(r.code)}</span></td>
                             <td>
                                 <div class="fw-semibold">${esc(r.title)}</div>
-                                <div class="small text-muted">${esc(r.subject || "General")} · ${r.questions?.length || 0} Questions</div>
+                                <div class="small text-muted">${esc(r.subject || "General")} · ${r.totalQuestions || 0} Questions</div>
                             </td>
                             <td>
                                 <span class="badge ${r.status === 'active' ? 'text-bg-success' : 'text-bg-warning'}">${r.status === 'active' ? 'In Progress' : 'In Lobby'}</span>
                             </td>
                             <td class="text-center">
-                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2">${(r.participants || []).length} Students</span>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2">${r.participantsCount ?? (r.participants ? r.participants.length : 0)} Students</span>
                             </td>
                             <td class="text-end text-nowrap">
-                                <a href="live-host.html?quiz=${encodeURIComponent(r.quizId)}&room=${encodeURIComponent(r.code)}" class="btn btn-sm btn-success me-1">
+                                <a href="live-host.html?room=${encodeURIComponent(r.code)}" class="btn btn-sm btn-success me-1">
                                     <i class="fa-solid fa-play me-1"></i>Host Controller
                                 </a>
                                 <button class="btn btn-sm btn-outline-danger" data-live-act="close" data-code="${esc(r.code)}" title="Close Room">
@@ -564,7 +621,10 @@
             console.error("Error rendering active live rooms:", e);
         }
 
-        // 2. Render Saved Live Reports
+        // 2. Fetch cloud reports & render Saved Live Reports
+        try {
+            await RoomSync.fetchReports();
+        } catch (e) {}
         renderLiveReports();
     }
 
