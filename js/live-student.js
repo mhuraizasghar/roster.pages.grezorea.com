@@ -14,7 +14,7 @@
   let currentParticipant = null;
   let unsubscribeSync = null;
   let selectedOption = null;
-  let displayedQuestionIndex = -1;
+  let displayedQuestionKey = "";
   let hasBeenSeenInRoom = false;
   let exitSent = false;
 
@@ -26,8 +26,18 @@
     $("#studentNameInput").focus();
   }
 
-  // Load active rooms list on student join screen
+  // Load active rooms list on student join screen and keep it updated in real time
   loadActiveRoomsForStudent();
+  setInterval(() => {
+    if (!currentRoom && !document.hidden) {
+      loadActiveRoomsForStudent();
+    }
+  }, 3000);
+  document.addEventListener("visibilitychange", () => {
+    if (!currentRoom && !document.hidden) {
+      loadActiveRoomsForStudent();
+    }
+  });
 
   // Auto-reconnect only if matching the scanned room (or no new room code in URL)
   const storedParticipant = RoomSync.getStoredParticipant();
@@ -109,7 +119,7 @@
     try {
       exitSent = false;
       hasBeenSeenInRoom = false;
-      displayedQuestionIndex = -1;
+      displayedQuestionKey = "";
       selectedOption = null;
 
       const res = await RoomSync.joinRoom(code, name);
@@ -145,7 +155,7 @@
     currentRoom = null;
     currentParticipant = null;
     selectedOption = null;
-    displayedQuestionIndex = -1;
+    displayedQuestionKey = "";
     hasBeenSeenInRoom = false;
 
     $("#navLiveRoomCode").classList.add("d-none");
@@ -226,9 +236,10 @@
     const recordedAnswer = pResponses[qIndex];
     const isLocked = recordedAnswer !== undefined;
 
-    // Check if question changed
-    const questionChanged = displayedQuestionIndex !== qIndex;
-    displayedQuestionIndex = qIndex;
+    // Check if question or subject/quiz changed
+    const nextKey = `${room.quizId || ""}:${qIndex}:${q.text || ""}`;
+    const questionChanged = displayedQuestionKey !== nextKey;
+    displayedQuestionKey = nextKey;
 
     $("#qCurrentBadge").textContent = `Question ${qIndex + 1} of ${questions.length}`;
     $("#qSubjectBadge").textContent = room.subject || "Live Session";

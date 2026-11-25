@@ -55,31 +55,43 @@
         renderAuth();
     });
 
-    function showView(id) {
+    function showView(id, scrollTop = true) {
         $$("[data-view-panel]").forEach(p => p.classList.toggle("d-none", p.id !== id));
         $$("#tabs .nav-link").forEach(b => b.classList.toggle("active", b.dataset.view === id));
         if (id === "quizzesView") renderQuizTable();
         if (id === "liveRoomsView") renderLiveRoomsView();
         if (id === "resultsView") renderResults();
         updateAdminKPIs();
-        window.scrollTo({
-            top: 0
-        });
+        if (scrollTop) {
+            window.scrollTo({
+                top: 0
+            });
+        }
     }
 
     setInterval(async () => {
+        if (document.hidden) return;
         await Store.refreshShared();
         if (!$("#appView").classList.contains("d-none")) {
             const active = $$('[data-view-panel]:not(.d-none)')[0];
-            if (active) showView(active.id);
+            if (active && active.id !== "liveRoomsView") showView(active.id, false);
         }
     }, 30000);
+
+    // Real-time refresh for Live Classrooms & Results tab (3s)
+    setInterval(() => {
+        if (document.hidden || $("#appView").classList.contains("d-none")) return;
+        const liveView = $("#liveRoomsView");
+        if (liveView && !liveView.classList.contains("d-none")) {
+            renderLiveRoomsView();
+        }
+    }, 3000);
 
     document.addEventListener("visibilitychange", async () => {
         if (document.visibilityState === "visible") {
             await Store.refreshShared();
             const active = $$('[data-view-panel]:not(.d-none)')[0];
-            if (active) showView(active.id);
+            if (active) showView(active.id, false);
         }
     });
 

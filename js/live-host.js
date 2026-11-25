@@ -210,7 +210,10 @@
   // ----------------------------------------------------
   // Real-Time Room State Dispatcher
   // ----------------------------------------------------
-  function handleLiveRoomUpdate(room) {
+  let lastRenderKey = "";
+  let jumpSelectKey = "";
+
+  function handleLiveRoomUpdate(room, forceRender = false) {
     if (!room) return;
     currentRoom = room;
 
@@ -218,6 +221,17 @@
     $("#joinedStudentsCount").textContent = participantsCount;
     $("#participantHeaderCount").textContent = participantsCount;
     $("#fsStudentsCount").textContent = participantsCount;
+
+    const renderKey = JSON.stringify({
+      s: room.status,
+      qId: room.quizId,
+      qi: room.currentIndex,
+      r: revealedOnScreen,
+      p: (room.participants || []).map(p => `${p.id}:${p.name}`),
+      ans: room.responses || {}
+    });
+    if (!forceRender && renderKey === lastRenderKey) return;
+    lastRenderKey = renderKey;
 
     if (room.status === "lobby") {
       showView("lobby");
@@ -281,11 +295,16 @@
     $("#hostQSubject").textContent = room.subject || "General";
     $("#hostQText").textContent = q.text;
 
-    // Populate Jump Question Dropdown
+    // Populate Jump Question Dropdown only when quiz or question count changes
     const select = $("#jumpQuestionSelect");
-    select.innerHTML = questions.map((item, idx) => {
-      return `<option value="${idx}" ${idx === qIndex ? "selected" : ""}>Question ${idx + 1}</option>`;
-    }).join("");
+    const nextSelectKey = `${room.quizId || ""}:${questions.length}`;
+    if (jumpSelectKey !== nextSelectKey) {
+      jumpSelectKey = nextSelectKey;
+      select.innerHTML = questions.map((item, idx) => {
+        return `<option value="${idx}">Question ${idx + 1}</option>`;
+      }).join("");
+    }
+    select.value = String(qIndex);
 
     // Toggle navigation buttons
     $("#prevQuestionBtn").disabled = qIndex === 0;
@@ -395,7 +414,7 @@
     $("#revealToScreenBtn").innerHTML = revealedOnScreen
       ? '<i class="fa-solid fa-eye-slash me-1"></i>Hide Answer on Screen'
       : '<i class="fa-regular fa-eye me-1"></i>Reveal Answer on Screen';
-    renderActiveState(currentRoom);
+    handleLiveRoomUpdate(currentRoom, true);
   });
 
   // ----------------------------------------------------

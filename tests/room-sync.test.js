@@ -151,3 +151,59 @@ test("RoomSync: custom static domain (Vercel grezorea) routes API calls to Cloud
     delete require.cache[require.resolve("../js/room-sync.js")];
   }
 });
+
+test("RoomSync: subscribe dispatches instant local updates and 404 cloud deletion", async () => {
+  const prevFetch = globalThis.fetch;
+  try {
+    let serverDeleted = false;
+    globalThis.fetch = async (url, opts) => {
+      if (opts && opts.method === "POST") {
+        const body = JSON.parse(opts.body);
+        if (body.action === "delete") serverDeleted = true;
+        return { ok: true, json: async () => ({ ok: true }) };
+      }
+      if (serverDeleted) {
+        return { ok: false, status: 404, json: async () => ({ error: "Room not found" }) };
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          ok: true,
+          room: {
+            code: "RT-5555",
+            quizId: "quiz-test",
+            subject: "CS",
+            title: "RT Quiz",
+            status: "lobby",
+            currentIndex: 0,
+            questions: sampleQuiz.questions,
+            participants: [],
+            responses: {},
+            updatedAt: Date.now()
+          }
+        })
+      };
+    };
+
+    delete require.cache[require.resolve("../js/room-sync.js")];
+    const rtSync = require("../js/room-sync.js");
+    await rtSync.createRoom(sampleQuiz, "RT-5555");
+
+    const updates = [];
+    const unsub = rtSync.subscribe("RT-5555", room => updates.push(room));
+
+    // Same-tab navigate should notify listener immediately (0ms)
+    await rtSync.navigate("RT-5555", 1, "active");
+    assert.ok(updates.some(r => r.status === "active" && r.currentIndex === 1));
+
+    // Simulate cloud deletion on host -> getRoom returns deleted status
+    serverDeleted = true;
+    const afterDelete = await rtSync.getRoom("RT-5555");
+    assert.equal(afterDelete.status, "deleted");
+
+    unsub();
+  } finally {
+    globalThis.fetch = prevFetch;
+    delete require.cache[require.resolve("../js/room-sync.js")];
+  }
+});

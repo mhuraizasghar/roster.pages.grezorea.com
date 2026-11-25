@@ -68,11 +68,16 @@ export async function onRequest(context) {
     // List all running / active rooms
     if (action === "list") {
       const { results } = await env.DB.prepare(
-        "SELECT code, quiz_id, subject, title, status, current_index, participants, created_at, updated_at FROM live_rooms WHERE status IN ('lobby', 'active') ORDER BY updated_at DESC LIMIT 20"
+        "SELECT code, quiz_id, subject, title, status, current_index, payload, participants, created_at, updated_at FROM live_rooms WHERE status IN ('lobby', 'active') ORDER BY updated_at DESC LIMIT 20"
       ).all();
 
       const rooms = (results || []).map(row => {
         const participants = JSON.parse(row.participants || "[]");
+        let questionsCount = 0;
+        try {
+          const payload = JSON.parse(row.payload || "{}");
+          questionsCount = Array.isArray(payload.questions) ? payload.questions.length : 0;
+        } catch (e) {}
         return {
           code: row.code,
           quizId: row.quiz_id,
@@ -80,6 +85,7 @@ export async function onRequest(context) {
           title: row.title,
           status: row.status,
           currentIndex: row.current_index,
+          questionsCount,
           participantsCount: participants.length,
           participants: participants,
           createdAt: row.created_at,

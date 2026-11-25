@@ -18,6 +18,27 @@ const RoomSync = (() => {
     : (isCloudflarePages ? "/api/room" : `${CLOUD_API_ORIGIN}/api/room`);
   const getApiUrl = () => API_URL;
 
+  const roomListeners = new Map();
+  const mutationSeq = new Map();
+
+  function getSeq(code) {
+    return mutationSeq.get(code) || 0;
+  }
+
+  function bumpSeq(code) {
+    const next = (mutationSeq.get(code) || 0) + 1;
+    mutationSeq.set(code, next);
+    return next;
+  }
+
+  function notifyListeners(code, roomData) {
+    const set = roomListeners.get(code);
+    if (!set || !roomData) return;
+    set.forEach(fn => {
+      try { fn(roomData); } catch (e) {}
+    });
+  }
+
   // Check if BroadcastChannel is available
   function getChannel(code) {
     if (typeof BroadcastChannel !== "undefined") {
@@ -39,11 +60,15 @@ const RoomSync = (() => {
     }
   }
 
-  function writeLocal(code, roomData) {
+  function writeLocal(code, roomData, notifySameTab = false) {
     try {
       localStorage.setItem(PREFIX + code, JSON.stringify(roomData));
       trackActiveCode(code);
-      // Notify via BroadcastChannel
+      // Notify same-tab subscribers instantaneously (0ms)
+      if (notifySameTab) {
+        notifyListeners(code, roomData);
+      }
+      // Notify other tabs via BroadcastChannel
       const ch = getChannel(code);
       if (ch) {
         ch.postMessage({ type: "SYNC", code, room: roomData, ts: Date.now() });
@@ -136,7 +161,7 @@ const RoomSync = (() => {
     return room;
   }
 
-  async function getRoom(code) {
+  async function getRoom(code, expectedSeq) {
     const cleanCode = String(code || "").toUpperCase().trim();
     if (!cleanCode) return null;
 
@@ -147,10 +172,14 @@ const RoomSync = (() => {
       const res = await fetch(`${API_URL}${sep}code=${encodeURIComponent(cleanCode)}&_t=${Date.now()}`, {
         cache: "no-store"
       });
+      // Discard stale in-flight GET if a newer local mutation started while fetching
+      if (expectedSeq !== undefined && getSeq(cleanCode) !== expectedSeq) {
+        return readLocal(cleanCode);
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.ok && data.room) {
-          apiRoom = data.room;
+          apiRoom = { ...data.room, _syncedToCloud: true };
           writeLocal(cleanCode, apiRoom);
         }
       } else if (res.status === 404) {
@@ -158,7 +187,8 @@ const RoomSync = (() => {
         const local = readLocal(cleanCode);
         if (local && local._syncedToCloud) {
           untrackActiveCode(cleanCode);
-          return null;
+          try { localStorage.removeItem(PREFIX + cleanCode); } catch (e) {}
+          return { code: cleanCode, status: "deleted", updatedAt: Date.now() };
         }
       }
     } catch (e) {}
@@ -175,6 +205,7 @@ const RoomSync = (() => {
     let room = readLocal(cleanCode) || await getRoom(cleanCode);
     if (!room) return null;
 
+    bumpSeq(cleanCode);
     const now = Date.now();
     room.quizId = newQuiz.id || "live_quiz";
     room.subject = newQuiz.subject || "General";
@@ -185,7 +216,7 @@ const RoomSync = (() => {
     room.responses = {}; // Reset responses for new subject
     room.updatedAt = now;
 
-    writeLocal(cleanCode, room);
+    writeLocal(cleanCode, room, true);
 
     try {
       await fetch(API_URL, {
@@ -218,7 +249,8 @@ const RoomSync = (() => {
             currentIndex: r.currentIndex || 0,
             totalQuestions: (r.questions || []).length,
             participantsCount: (r.participants || []).length,
-            updatedAt: r.updatedAt
+            updatedAt: r.updatedAt,
+            _syncedToCloud: Boolean(r._syncedToCloud)
           });
         }
       });
@@ -235,8 +267,9 @@ const RoomSync = (() => {
           // Keep cloud rooms as source of truth alongside unsynced local-only rooms
           const cloudCodes = new Set(data.rooms.map(r => r.code));
           for (const [k, v] of roomMap.entries()) {
-            if (!cloudCodes.has(k) && v.status !== "lobby") {
+            if (!cloudCodes.has(k) && (v._syncedToCloud || v.status !== "lobby")) {
               roomMap.delete(k);
+              untrackActiveCode(k);
             }
           }
           data.rooms.forEach(r => {
@@ -266,11 +299,12 @@ const RoomSync = (() => {
 
   async function closeRoom(code) {
     const cleanCode = String(code || "").toUpperCase().trim();
+    bumpSeq(cleanCode);
     let room = readLocal(cleanCode);
     if (room) {
       room.status = "deleted";
       room.updatedAt = Date.now();
-      writeLocal(cleanCode, room);
+      writeLocal(cleanCode, room, true);
     }
     untrackActiveCode(cleanCode);
 
@@ -290,12 +324,13 @@ const RoomSync = (() => {
       return;
     }
 
+    bumpSeq(cleanCode);
     // Update local: remove participant from list immediately
     let room = readLocal(cleanCode);
     if (room && room.participants) {
       room.participants = room.participants.filter(p => p.id !== participantId);
       room.updatedAt = Date.now();
-      writeLocal(cleanCode, room);
+      writeLocal(cleanCode, room, true);
     }
     clearStoredParticipant();
 
@@ -335,6 +370,7 @@ const RoomSync = (() => {
       setStoredParticipant(participant);
     }
 
+    bumpSeq(cleanCode);
     const now = Date.now();
 
     // Deduplicate locally: match by participant ID first, then by case-insensitive name
@@ -358,7 +394,7 @@ const RoomSync = (() => {
       });
     }
     room.updatedAt = now;
-    writeLocal(cleanCode, room);
+    writeLocal(cleanCode, room, true);
 
     // Sync join to cloud API and accept authoritative participant list back
     try {
@@ -382,7 +418,7 @@ const RoomSync = (() => {
           if (Array.isArray(data.participants)) {
             room.participants = data.participants;
             room.updatedAt = data.updatedAt || Date.now();
-            writeLocal(cleanCode, room);
+            writeLocal(cleanCode, room, true);
           }
         }
       }
@@ -396,12 +432,13 @@ const RoomSync = (() => {
     let room = readLocal(cleanCode) || await getRoom(cleanCode);
     if (!room) return null;
 
+    bumpSeq(cleanCode);
     const idx = Math.max(0, Math.min(room.questions.length - 1, Number(questionIndex)));
     room.currentIndex = idx;
     room.status = status;
     room.updatedAt = Date.now();
 
-    writeLocal(cleanCode, room);
+    writeLocal(cleanCode, room, true);
 
     try {
       await fetch(API_URL, {
@@ -424,6 +461,7 @@ const RoomSync = (() => {
     let room = readLocal(cleanCode) || await getRoom(cleanCode);
     if (!room) return false;
 
+    bumpSeq(cleanCode);
     room.responses = room.responses || {};
     if (!room.responses[participantId]) {
       room.responses[participantId] = {};
@@ -431,7 +469,7 @@ const RoomSync = (() => {
     room.responses[participantId][questionIndex] = Number(answerIndex);
     room.updatedAt = Date.now();
 
-    writeLocal(cleanCode, room);
+    writeLocal(cleanCode, room, true);
 
     try {
       await fetch(API_URL, {
@@ -530,6 +568,7 @@ const RoomSync = (() => {
     let room = readLocal(cleanCode) || await getRoom(cleanCode);
     if (!room) return null;
 
+    bumpSeq(cleanCode);
     room.status = "finished";
     room.updatedAt = Date.now();
 
@@ -548,7 +587,7 @@ const RoomSync = (() => {
     room.report = report;
     saveReport(report);
 
-    writeLocal(cleanCode, room);
+    writeLocal(cleanCode, room, true);
 
     try {
       await fetch(API_URL, {
@@ -567,6 +606,13 @@ const RoomSync = (() => {
   function subscribe(code, onUpdate) {
     const cleanCode = String(code || "").toUpperCase().trim();
     let active = true;
+    let pollTimer = null;
+    let inFlight = false;
+
+    if (!roomListeners.has(cleanCode)) {
+      roomListeners.set(cleanCode, new Set());
+    }
+    roomListeners.get(cleanCode).add(onUpdate);
 
     const channel = getChannel(cleanCode);
     if (channel) {
@@ -587,22 +633,64 @@ const RoomSync = (() => {
         } catch (err) {}
       }
     };
-    window.addEventListener("storage", storageHandler);
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", storageHandler);
+    }
 
-    const intervalId = setInterval(async () => {
-      if (!active) return;
+    async function pollOnce() {
+      if (!active || inFlight) return;
+      if (typeof document !== "undefined" && document.hidden) return;
+      inFlight = true;
+      const reqSeq = getSeq(cleanCode);
       try {
-        const room = await getRoom(cleanCode);
-        if (room && active) {
+        const room = await getRoom(cleanCode, reqSeq);
+        if (room && active && getSeq(cleanCode) === reqSeq) {
           onUpdate(room);
         }
-      } catch (e) {}
-    }, 850);
+      } catch (e) {
+      } finally {
+        inFlight = false;
+      }
+    }
+
+    function scheduleNext() {
+      if (!active) return;
+      pollTimer = setTimeout(async () => {
+        await pollOnce();
+        scheduleNext();
+      }, 600);
+    }
+
+    const wakeHandler = () => {
+      if (!active) return;
+      if (typeof document === "undefined" || !document.hidden) {
+        pollOnce();
+      }
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", wakeHandler);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", wakeHandler);
+    }
+
+    scheduleNext();
 
     return () => {
       active = false;
-      clearInterval(intervalId);
-      window.removeEventListener("storage", storageHandler);
+      if (pollTimer) clearTimeout(pollTimer);
+      const set = roomListeners.get(cleanCode);
+      if (set) {
+        set.delete(onUpdate);
+        if (!set.size) roomListeners.delete(cleanCode);
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener("storage", storageHandler);
+        window.removeEventListener("online", wakeHandler);
+      }
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", wakeHandler);
+      }
       if (channel) {
         channel.close();
       }
