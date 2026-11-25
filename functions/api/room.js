@@ -150,7 +150,8 @@ export async function onRequest(context) {
   if (request.method === "POST") {
     let body = {};
     try {
-      body = await request.json();
+      const raw = await request.text();
+      body = raw ? JSON.parse(raw) : {};
     } catch (e) {
       return Response.json({ error: "Invalid JSON" }, { status: 400, headers });
     }

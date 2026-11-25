@@ -127,3 +127,27 @@ test("RoomSync: mid-exam leaveRoom removes student and rejoin prevents duplicate
   room = await RoomSync.getRoom("EXIT-2026");
   assert.equal(room.participants.length, 2);
 });
+
+test("RoomSync: custom static domain (Vercel grezorea) routes API calls to Cloudflare Pages backend", async () => {
+  const prevLocation = globalThis.location;
+  const prevFetch = globalThis.fetch;
+  try {
+    globalThis.location = { hostname: "quiz-project.students.pages.grezorea.com", origin: "https://quiz-project.students.pages.grezorea.com" };
+    delete require.cache[require.resolve("../js/room-sync.js")];
+    const grezoreaRoomSync = require("../js/room-sync.js");
+    assert.equal(grezoreaRoomSync.getApiUrl(), "https://quiz-project-students.pages.dev/api/room");
+
+    let calledUrl = null;
+    globalThis.fetch = async (url) => {
+      calledUrl = url;
+      return { ok: true, json: async () => ({ ok: true, code: "SYNC-1001" }) };
+    };
+    const room = await grezoreaRoomSync.createRoom(sampleQuiz, "SYNC-1001");
+    assert.equal(calledUrl, "https://quiz-project-students.pages.dev/api/room");
+    assert.equal(room._syncedToCloud, true);
+  } finally {
+    globalThis.location = prevLocation;
+    globalThis.fetch = prevFetch;
+    delete require.cache[require.resolve("../js/room-sync.js")];
+  }
+});

@@ -11,13 +11,11 @@ const RoomSync = (() => {
   const REPORTS_KEY = "qh.live.reports";
   const PARTICIPANT_KEY = "qh.live.participant";
   const CLOUD_API_ORIGIN = "https://quiz-project-students.pages.dev";
-  const isPagesHost = typeof location !== "undefined" && Boolean(location.hostname) && (
-    location.hostname.endsWith(".pages.dev") ||
-    location.hostname.includes("pages.grezorea.com")
-  );
-  const API_URL = typeof location === "undefined"
+  const isCloudflarePages = typeof location !== "undefined" && Boolean(location.hostname) &&
+    location.hostname.endsWith(".pages.dev");
+  let API_URL = typeof location === "undefined"
     ? "/api/room"
-    : (isPagesHost ? "/api/room" : `${CLOUD_API_ORIGIN}/api/room`);
+    : (isCloudflarePages ? "/api/room" : `${CLOUD_API_ORIGIN}/api/room`);
   const getApiUrl = () => API_URL;
 
   // Check if BroadcastChannel is available
@@ -117,13 +115,24 @@ const RoomSync = (() => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "create", code, quiz })
         });
-        if (res.ok) apiOk = true;
-      } catch (err) {
-        if (attempt < 3) await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && data.ok) {
+            apiOk = true;
+            break;
+          }
+        } else if (res.status === 404 && API_URL === "/api/room") {
+          // Static host (e.g. custom domain without Pages Functions) -> switch to Cloudflare Pages API
+          API_URL = `${CLOUD_API_ORIGIN}/api/room`;
+        }
+      } catch (err) {}
+      if (!apiOk && attempt < 3) {
+        await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
       }
     }
 
     room._syncedToCloud = apiOk;
+    writeLocal(code, room);
     return room;
   }
 
@@ -294,9 +303,9 @@ const RoomSync = (() => {
     try {
       if (isUnload) {
         if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
-          navigator.sendBeacon(API_URL, new Blob([payload], { type: "application/json" }));
+          navigator.sendBeacon(API_URL, new Blob([payload], { type: "text/plain" }));
         } else {
-          fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload, keepalive: true }).catch(() => {});
+          fetch(API_URL, { method: "POST", headers: { "Content-Type": "text/plain" }, body: payload, keepalive: true }).catch(() => {});
         }
       } else {
         await fetch(API_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: payload });
