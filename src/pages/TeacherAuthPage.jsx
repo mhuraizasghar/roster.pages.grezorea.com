@@ -128,12 +128,38 @@ export default function TeacherAuthPage({ initialMode = 'login' }) {
     setNeedsVerificationEmail(false);
     setBusy(true);
     try {
-      const res = await api.post('/api/auth/teacher/login', { email, password });
-      loginWithToken(res.token, res.user);
-      showToast(`Signed in as ${res.user.displayName}`);
+      if (!isSupabaseConfigured || !supabase) throw new Error('Supabase is not configured.');
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      if (error) throw error;
+      if (!data.session || !data.user) throw new Error('Sign-in session could not be created.');
+
+      const user = {
+        id: `t_${data.user.id.slice(0, 10)}`,
+        email: String(data.user.email || email).trim().toLowerCase(),
+        role: 'teacher',
+        displayName: displayName.trim() || String(data.user.email || email).split('@')[0],
+        institutionName: institutionName.trim(),
+        authProvider: 'email',
+        emailVerified: Boolean(data.user.email_confirmed_at),
+      };
+      loginWithToken(data.session.access_token, user);
+      await supabase.from('users_profile').upsert({
+        auth_uid: data.user.id,
+        email: user.email,
+        role: 'teacher',
+        display_name: user.displayName,
+        institution_name: user.institutionName,
+        auth_provider: 'email',
+        email_verified: user.emailVerified,
+      }, { onConflict: 'auth_uid' }).catch(() => null);
+      showToast(`Signed in as ${user.displayName}`);
       navigate('/teacher');
     } catch (err) {
-      handleApiError(err);
+      setErrorInfo({ message: err.message || 'Authentication failed.' });
+      if (err.message?.toLowerCase().includes('email not confirmed')) setNeedsVerificationEmail(true);
     } finally {
       setBusy(false);
     }
@@ -144,17 +170,53 @@ export default function TeacherAuthPage({ initialMode = 'login' }) {
     setErrorInfo(null);
     setBusy(true);
     try {
-      const res = await api.post('/api/auth/teacher/signup', {
-        email,
+      if (!isSupabaseConfigured || !supabase) throw new Error('Supabase is not configured.');
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanName = displayName.trim();
+      if (!cleanName) throw new Error('Enter a display name.');
+
+      const { data, error } = await supabase.auth.signUp({
+        email: cleanEmail,
         password,
-        displayName,
-        institutionName,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            full_name: cleanName,
+            institution_name: institutionName.trim(),
+            role: 'teacher',
+          },
+        },
       });
-      if (res.devVerificationToken) setVerifyToken(res.devVerificationToken);
-      setPendingVerify(true);
-      showToast(res.emailSent ? `Confirmation email sent to ${email}.` : 'Account created. Confirm verification to continue.', 'info');
+      if (error) throw error;
+
+      if (data.session && data.user) {
+        const user = {
+          id: `t_${data.user.id.slice(0, 10)}`,
+          email: cleanEmail,
+          role: 'teacher',
+          displayName: cleanName,
+          institutionName: institutionName.trim(),
+          authProvider: 'email',
+          emailVerified: Boolean(data.user.email_confirmed_at),
+        };
+        loginWithToken(data.session.access_token, user);
+        await supabase.from('users_profile').upsert({
+          auth_uid: data.user.id,
+          email: user.email,
+          role: 'teacher',
+          display_name: user.displayName,
+          institution_name: user.institutionName,
+          auth_provider: 'email',
+          email_verified: user.emailVerified,
+        }, { onConflict: 'auth_uid' }).catch(() => null);
+        showToast(`Signed in as ${user.displayName}`);
+        navigate('/teacher');
+      } else {
+        setPendingVerify(true);
+        showToast(`Confirmation email sent to ${cleanEmail}.`, 'info');
+      }
     } catch (err) {
-      handleApiError(err);
+      setErrorInfo({ message: err.message || 'Account creation failed.' });
     } finally {
       setBusy(false);
     }

@@ -18,7 +18,7 @@ export default function GoogleAuthCallbackPage() {
 
     const completeLogin = async () => {
       if (!isSupabaseConfigured || !supabase) {
-        setError('Google sign-in is not configured.');
+        setError('Supabase API key is missing or invalid.');
         return;
       }
 
@@ -70,6 +70,7 @@ export default function GoogleAuthCallbackPage() {
 
         loginWithToken(accessToken, signedInUser);
         showToast(`Signed in as ${signedInUser.displayName}`);
+        sessionStorage.removeItem('googleAuthPortalRole');
         sessionStorage.removeItem('googleAuthNext');
         sessionStorage.removeItem('googleAuthInstitutionName');
         navigate(next.startsWith('/') ? next : `/${portalRole}`, { replace: true });
