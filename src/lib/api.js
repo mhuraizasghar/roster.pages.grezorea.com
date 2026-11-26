@@ -178,7 +178,7 @@ async function cloudRoomRequest(path, method, body) {
       };
     }
 
-    const code = body.code || `AU-${Math.floor(1000 + Math.random() * 9000)}`;
+    const code = String(body.code || `AU-${Math.floor(1000 + Math.random() * 9000)}`).trim().toUpperCase();
     const res = await fetch(`${origin}/api/room`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -187,7 +187,9 @@ async function cloudRoomRequest(path, method, body) {
     if (!res.ok) throw new Error('Could not create this live room.');
     const data = await res.json();
     const state = await fetch(`${origin}/api/room?code=${encodeURIComponent(data.code)}&role=host&_t=${Date.now()}`);
+    if (!state.ok) throw new Error('Room was created but could not be verified. Please retry.');
     const stateData = await state.json();
+    if (!stateData.room) throw new Error('Room verification failed. Please retry.');
     const room = normalizeCloudRoom({ ...stateData.room, mode: body.mode, openJoin: body.openJoin });
     return { room };
   }
