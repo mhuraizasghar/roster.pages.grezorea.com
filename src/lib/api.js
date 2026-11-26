@@ -1,3 +1,5 @@
+import { isWorkspacePath, workspaceRequest } from './workspaceStore';
+
 const TOKEN_KEY = 'eval.session.token';
 
 export class ApiError extends Error {
@@ -30,6 +32,10 @@ export function setStoredToken(token) {
 }
 
 async function request(path, { method = 'GET', body = null, headers = {} } = {}) {
+  if (isWorkspacePath(path)) {
+    return workspaceRequest(method, path, body);
+  }
+
   const token = getStoredToken();
   const reqHeaders = { ...headers };
   if (token) reqHeaders.Authorization = `Bearer ${token}`;
