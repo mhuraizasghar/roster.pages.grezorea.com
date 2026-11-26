@@ -7,7 +7,6 @@ import {
   Check,
   FolderTree,
   Lock,
-  Play,
   Radio,
   Shield,
   SlidersHorizontal,
@@ -17,7 +16,6 @@ import { useAuth } from '../context/AuthContext';
 
 // Configure your walkthrough video link (MP4/WebM or YouTube/Vimeo embed URL) and poster thumbnail PNG:
 const WALKTHROUGH_VIDEO_URL = import.meta.env.VITE_WALKTHROUGH_VIDEO_URL || '/20261126-1704-31.7221939.mp4';
-const WALKTHROUGH_POSTER_URL = import.meta.env.VITE_WALKTHROUGH_POSTER_URL || '/roster-poster.png';
 
 function toEmbedUrl(raw) {
   const url = String(raw || '').trim();
@@ -32,8 +30,6 @@ function toEmbedUrl(raw) {
 export default function HomePage() {
   const { user } = useAuth();
   const [roomCode, setRoomCode] = useState('');
-  const [posterMissing, setPosterMissing] = useState(false);
-  const [playing, setPlaying] = useState(false);
   const navigate = useNavigate();
 
   const embedUrl = toEmbedUrl(WALKTHROUGH_VIDEO_URL);
@@ -134,67 +130,38 @@ export default function HomePage() {
             borderColor: 'var(--eval-border-strong)',
           }}
         >
-          {/* 16:9 Video Viewport (supports poster PNG thumbnail + MP4 or YouTube/Vimeo link) */}
+          {/* 16:9 autoplay preview; muted playback is allowed by browsers. */}
           <div
             className="relative aspect-video w-full flex items-center justify-center overflow-hidden"
             style={{
               background: 'radial-gradient(circle at 50% 42%, rgba(73, 17, 28, 0.36), #0a0908 72%)',
             }}
           >
-            {hasVideo && playing ? (
-              embedUrl ? (
-                <iframe
-                  src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
-                  title="Roster Platform Walkthrough"
-                  className="w-full h-full border-0"
-                  allow="autoplay; fullscreen; picture-in-picture"
-                  allowFullScreen
-                />
-              ) : (
-                <video
-                  className="w-full h-full object-cover"
-                  controls
-                  autoPlay
-                  playsInline
-                  poster={!posterMissing ? WALKTHROUGH_POSTER_URL : undefined}
-                >
-                  <source src={WALKTHROUGH_VIDEO_URL} />
-                </video>
-              )
+            {hasVideo && embedUrl ? (
+              <iframe
+                src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1&mute=1`}
+                title="Roster Platform Walkthrough"
+                className="w-full h-full border-0"
+                allow="autoplay; fullscreen; picture-in-picture"
+                allowFullScreen
+              />
+            ) : hasVideo ? (
+              <video
+                className="w-full h-full object-contain"
+                controls
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+              >
+                <source src={WALKTHROUGH_VIDEO_URL} />
+                Your browser does not support embedded video.
+              </video>
             ) : (
-              <>
-                {!posterMissing && WALKTHROUGH_POSTER_URL && (
-                  <img
-                    src={WALKTHROUGH_POSTER_URL}
-                    alt="Roster platform walkthrough thumbnail"
-                    className="absolute inset-0 w-full h-full object-cover"
-                    onError={() => setPosterMissing(true)}
-                  />
-                )}
-                {hasVideo && !embedUrl && posterMissing && (
-                  <video
-                    className="absolute inset-0 w-full h-full object-cover opacity-80"
-                    preload="metadata"
-                    muted
-                  >
-                    <source src={WALKTHROUGH_VIDEO_URL} />
-                  </video>
-                )}
-                <button
-                  type="button"
-                  onClick={() => hasVideo && setPlaying(true)}
-                  className="relative z-10 w-16 h-16 rounded-full flex items-center justify-center border transition-transform hover:scale-105"
-                  style={{
-                    backgroundColor: '#49111c',
-                    borderColor: 'rgba(169, 146, 125, 0.45)',
-                    color: '#f2f4f3',
-                    cursor: hasVideo ? 'pointer' : 'default',
-                  }}
-                  aria-label="Play platform walkthrough video"
-                >
-                  <Play className="w-6 h-6 ml-0.5" strokeWidth={1.75} />
-                </button>
-              </>
+              <div className="px-6 text-center text-sm" style={{ color: '#f2f4f3' }}>
+                Walkthrough video is not configured.
+              </div>
             )}
           </div>
         </div>
