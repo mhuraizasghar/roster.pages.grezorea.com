@@ -70,25 +70,31 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Inline Minimal Room Join Bar */}
-          <form
-            id="join"
-            onSubmit={handleQuickJoin}
-            className="max-w-md mx-auto pt-3 flex items-center gap-2"
-          >
-            <input
-              type="text"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              placeholder="Have a live room code? Enter code"
-              maxLength={12}
-              aria-label="Live room code"
-              className="eval-input font-mono uppercase tracking-wider text-xs py-2.5 text-center sm:text-left"
-            />
-            <button type="submit" className="eval-btn-secondary py-2.5 px-4 text-xs shrink-0">
-              Join Room
-            </button>
-          </form>
+          {/* Get started and live-room entry */}
+          <div className="max-w-3xl mx-auto pt-3 flex flex-col sm:flex-row items-stretch gap-3">
+            <Link
+              to={user ? (user.role === 'teacher' ? '/teacher' : '/student') : '/teacher/signup'}
+              className="eval-btn-secondary sm:w-44 px-4 text-sm shrink-0"
+            >
+              {user ? 'Open Dashboard' : 'Get Started'}
+              <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
+            </Link>
+            <form id="join" onSubmit={handleQuickJoin} className="flex min-w-0 flex-1 items-stretch gap-2">
+              <input
+                type="text"
+                value={roomCode}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                placeholder="Have a live room code? Enter code"
+                maxLength={12}
+                aria-label="Live room code"
+                className="eval-input min-w-0 flex-1 font-mono uppercase tracking-wider text-xs text-center sm:text-left"
+              />
+              <button type="submit" className="eval-btn-primary min-w-32 px-4 text-xs shrink-0">
+                Join Room
+                <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.75} />
+              </button>
+            </form>
+          </div>
 
           {/* Key Platform Pillars */}
           <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-2 pt-2 text-xs" style={{ color: 'var(--eval-muted)' }}>
