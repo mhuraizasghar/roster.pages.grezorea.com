@@ -45,7 +45,7 @@ export default function HomePage() {
   return (
     <div className="pb-12">
       {/* 1. Clean Full-Width Editorial Hero (No boxed right div) */}
-      <section className="pt-14 sm:pt-24 pb-16 sm:pb-20 border-b" style={{ borderColor: 'var(--eval-border)' }}>
+      <section className="pt-14 sm:pt-24 pb-16 sm:pb-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
           <h1
             className="text-4xl sm:text-6xl lg:text-[4.15rem] font-semibold tracking-tight leading-[1.06] max-w-4xl mx-auto"
@@ -58,31 +58,17 @@ export default function HomePage() {
             Instructors curate subject libraries, run real-time live rooms, and schedule self-paced assessments. Verified students connect across institutions without public catalogs or shared passwords.
           </p>
 
-          {/* Primary Actions */}
-          <div className="grid w-full max-w-[760px] grid-cols-1 sm:grid-cols-3 items-center justify-center gap-3 pt-1 mx-auto">
-            {user ? (
+          {user && (
+            <div className="flex justify-center pt-1">
               <Link
                 to={user.role === 'teacher' ? '/teacher' : '/student'}
-                className="eval-btn-primary w-full max-w-[320px] justify-self-center sm:col-span-3 px-4 text-sm"
+                className="eval-btn-primary px-4 text-sm"
               >
                 Open {user.role === 'teacher' ? 'Teacher Workspace' : 'Student Dashboard'}
                 <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
               </Link>
-            ) : (
-              <>
-                <Link to="/teacher/signup" className="eval-btn-primary w-full px-4 text-sm">
-                  Sign up for free
-                  <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
-                </Link>
-                <Link to="/teacher/login" className="eval-btn-secondary w-full px-4 text-sm">
-                  Instructor Log in
-                </Link>
-                <Link to="/student/login" className="eval-btn-secondary w-full px-4 text-sm">
-                  Student Login
-                </Link>
-              </>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Inline Minimal Room Join Bar */}
           <form
@@ -192,9 +178,9 @@ export default function HomePage() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           {/* Instructor Card */}
-          <div className="eval-card p-6 sm:p-8 flex flex-col justify-between gap-6 border-t-4" style={{ borderTopColor: 'var(--eval-accent)' }}>
+          <div className="eval-card rounded-none min-h-[360px] h-full p-6 sm:p-8 flex flex-col justify-between gap-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--eval-accent)' }}>
@@ -220,7 +206,7 @@ export default function HomePage() {
                 ))}
               </ul>
             </div>
-            <div className="pt-4 border-t flex flex-wrap gap-3" style={{ borderColor: 'var(--eval-border)' }}>
+            <div className="flex flex-wrap gap-3">
               <Link to="/teacher/signup" className="eval-btn-primary text-xs">
                 Sign up for free <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.75} />
               </Link>
@@ -231,7 +217,7 @@ export default function HomePage() {
           </div>
 
           {/* Student Card */}
-          <div className="eval-card p-6 sm:p-8 flex flex-col justify-between gap-6 border-t-4" style={{ borderTopColor: 'var(--stone-brown)' }}>
+          <div className="eval-card rounded-none min-h-[360px] h-full p-6 sm:p-8 flex flex-col justify-between gap-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--eval-muted)' }}>
@@ -257,7 +243,7 @@ export default function HomePage() {
                 ))}
               </ul>
             </div>
-            <div className="pt-4 border-t flex flex-wrap gap-3" style={{ borderColor: 'var(--eval-border)' }}>
+            <div className="flex flex-wrap gap-3">
               <Link to="/student/login" className="eval-btn-primary text-xs">
                 Student Login <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.75} />
               </Link>
