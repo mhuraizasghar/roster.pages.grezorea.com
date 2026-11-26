@@ -16,6 +16,7 @@ import LiveRoomStudentPage from './pages/LiveRoomStudentPage';
 import AttemptRunnerPage from './pages/AttemptRunnerPage';
 import AttemptReviewPage from './pages/AttemptReviewPage';
 import SitePage from './pages/SitePage';
+import GoogleAuthCallbackPage from './pages/GoogleAuthCallbackPage';
 import { SITE_PAGES } from './data/sitePages';
 
 function ProtectedRoute({ allowedRole = null, children }) {
@@ -118,6 +119,7 @@ export default function App() {
 
                   {/* Student Portal */}
                   <Route path="/student/login" element={<StudentLoginPage />} />
+                  <Route path="/auth/callback" element={<GoogleAuthCallbackPage />} />
                   <Route
                     path="/student"
                     element={

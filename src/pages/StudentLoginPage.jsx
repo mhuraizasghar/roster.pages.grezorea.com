@@ -4,6 +4,7 @@ import { AlertCircle, ArrowRight, KeyRound, Mail, Radio, ShieldCheck } from 'luc
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 function GoogleBrandIcon() {
   return (
@@ -63,26 +64,22 @@ export default function StudentLoginPage() {
 
   const handleGoogleStudent = async () => {
     setErrorInfo(null);
-    const targetEmail = email.trim();
-    if (!targetEmail) {
-      setErrorInfo({ message: 'Enter your rostered email address below before continuing with Google.' });
-      emailInputRef.current?.focus();
+    if (!isSupabaseConfigured || !supabase) {
+      setErrorInfo({ message: 'Google sign-in is not configured.' });
       return;
     }
+
     setBusy(true);
     try {
-      const res = await api.post('/api/auth/google', {
-        portalRole: 'student',
-        email: targetEmail,
-        displayName,
-        emailVerified: true,
+      sessionStorage.setItem('googleAuthPortalRole', 'student');
+      sessionStorage.setItem('googleAuthNext', safeNext);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
       });
-      loginWithToken(res.token, res.user);
-      showToast(`Signed in as ${res.user.displayName}`);
-      navigate(safeNext);
+      if (error) throw error;
     } catch (err) {
-      handleApiError(err);
-    } finally {
+      setErrorInfo({ message: err.message || 'Could not start Google sign-in.' });
       setBusy(false);
     }
   };

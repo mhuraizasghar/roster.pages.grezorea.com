@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, KeyRound, Mail, AlertCircle } from 'lucide-re
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 function GoogleBrandIcon() {
   return (
@@ -101,26 +102,22 @@ export default function TeacherAuthPage({ initialMode = 'login' }) {
 
   const handleGoogleTeacher = async () => {
     setErrorInfo(null);
-    const targetEmail = email.trim();
-    if (!targetEmail) {
-      setErrorInfo({ message: 'Enter your Google email address below before continuing with Google.' });
+    if (!isSupabaseConfigured || !supabase) {
+      setErrorInfo({ message: 'Google sign-in is not configured.' });
       return;
     }
+
     setBusy(true);
     try {
-      const res = await api.post('/api/auth/google', {
-        portalRole: 'teacher',
-        email: targetEmail,
-        displayName: displayName || targetEmail.split('@')[0],
-        institutionName,
-        emailVerified: true,
+      sessionStorage.setItem('googleAuthPortalRole', 'teacher');
+      sessionStorage.setItem('googleAuthInstitutionName', institutionName.trim());
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
       });
-      loginWithToken(res.token, res.user);
-      showToast(`Signed in as ${res.user.displayName}`);
-      navigate('/teacher');
+      if (error) throw error;
     } catch (err) {
-      handleApiError(err);
-    } finally {
+      setErrorInfo({ message: err.message || 'Could not start Google sign-in.' });
       setBusy(false);
     }
   };

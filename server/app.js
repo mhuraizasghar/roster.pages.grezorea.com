@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import express from 'express';
 import cors from 'cors';
+import { createClient } from '@supabase/supabase-js';
 import {
   createOtpEntry,
   createSessionToken,
@@ -504,64 +505,80 @@ export function createRosterApp(db, { broadcastRoom = () => {}, mailer = null } 
     return res.json({ ok: true, token: session.token, user: publicUser(user) });
   });
 
-  // Google Sign-In (Teacher & Student, verified email only, no extra scopes)
-  app.post('/api/auth/google', (req, res) => {
+  // Google OAuth callback: verify the Supabase access token before creating a Roster session.
+  app.post('/api/auth/google/token', async (req, res) => {
     const portalRole = req.body?.portalRole;
+    const accessToken = String(req.body?.accessToken || '').trim();
+    const institutionName = String(req.body?.institutionName || '').trim().slice(0, 120);
+
     if (portalRole !== 'teacher' && portalRole !== 'student') {
       return res.status(400).json({ error: 'Invalid portal role.' });
     }
-
-    const email = normalizeEmail(req.body?.email);
-    const displayName = String(req.body?.displayName || '').trim().slice(0, 80);
-    const emailVerified = Boolean(req.body?.emailVerified);
-    const institutionName = String(req.body?.institutionName || '').trim().slice(0, 120);
-
-    if (!isValidEmail(email)) {
-      return res.status(400).json({ error: 'Invalid Google account email.' });
-    }
-    if (!emailVerified) {
-      return res.status(403).json({ error: 'Google account email must be verified before signing in.' });
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Missing Google sign-in token.' });
     }
 
-    let user = db.state.users.find((u) => normalizeEmail(u.email) === email);
-    if (user && user.role !== portalRole) {
-      const targetPortal = user.role === 'teacher' ? '/teacher/login' : '/student/login';
-      return res.status(403).json({
-        errorCode: 'WRONG_PORTAL',
-        actualRole: user.role,
-        expectedRole: portalRole,
-        redirectPath: targetPortal,
-        error: `This Google email is registered as a ${user.role}. Please sign in via the ${user.role} portal.`,
-      });
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseAnonKey) {
+      return res.status(503).json({ error: 'Google sign-in is not configured on the server.' });
     }
 
-    if (portalRole === 'student') {
-      const rosterLinks = db.getTeachersForStudentEmail(email);
-      if (rosterLinks.length === 0) {
+    try {
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const { data, error } = await supabase.auth.getUser(accessToken);
+      if (error || !data?.user) {
+        return res.status(401).json({ error: 'Google sign-in session is invalid or expired.' });
+      }
+
+      const email = normalizeEmail(data.user.email);
+      const displayName = String(data.user.user_metadata?.full_name || data.user.user_metadata?.name || '').trim().slice(0, 80);
+      const emailVerified = Boolean(data.user.email_confirmed_at || data.user.user_metadata?.email_verified);
+
+      if (!isValidEmail(email)) {
+        return res.status(400).json({ error: 'Google account has no valid email address.' });
+      }
+      if (!emailVerified) {
+        return res.status(403).json({ error: 'Google account email must be verified before signing in.' });
+      }
+
+      let user = db.state.users.find((u) => normalizeEmail(u.email) === email);
+      if (user && user.role !== portalRole) {
+        const targetPortal = user.role === 'teacher' ? '/teacher/login' : '/student/login';
         return res.status(403).json({
-          errorCode: 'NOT_ON_ROSTER',
-          error: "Your email hasn't been added by a teacher yet. Ask your teacher to add this address.",
+          errorCode: 'WRONG_PORTAL',
+          actualRole: user.role,
+          expectedRole: portalRole,
+          redirectPath: targetPortal,
+          error: `This Google email is registered as a ${user.role}. Please sign in via the ${user.role} portal.`,
         });
       }
-      if (!user) {
-        const rosterName = rosterLinks.find((r) => r.displayName)?.displayName || email.split('@')[0];
-        user = {
-          id: `s_${crypto.randomUUID().slice(0, 10)}`,
-          email,
-          role: 'student',
-          displayName: displayName || rosterName,
-          institutionName: '',
-          authProvider: 'google',
-          emailVerified: true,
-          passwordHash: null,
-          createdAt: new Date().toISOString(),
-        };
-        db.state.users.push(user);
-      }
-      activateStudentRosterLinks(user);
-    } else {
-      // Teacher Google login creates account on first use
-      if (!user) {
+
+      if (portalRole === 'student') {
+        const rosterLinks = db.getTeachersForStudentEmail(email);
+        if (rosterLinks.length === 0) {
+          return res.status(403).json({
+            errorCode: 'NOT_ON_ROSTER',
+            error: "Your email hasn't been added by a teacher yet. Ask your teacher to add this address.",
+          });
+        }
+        if (!user) {
+          const rosterName = rosterLinks.find((r) => r.displayName)?.displayName || email.split('@')[0];
+          user = {
+            id: `s_${crypto.randomUUID().slice(0, 10)}`,
+            email,
+            role: 'student',
+            displayName: displayName || rosterName,
+            institutionName: '',
+            authProvider: 'google',
+            emailVerified: true,
+            passwordHash: null,
+            createdAt: new Date().toISOString(),
+          };
+          db.state.users.push(user);
+        }
+        activateStudentRosterLinks(user);
+      } else if (!user) {
         user = {
           id: `t_${crypto.randomUUID().slice(0, 10)}`,
           email,
@@ -575,11 +592,13 @@ export function createRosterApp(db, { broadcastRoom = () => {}, mailer = null } 
         };
         db.state.users.push(user);
       }
-    }
 
-    const session = createSessionToken({ userId: user.id, role: user.role, email: user.email });
-    db.save();
-    return res.json({ ok: true, token: session.token, user: publicUser(user) });
+      const session = createSessionToken({ userId: user.id, role: user.role, email: user.email });
+      db.save();
+      return res.json({ ok: true, token: session.token, user: publicUser(user) });
+    } catch {
+      return res.status(401).json({ error: 'Could not verify Google sign-in session.' });
+    }
   });
 
   app.get('/api/auth/me', requireAuth(), (req, res) => {
