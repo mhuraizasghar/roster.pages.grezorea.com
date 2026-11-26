@@ -82,7 +82,7 @@ export default function HomePage() {
             {user ? (
               <Link
                 to={user.role === 'teacher' ? '/teacher' : '/student'}
-                className="eval-btn-primary w-full px-4 text-sm"
+                className="eval-btn-primary w-full max-w-[320px] justify-self-center sm:col-span-3 px-4 text-sm"
               >
                 Open {user.role === 'teacher' ? 'Teacher Workspace' : 'Student Dashboard'}
                 <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
