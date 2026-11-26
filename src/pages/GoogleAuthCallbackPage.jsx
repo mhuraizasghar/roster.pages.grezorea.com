@@ -25,20 +25,9 @@ export default function GoogleAuthCallbackPage() {
 
       const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''));
       const fragmentAccessToken = fragment.get('access_token');
-      const fragmentRefreshToken = fragment.get('refresh_token');
 
-      let accessToken = '';
-      if (fragmentAccessToken) {
-        const { data, error: setSessionError } = await supabase.auth.setSession({
-          access_token: fragmentAccessToken,
-          refresh_token: fragmentRefreshToken || '',
-        });
-        if (setSessionError || !data.session?.access_token) {
-          setError(setSessionError?.message || 'Google sign-in could not be completed.');
-          return;
-        }
-        accessToken = data.session.access_token;
-      } else {
+      let accessToken = fragmentAccessToken || '';
+      if (!accessToken) {
         const { data, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !data.session?.access_token) {
           setError(sessionError?.message || 'Google sign-in could not be completed.');
