@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertCircle, ArrowRight, KeyRound, Mail, Radio, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowRight, KeyRound, Mail, ShieldCheck } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -34,7 +34,6 @@ export default function StudentLoginPage() {
   const [otpCode, setOtpCode] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [roomCode, setRoomCode] = useState('');
   const [errorInfo, setErrorInfo] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -42,9 +41,6 @@ export default function StudentLoginPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const nextPath = searchParams.get('next');
   const safeNext = nextPath && nextPath.startsWith('/') ? nextPath : '/student';
-  const targetRoomCode = safeNext.startsWith('/room/')
-    ? decodeURIComponent(safeNext.replace('/room/', ''))
-    : '';
 
   const { user, loginWithToken } = useAuth();
   const { showToast } = useToast();
@@ -89,12 +85,17 @@ export default function StudentLoginPage() {
     setErrorInfo(null);
     setBusy(true);
     try {
-      const res = await api.post('/api/auth/student/request-otp', { email });
+      if (!isSupabaseConfigured || !supabase) throw new Error('Email sign-in is not configured.');
+      const cleanEmail = email.trim().toLowerCase();
+      const { error } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
+        options: { shouldCreateUser: true },
+      });
+      if (error) throw error;
       setOtpSent(true);
-      if (res.devOtp) setOtpCode(res.devOtp);
       showToast('One-time verification code sent to your email.', 'info');
     } catch (err) {
-      handleApiError(err);
+      setErrorInfo({ message: err.message || 'Could not send verification code.' });
     } finally {
       setBusy(false);
     }
@@ -105,34 +106,35 @@ export default function StudentLoginPage() {
     setErrorInfo(null);
     setBusy(true);
     try {
-      const res = await api.post('/api/auth/student/verify-otp', {
-        email,
-        code: otpCode,
-        displayName,
+      if (!isSupabaseConfigured || !supabase) throw new Error('Email sign-in is not configured.');
+      const cleanEmail = email.trim().toLowerCase();
+      const { data, error } = await supabase.auth.verifyOtp({
+        email: cleanEmail,
+        token: otpCode.trim(),
+        type: 'email',
       });
-      loginWithToken(res.token, res.user);
-      showToast(`Signed in as ${res.user.displayName}`);
+      if (error) throw error;
+      if (!data.session || !data.user) throw new Error('Verification session could not be created.');
+
+      const studentUser = {
+        id: `s_${data.user.id.slice(0, 10)}`,
+        email: String(data.user.email || cleanEmail).trim().toLowerCase(),
+        role: 'student',
+        displayName: displayName.trim() || String(data.user.email || cleanEmail).split('@')[0],
+        institutionName: '',
+        authProvider: 'email',
+        emailVerified: Boolean(data.user.email_confirmed_at),
+      };
+      loginWithToken(data.session.access_token, studentUser);
+      showToast(`Signed in as ${studentUser.displayName}`);
       navigate(safeNext);
     } catch (err) {
-      handleApiError(err);
+      setErrorInfo({ message: err.message || 'Could not verify the code.' });
     } finally {
       setBusy(false);
     }
   };
 
-  const handleRoomJoin = (e) => {
-    e.preventDefault();
-    const clean = roomCode.trim().toUpperCase();
-    if (!clean) return;
-    if (user?.role === 'student') {
-      navigate(`/room/${encodeURIComponent(clean)}`);
-      return;
-    }
-    setSearchParams({ next: `/room/${clean}` });
-    setErrorInfo(null);
-    showToast(`Room ${clean} selected. Verify your rostered email above to enter.`, 'info');
-    emailInputRef.current?.focus();
-  };
 
   return (
     <div className="max-w-md mx-auto px-4 py-12 sm:py-16 space-y-4">
@@ -147,31 +149,6 @@ export default function StudentLoginPage() {
           </p>
         </div>
 
-        {targetRoomCode && (
-          <div
-            className="p-3 rounded-lg border flex items-center justify-between gap-2 text-xs"
-            style={{
-              borderColor: 'var(--eval-accent)',
-              backgroundColor: 'var(--eval-accent-soft)',
-              color: 'var(--eval-ink)',
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <Radio className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} style={{ color: 'var(--eval-accent)' }} />
-              <span>
-                Joining live room <strong className="font-mono">{targetRoomCode}</strong> after sign-in
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSearchParams({})}
-              className="text-[11px] underline shrink-0"
-              style={{ color: 'var(--eval-muted)' }}
-            >
-              Clear
-            </button>
-          </div>
-        )}
 
         {errorInfo && (
           <div
@@ -300,38 +277,6 @@ export default function StudentLoginPage() {
           </form>
         )}
 
-        {/* Quick Live Room Join */}
-        <form
-          id="room-join"
-          onSubmit={handleRoomJoin}
-          className="pt-4 border-t space-y-2.5"
-          style={{ borderColor: 'var(--eval-border)' }}
-        >
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-semibold flex items-center gap-1.5">
-              <Radio className="w-3.5 h-3.5" strokeWidth={1.75} style={{ color: 'var(--eval-accent)' }} />
-              Join a Live Room
-            </span>
-            <span className="text-[11px]" style={{ color: 'var(--eval-muted)' }}>
-              Enter classroom code
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              placeholder="Room code"
-              maxLength={12}
-              aria-label="Live classroom room code"
-              className="eval-input font-mono uppercase tracking-wider text-xs py-2"
-            />
-            <button type="submit" className="eval-btn-secondary py-2 px-3.5 text-xs shrink-0">
-              Join Room
-              <ArrowRight className="w-3.5 h-3.5" strokeWidth={1.75} />
-            </button>
-          </div>
-        </form>
 
         <div className="pt-3 border-t text-center text-xs" style={{ borderColor: 'var(--eval-border)', color: 'var(--eval-muted)' }}>
           Are you an instructor?{' '}

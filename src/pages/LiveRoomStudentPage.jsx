@@ -191,6 +191,45 @@ export default function LiveRoomStudentPage() {
     );
   }
 
+  if (!joinRequested && !room) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-14">
+        <div className="eval-card p-6 sm:p-8 text-center space-y-5">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: 'var(--eval-accent)' }}>Live Classroom</div>
+            <h1 className="text-xl sm:text-2xl font-semibold mt-1">Join Room {code}</h1>
+          </div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!studentName.trim()) {
+                showToast('Enter your name to join.', 'warning');
+                return;
+              }
+              setJoinError('');
+              setLoading(true);
+              setJoinRequested(true);
+            }}
+            className="space-y-3 text-left"
+          >
+            <label className="block text-xs font-medium">Your Name</label>
+            <input
+              type="text"
+              value={studentName}
+              onChange={(event) => setStudentName(event.target.value)}
+              placeholder="Enter your name"
+              className="eval-input text-sm"
+              maxLength={80}
+              autoFocus
+              required
+            />
+            <button type="submit" className="eval-btn-primary w-full text-xs">Continue with Name</button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   if (joinError || !room) {
     return (
       <div className="max-w-lg mx-auto px-4 py-14">
@@ -200,35 +239,8 @@ export default function LiveRoomStudentPage() {
           <p className="text-xs leading-relaxed" style={{ color: 'var(--eval-muted)' }}>
             {joinError || 'Room could not be loaded.'}
           </p>
-          {!room && !loading && (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!studentName.trim()) {
-                  showToast('Enter your name to join.', 'warning');
-                  return;
-                }
-                setJoinError('');
-                setLoading(true);
-                setJoinRequested(true);
-              }}
-              className="space-y-3"
-            >
-              <input
-                type="text"
-                value={studentName}
-                onChange={(event) => setStudentName(event.target.value)}
-                placeholder="Enter your name"
-                className="eval-input text-sm text-center"
-                maxLength={80}
-                autoFocus
-                required
-              />
-              <button type="submit" className="eval-btn-primary w-full text-xs">Join with Name</button>
-            </form>
-          )}
-          <Link to="/student" className="eval-btn-primary text-xs inline-flex">
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Student Dashboard
+          <Link to="/" className="eval-btn-secondary text-xs inline-flex">
+            <ArrowLeft className="w-3.5 h-3.5" /> Back to Home
           </Link>
         </div>
       </div>

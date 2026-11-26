@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Download, FolderPlus, Search, Trash2, Upload, UserPlus, Check, Edit2 } from 'lucide-react';
+import { Download, FolderPlus, Search, Trash2, Upload, UserPlus, Check, Edit2, X } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useToast } from '../Toast';
 
@@ -12,6 +12,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
   const [importReport, setImportReport] = useState(null);
   const [newGroupName, setNewGroupName] = useState('');
   const [editingId, setEditingId] = useState(null);
+  const [removeConfirmId, setRemoveConfirmId] = useState(null);
   const [editName, setEditName] = useState('');
   const [filterGroup, setFilterGroup] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -39,8 +40,18 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
     e.preventDefault();
     if (!bulkText.trim()) return;
     try {
+      const lines = bulkText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const entries = lines.slice(lines[0]?.toLowerCase().startsWith('email') ? 1 : 0).map((line) => {
+        const parts = line.split(',').map((part) => part.trim());
+        return {
+          email: parts[0] || '',
+          displayName: parts[1] || '',
+          groupId: parts[2] ? null : (bulkGroupId || null),
+          groupName: parts[2] || '',
+        };
+      });
       const res = await api.post('/api/roster/bulk', {
-        text: bulkText,
+        entries,
         groupId: bulkGroupId || null,
       });
       setImportReport(res);
@@ -96,7 +107,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
   const handleRemove = async (entry) => {
     try {
       await api.del(`/api/roster/${entry.id}`);
-      showToast(`Removed ${entry.studentEmail} from roster (past attempts kept).`, 'info');
+      showToast(`Removed ${entry.studentEmail || entry.email} from roster (past attempts kept).`, 'info');
       onRefresh();
     } catch (err) {
       showToast(err.message, 'error');
@@ -110,7 +121,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
       if (filterGroup && e.groupId !== filterGroup) return false;
       if (filterStatus !== 'all' && e.status !== filterStatus) return false;
       if (q) {
-        const matchEmail = (e.studentEmail || '').toLowerCase().includes(q);
+        const matchEmail = (e.studentEmail || e.email || '').toLowerCase().includes(q);
         const matchName = (e.displayName || '').toLowerCase().includes(q);
         if (!matchEmail && !matchName) return false;
       }
@@ -124,7 +135,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
       ['email', 'name', 'group', 'status'].join(','),
       ...filtered.map((e) =>
         [
-          escape(e.studentEmail),
+          escape(e.studentEmail || e.email || ''),
           escape(e.displayName || ''),
           escape(e.groupId ? (groupMap.get(e.groupId) || '') : ''),
           escape(e.status),
@@ -144,10 +155,10 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         {/* Add Single Student */}
-        <form onSubmit={handleAddSingle} className="lg:col-span-5 eval-card p-5 space-y-3.5">
+        <form onSubmit={handleAddSingle} className="lg:col-span-5 eval-card p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <UserPlus className="w-4 h-4" style={{ color: 'var(--eval-accent)' }} />
             Add Student by Email
@@ -191,7 +202,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
         </form>
 
         {/* Bulk Paste or CSV Upload */}
-        <form onSubmit={handleBulkImport} className="lg:col-span-7 eval-card p-5 space-y-3.5">
+        <form onSubmit={handleBulkImport} className="lg:col-span-7 eval-card p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Upload className="w-4 h-4" style={{ color: 'var(--eval-accent)' }} />
@@ -243,7 +254,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
       </div>
 
       {/* Groups & Search Filter Bar */}
-      <div className="eval-card p-4 space-y-3">
+      <div className="eval-card p-3 space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold">Groups / Sections:</span>
@@ -322,11 +333,11 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b" style={{ borderColor: 'var(--eval-border)', backgroundColor: 'var(--eval-bg)', color: 'var(--eval-muted)' }}>
-                <th className="py-3 px-4 font-semibold">Student Email</th>
-                <th className="py-3 px-4 font-semibold">Display Name</th>
-                <th className="py-3 px-4 font-semibold">Group</th>
-                <th className="py-3 px-4 font-semibold">Status</th>
-                <th className="py-3 px-4 font-semibold text-right">Actions</th>
+                <th className="py-2.5 px-4 font-semibold">Student Email</th>
+                <th className="py-2.5 px-4 font-semibold">Display Name</th>
+                <th className="py-2.5 px-4 font-semibold">Group</th>
+                <th className="py-2.5 px-4 font-semibold">Status</th>
+                <th className="py-2.5 px-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: 'var(--eval-border)' }}>
@@ -339,8 +350,8 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
               ) : (
                 filtered.map((entry) => (
                   <tr key={entry.id}>
-                    <td className="py-3 px-4 font-mono">{entry.studentEmail}</td>
-                    <td className="py-3 px-4">
+                    <td className="py-2.5 px-4 font-mono">{entry.studentEmail || entry.email}</td>
+                    <td className="py-2.5 px-4">
                       {editingId === entry.id ? (
                         <div className="flex items-center gap-1.5">
                           <input
@@ -366,12 +377,12 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
                         </div>
                       )}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-2.5 px-4">
                       <select
                         className="eval-input py-1 px-2 text-xs w-auto"
                         value={entry.groupId || ''}
                         onChange={(e) => handleGroupChange(entry.id, e.target.value)}
-                        aria-label={`Group for ${entry.studentEmail}`}
+                        aria-label={`Group for ${entry.studentEmail || entry.email}`}
                       >
                         <option value="">No group</option>
                         {groups.map((g) => (
@@ -380,21 +391,28 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
                       </select>
                       {entry.groupId && !groupMap.has(entry.groupId) ? '' : null}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-2.5 px-4">
                       <span className={entry.status === 'active' ? 'eval-badge eval-badge-pass' : 'eval-badge eval-badge-warn'}>
                         {entry.status === 'active' ? 'Active' : 'Pending'}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(entry)}
-                        className="eval-btn-ghost p-1.5"
-                        style={{ color: 'var(--status-fail)' }}
-                        title="Remove from roster"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    <td className="py-2.5 px-4 text-right">
+                      {removeConfirmId === entry.id ? (
+                        <div className="inline-flex items-center gap-1">
+                          <button type="button" onClick={() => handleRemove(entry)} className="eval-btn-primary py-1 px-2 text-[11px]">Remove</button>
+                          <button type="button" onClick={() => setRemoveConfirmId(null)} className="eval-btn-ghost p-1" title="Cancel"><X className="w-3.5 h-3.5" /></button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setRemoveConfirmId(entry.id)}
+                          className="eval-btn-ghost p-1.5"
+                          style={{ color: 'var(--status-fail)' }}
+                          title="Remove from roster"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))

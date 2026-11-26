@@ -63,6 +63,7 @@ export default function GoogleAuthCallbackPage() {
           email,
           role: portalRole,
           displayName: String(data.user.user_metadata?.full_name || data.user.user_metadata?.name || email.split('@')[0]).trim().slice(0, 80),
+          avatarUrl: String(data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture || '').trim(),
           institutionName,
           authProvider: 'google',
           emailVerified: true,

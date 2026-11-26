@@ -128,14 +128,7 @@ export default function App() {
                       </ProtectedRoute>
                     }
                   />
-                  <Route
-                    path="/room/:code"
-                    element={
-                      <ProtectedRoute allowedRole="student">
-                        <LiveRoomStudentPage />
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/room/:code" element={<LiveRoomStudentPage />} />
                   <Route
                     path="/attempt/:assignmentId"
                     element={

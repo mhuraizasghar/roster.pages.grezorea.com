@@ -26,6 +26,10 @@ export function AuthProvider({ children }) {
 
   const refreshMe = useCallback(async () => {
     const token = getStoredToken();
+    const cachedUser = readCachedUser();
+    if (cachedUser) {
+      setUser(cachedUser);
+    }
     if (!token) {
       setUser(null);
       setLoading(false);
@@ -37,7 +41,6 @@ export function AuthProvider({ children }) {
       writeCachedUser(res.user);
       return res.user;
     } catch (error) {
-      const cachedUser = readCachedUser();
       if ([405, 404, 503].includes(error?.status) && isSupabaseConfigured && supabase) {
         const { data, error: userError } = await supabase.auth.getUser(token);
         if (!userError && data?.user?.email) {
@@ -63,7 +66,10 @@ export function AuthProvider({ children }) {
         return cachedUser;
       }
 
-      setStoredToken(null);
+      if ([401, 403].includes(error?.status)) {
+        setStoredToken(null);
+        writeCachedUser(null);
+      }
       setUser(null);
       return null;
     } finally {
