@@ -1,6 +1,6 @@
 # Architecture
 
-QuizHub is delivered in two phases. **Phase 1** (this repository) meets the project brief with a static site. **Phase 2** is the production design that adds real authentication and a shared database without rewriting the pages.
+Roster is delivered in two phases. **Phase 1** (this repository) meets the project brief with a static site. **Phase 2** is the production design that adds real authentication and a shared database without rewriting the pages.
 
 ## 1. Goals
 

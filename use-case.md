@@ -1,8 +1,8 @@
-# QuizHub Use Cases and Working Structure
+# Roster Use Cases and Working Structure
 
 ## Project Purpose
 
-- QuizHub lets an instructor create timed multiple-choice quizzes for enrolled students.
+- Roster lets an instructor create timed multiple-choice quizzes for enrolled students.
 - Students take quizzes, see their scores, review answers and compare high scores.
 - Admins manage quiz content and enrollment, review submissions, and export or back up data.
 - The current project is a browser-based prototype with Cloudflare Pages Functions and D1 used for cross-device quiz, attempt and score data.

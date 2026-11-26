@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { createDatabase } from './db.js';
-import { createEvalApp } from './app.js';
+import { createRosterApp } from './app.js';
 import { attachWebSocketServer } from './ws.js';
 import { createMailer } from './mailer.js';
 
@@ -37,7 +37,7 @@ const db = createDatabase();
 const mailer = createMailer();
 let wsHub = null;
 
-const { app, verifyToken, buildRoomViewForUser } = createEvalApp(db, {
+const { app, verifyToken, buildRoomViewForUser } = createRosterApp(db, {
   mailer,
   broadcastRoom: (code, event) => {
     if (wsHub) wsHub.broadcastRoom(code, event);
@@ -60,7 +60,7 @@ wsHub = attachWebSocketServer(server, { verifyToken, db, buildRoomViewForUser })
 server.listen(PORT, () => {
   const mailStatus = mailer.getStatus();
   console.log(
-    `EVAL API & WebSocket server running on http://localhost:${PORT} (Resend mailer: ${
+    `Roster API & WebSocket server running on http://localhost:${PORT} (Resend mailer: ${
       mailStatus.configured ? `enabled from ${mailStatus.fromEmail}` : 'disabled'
     })`
   );

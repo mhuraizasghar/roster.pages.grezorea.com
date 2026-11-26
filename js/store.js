@@ -476,7 +476,7 @@ const Store = (() => {
     function restoreBackup(obj) {
         if (!obj || !Array.isArray(obj.quizzes)) return {
             ok: false,
-            error: "This is not a QuizHub backup file."
+            error: "This is not a Roster backup file."
         };
         const restored = obj.quizzes.map(q => normalizeQuiz(q, {
             keepId: true

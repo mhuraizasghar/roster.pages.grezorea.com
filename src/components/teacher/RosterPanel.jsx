@@ -135,7 +135,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'eval-roster.csv';
+    a.download = 'roster.csv';
     document.body.appendChild(a);
     a.click();
     a.remove();

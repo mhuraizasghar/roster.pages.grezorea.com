@@ -117,7 +117,7 @@ export default function ReportsPanel({ initialTarget = null }) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `eval-report-${selected.id}.csv`;
+      a.download = `roster-report-${selected.id}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();

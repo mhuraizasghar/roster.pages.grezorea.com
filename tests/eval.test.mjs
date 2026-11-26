@@ -13,7 +13,7 @@ import {
   sanitizeQuestionForStudent,
 } from '../server/grading.js';
 import { createDatabase } from '../server/db.js';
-import { createEvalApp } from '../server/app.js';
+import { createRosterApp } from '../server/app.js';
 import { createMailer } from '../server/mailer.js';
 
 test('normalizeEmail & isValidEmail', () => {
@@ -149,7 +149,7 @@ test('Snapshot isolation and roster access helpers', () => {
 
 test('API integration: dual portals, roster gating, assignment attempt, and live room', async (t) => {
   const db = createDatabase({ persist: false });
-  const { app } = createEvalApp(db);
+  const { app } = createRosterApp(db);
   const server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => server.close());
@@ -195,7 +195,7 @@ test('API integration: dual portals, roster gating, assignment attempt, and live
   // 3. Demo teacher login
   const tLogin = await req('/api/auth/teacher/login', {
     method: 'POST',
-    body: { email: 'teacher@eval.demo', password: 'TeacherEval2026!' },
+    body: { email: 'teacher@eval.demo', password: 'TeacherRoster2026!' },
   });
   assert.equal(tLogin.status, 200);
   const teacherToken = tLogin.data.token;
@@ -312,7 +312,7 @@ test('Mailer renders branded Resend emails with Roster logo and delivers verific
 
   assert.equal(sentEmails.length, 4);
   for (const mail of sentEmails) {
-    assert.equal(mail.from, 'EVAL Assessment <noreply@pages.grezorea.com>');
+    assert.equal(mail.from, 'Roster Assessment <noreply@pages.grezorea.com>');
     assert.ok(mail.html.includes('https://roster.pages.grezorea.com/roster-logo.png'));
     assert.ok(mail.html.includes('#49111c'));
   }

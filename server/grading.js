@@ -1,5 +1,5 @@
 /**
- * EVAL Grading, Email Normalization, Bulk Roster Parsing & Answer Protection
+ * Roster Grading, Email Normalization, Bulk Roster Parsing & Answer Protection
  */
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;

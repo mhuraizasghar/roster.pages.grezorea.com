@@ -1,5 +1,5 @@
 /**
- * EVAL Transactional Mailer (Resend REST API)
+ * Roster Transactional Mailer (Resend REST API)
  * Sends branded HTML & plain-text emails with the Roster logo and Night Bordeaux theme.
  */
 
@@ -34,7 +34,7 @@ function resolveMailerConfig(overrides = {}) {
 
   return {
     apiKey: cleanKey,
-    from: `EVAL Assessment <${String(fromEmail).trim()}>`,
+    from: `Roster Assessment <${String(fromEmail).trim()}>`,
     fromEmail: String(fromEmail).trim(),
     appUrl,
     isConfigured,
@@ -61,8 +61,8 @@ function renderEmailLayout({ appUrl, eyebrow, heading, bodyHtml, ctaLabel, ctaUr
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td style="vertical-align:middle;">
-                    <img src="${escapeHtml(logoUrl)}" alt="EVAL" height="28" style="height:28px;width:auto;vertical-align:middle;display:inline-block;margin-right:10px;" />
-                    <span style="font-size:18px;font-weight:700;letter-spacing:-0.02em;color:#0a0908;vertical-align:middle;">EVAL</span>
+                    <img src="${escapeHtml(logoUrl)}" alt="Roster" height="28" style="height:28px;width:auto;vertical-align:middle;display:inline-block;margin-right:10px;" />
+                    <span style="font-size:18px;font-weight:700;letter-spacing:-0.02em;color:#0a0908;vertical-align:middle;">Roster</span>
                   </td>
                   <td align="right" style="vertical-align:middle;font-size:11px;color:#5e503f;letter-spacing:0.06em;text-transform:uppercase;">
                     ${escapeHtml(eyebrow)}
@@ -101,9 +101,9 @@ function renderEmailLayout({ appUrl, eyebrow, heading, bodyHtml, ctaLabel, ctaUr
           <!-- Footer -->
           <tr>
             <td style="padding:18px 28px;background-color:#f8f7f6;border-top:1px solid #eae6e1;font-size:12px;line-height:1.5;color:#5e503f;">
-              <div>${escapeHtml(footerNote || 'Sent by EVAL Classroom Assessment Platform.')}</div>
+              <div>${escapeHtml(footerNote || 'Sent by Roster Classroom Assessment Platform.')}</div>
               <div style="margin-top:4px;font-size:11px;color:#a9927d;">
-                EVAL &middot; ${escapeHtml(appUrl.replace(/^https?:\/\//, ''))}
+                Roster &middot; ${escapeHtml(appUrl.replace(/^https?:\/\//, ''))}
               </div>
             </td>
           </tr>
@@ -140,12 +140,12 @@ export function createMailer(options = {}) {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        console.error('[EVAL Mailer] Resend error:', response.status, data);
+        console.error('[Roster Mailer] Resend error:', response.status, data);
         return { sent: false, status: response.status, error: data.message || 'Resend rejected request' };
       }
       return { sent: true, id: data.id || null };
     } catch (err) {
-      console.error('[EVAL Mailer] Network failure:', err.message);
+      console.error('[Roster Mailer] Network failure:', err.message);
       return { sent: false, error: err.message };
     }
   }
@@ -166,18 +166,18 @@ export function createMailer(options = {}) {
         heading: 'Confirm your instructor account',
         bodyHtml: `
           <p style="margin:0 0 12px 0;">Hello ${escapeHtml(displayName)},</p>
-          <p style="margin:0 0 14px 0;">Confirm your email address to activate your EVAL instructor workspace and begin managing student rosters and live classrooms.</p>
+          <p style="margin:0 0 14px 0;">Confirm your email address to activate your Roster instructor workspace and begin managing student rosters and live classrooms.</p>
           <p style="margin:0;font-size:12px;color:#5e503f;">Verification token: <code style="font-family:monospace;background:#f2f4f3;padding:2px 6px;border-radius:4px;color:#0a0908;">${escapeHtml(token)}</code></p>
         `,
         ctaLabel: 'Verify Email & Sign In',
         ctaUrl: verifyUrl,
-        footerNote: 'This verification link expires in 24 hours. If you did not create an EVAL account, you can safely ignore this email.',
+        footerNote: 'This verification link expires in 24 hours. If you did not create an Roster account, you can safely ignore this email.',
       });
       return send({
         to,
-        subject: 'Verify your EVAL instructor account',
+        subject: 'Verify your Roster instructor account',
         html,
-        text: `Hello ${displayName},\n\nVerify your EVAL instructor account: ${verifyUrl}\nToken: ${token}\n`,
+        text: `Hello ${displayName},\n\nVerify your Roster instructor account: ${verifyUrl}\nToken: ${token}\n`,
       });
     },
 
@@ -186,9 +186,9 @@ export function createMailer(options = {}) {
       const html = renderEmailLayout({
         appUrl: cfg.appUrl,
         eyebrow: 'One-Time Sign-In Code',
-        heading: 'Your EVAL verification code',
+        heading: 'Your Roster verification code',
         bodyHtml: `
-          <p style="margin:0 0 14px 0;">Use the 6-digit verification code below to sign in to your EVAL student dashboard:</p>
+          <p style="margin:0 0 14px 0;">Use the 6-digit verification code below to sign in to your Roster student dashboard:</p>
           <div style="margin:18px 0;padding:16px;text-align:center;background-color:#f2f4f3;border:1px solid #d9d0c7;border-radius:8px;font-family:monospace;font-size:28px;font-weight:700;letter-spacing:0.25em;color:#49111c;">
             ${escapeHtml(code)}
           </div>
@@ -200,9 +200,9 @@ export function createMailer(options = {}) {
       });
       return send({
         to,
-        subject: `${code} is your EVAL sign-in code`,
+        subject: `${code} is your Roster sign-in code`,
         html,
-        text: `Your EVAL sign-in verification code is: ${code}\nIt expires in 10 minutes.\nSign in at: ${loginUrl}\n`,
+        text: `Your Roster sign-in verification code is: ${code}\nIt expires in 10 minutes.\nSign in at: ${loginUrl}\n`,
       });
     },
 
@@ -211,10 +211,10 @@ export function createMailer(options = {}) {
       const html = renderEmailLayout({
         appUrl: cfg.appUrl,
         eyebrow: 'Account Recovery',
-        heading: 'Reset your EVAL password',
+        heading: 'Reset your Roster password',
         bodyHtml: `
           <p style="margin:0 0 12px 0;">Hello ${escapeHtml(displayName || 'Instructor')},</p>
-          <p style="margin:0 0 14px 0;">We received a request to reset the password for your EVAL instructor account. Use the button or recovery token below within 30 minutes.</p>
+          <p style="margin:0 0 14px 0;">We received a request to reset the password for your Roster instructor account. Use the button or recovery token below within 30 minutes.</p>
           <p style="margin:0;font-size:12px;color:#5e503f;">Recovery token: <code style="font-family:monospace;background:#f2f4f3;padding:2px 6px;border-radius:4px;color:#0a0908;">${escapeHtml(token)}</code></p>
         `,
         ctaLabel: 'Reset Password',
@@ -223,9 +223,9 @@ export function createMailer(options = {}) {
       });
       return send({
         to,
-        subject: 'Reset your EVAL instructor password',
+        subject: 'Reset your Roster instructor password',
         html,
-        text: `Reset your EVAL password: ${resetUrl}\nRecovery token: ${token}\nExpires in 30 minutes.\n`,
+        text: `Reset your Roster password: ${resetUrl}\nRecovery token: ${token}\nExpires in 30 minutes.\n`,
       });
     },
 
@@ -257,7 +257,7 @@ export function createMailer(options = {}) {
       });
       return send({
         to,
-        subject: `EVAL Result: ${title} (${percent}%)`,
+        subject: `Roster Result: ${title} (${percent}%)`,
         html,
         text: `Assessment completed: ${title}\nScore: ${score}/${maxScore} (${percent}%)\nView breakdown: ${reviewUrl}\n`,
       });
@@ -280,7 +280,7 @@ export function createMailer(options = {}) {
       });
       return send({
         to,
-        subject: `New EVAL Assignment: ${title}`,
+        subject: `New Roster Assignment: ${title}`,
         html,
         text: `${teacherName} assigned "${title}" (${subject}).\nDue: ${dueLabel}\nStart here: ${attemptUrl}\n`,
       });
@@ -304,7 +304,7 @@ export function createMailer(options = {}) {
       });
       return send({
         to,
-        subject: `Updated EVAL Grade: ${title} (${percent}%)`,
+        subject: `Updated Roster Grade: ${title} (${percent}%)`,
         html,
         text: `Your grade for "${title}" was updated to ${score}/${maxScore} (${percent}%).\nReview: ${reviewUrl}\n`,
       });

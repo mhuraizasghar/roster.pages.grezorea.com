@@ -24,7 +24,7 @@ export function createSeedData() {
       institutionName: 'Air University',
       authProvider: 'email',
       emailVerified: true,
-      passwordHash: hashPassword('TeacherEval2026!'),
+      passwordHash: hashPassword('TeacherRoster2026!'),
       createdAt: now,
     },
     {
@@ -35,7 +35,7 @@ export function createSeedData() {
       institutionName: 'National Institute of Computing',
       authProvider: 'google',
       emailVerified: true,
-      passwordHash: hashPassword('TeacherEval2026!'),
+      passwordHash: hashPassword('TeacherRoster2026!'),
       createdAt: now,
     },
     {

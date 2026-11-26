@@ -189,7 +189,7 @@ export default function Footer() {
               color: 'var(--eval-ink)',
             }}
           >
-            EVAL Assessment
+            Roster Assessment
           </div>
         </div>
 
@@ -199,7 +199,7 @@ export default function Footer() {
           style={{ borderColor: 'var(--eval-border)', color: 'var(--eval-muted)' }}
         >
           <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
-            <span>&copy; 2018&ndash;2026 EVAL. All rights reserved.</span>
+            <span>&copy; 2018&ndash;2026 Roster. All rights reserved.</span>
 
             {/* System / Light / Dark Theme Switcher */}
             <div

@@ -230,8 +230,8 @@
                     }
                 ]
             };
-            download("quizhub-subject-sample.json", JSON.stringify(sampleTemplate, null, 2));
-            toast("Downloaded quizhub-subject-sample.json template. Edit & click 'Import JSON' to add it!", "info");
+            download("roster-subject-sample.json", JSON.stringify(sampleTemplate, null, 2));
+            toast("Downloaded roster-subject-sample.json template. Edit & click 'Import JSON' to add it!", "info");
         });
     }
 
@@ -500,7 +500,7 @@
         if (!rows.length) return toast("There are no results to export.", "warning");
         const header = [ "Submitted", "Name", "Email", "Quiz", "Score", "Total", "Percent", "Passed", "Time (s)", "Auto-submitted" ];
         const lines = rows.map(a => [ new Date(a.submittedAt).toISOString(), a.name, a.email, a.quizTitle, a.score, a.total, a.percent, a.passed ? "Yes" : "No", a.timeTaken, a.autoSubmitted ? "Yes" : "No" ].map(csvCell).join(","));
-        download("quizhub-results.csv", [ header.map(csvCell).join(","), ...lines ].join("\n"), "text/csv");
+        download("roster-results.csv", [ header.map(csvCell).join(","), ...lines ].join("\n"), "text/csv");
     });
 
     $("#publishBtn").addEventListener("click", () => {
@@ -510,7 +510,7 @@
 
     $("#backupBtn").addEventListener("click", () => {
         const stamp = (new Date).toISOString().slice(0, 10);
-        download(`quizhub-backup-${stamp}.json`, JSON.stringify(Store.exportBackup(), null, 2));
+        download(`roster-backup-${stamp}.json`, JSON.stringify(Store.exportBackup(), null, 2));
     });
 
     $("#restoreBtn").addEventListener("click", () => $("#restoreFile").click());
@@ -731,7 +731,7 @@
     function openScorecard(report) {
         if (!report || !scorecardModal) return;
         currentScorecardReport = report;
-        $("#vsmTitle").textContent = `${report.title || "Live Session"} - Evaluation Scorecard`;
+        $("#vsmTitle").textContent = `${report.title || "Live Session"} - Rosteruation Scorecard`;
         $("#vsmSubtitle").textContent = `Room Code: ${report.roomCode} · Session finished on ${fmtDate(report.finishedAt)}`;
         $("#vsmTotal").textContent = report.summary?.totalJoined || (report.studentResults ? report.studentResults.length : 0);
         $("#vsmAvg").textContent = `${report.summary?.averagePercent || 0}%`;

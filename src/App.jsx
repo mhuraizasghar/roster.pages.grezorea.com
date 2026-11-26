@@ -48,7 +48,7 @@ function ProtectedRoute({ allowedRole = null, children }) {
           </div>
           <p className="text-xs leading-relaxed" style={{ color: 'var(--eval-muted)' }}>
             You are currently signed in as <strong style={{ color: 'var(--eval-ink)' }}>{user.email}</strong> with a{' '}
-            <strong className="uppercase">{user.role}</strong> role. Teacher and Student accounts are kept separate on EVAL.
+            <strong className="uppercase">{user.role}</strong> role. Teacher and Student accounts are kept separate on Roster.
           </p>
           <div className="flex flex-wrap gap-2 pt-2">
             <Link to={correctWorkspace} className="eval-btn-primary text-xs">
@@ -74,7 +74,7 @@ function NotFoundPage() {
       </div>
       <h1 className="text-2xl font-semibold">Page not found</h1>
       <p className="text-xs" style={{ color: 'var(--eval-muted)' }}>
-        The page you requested does not exist on EVAL.
+        The page you requested does not exist on Roster.
       </p>
       <Link to="/" className="eval-btn-primary text-xs inline-flex">
         Return Home

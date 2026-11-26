@@ -119,7 +119,7 @@ def seed_legacy_quizzes():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="EVAL Supabase PostgreSQL Utility")
+    parser = argparse.ArgumentParser(description="Roster Supabase PostgreSQL Utility")
     parser.add_argument("--check", action="store_true", help="Verify Supabase Postgres connection")
     parser.add_argument("--migrate", action="store_true", help="Apply SQL schema migration to Supabase")
     parser.add_argument("--seed", action="store_true", help="Seed demo teacher and published data")

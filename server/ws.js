@@ -1,7 +1,7 @@
 import { WebSocketServer } from 'ws';
 
 /**
- * WebSocket real-time hub for EVAL Live Classrooms.
+ * WebSocket real-time hub for Roster Live Classrooms.
  * Broadcasts room state updates instantaneously to subscribed teachers & students.
  */
 export function attachWebSocketServer(httpServer, { verifyToken, db, buildRoomViewForUser }) {

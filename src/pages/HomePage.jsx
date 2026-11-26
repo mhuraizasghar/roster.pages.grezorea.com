@@ -17,7 +17,7 @@ import { useAuth } from '../context/AuthContext';
 
 // Configure your walkthrough video link (MP4/WebM or YouTube/Vimeo embed URL) and poster thumbnail PNG:
 const WALKTHROUGH_VIDEO_URL = import.meta.env.VITE_WALKTHROUGH_VIDEO_URL || '';
-const WALKTHROUGH_POSTER_URL = import.meta.env.VITE_WALKTHROUGH_POSTER_URL || '/eval-poster.png';
+const WALKTHROUGH_POSTER_URL = import.meta.env.VITE_WALKTHROUGH_POSTER_URL || '/roster-poster.png';
 
 function toEmbedUrl(raw) {
   const url = String(raw || '').trim();
@@ -160,7 +160,7 @@ export default function HomePage() {
               embedUrl ? (
                 <iframe
                   src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
-                  title="EVAL Platform Walkthrough"
+                  title="Roster Platform Walkthrough"
                   className="w-full h-full border-0"
                   allow="autoplay; fullscreen; picture-in-picture"
                   allowFullScreen
@@ -181,7 +181,7 @@ export default function HomePage() {
                 {!posterMissing && WALKTHROUGH_POSTER_URL && (
                   <img
                     src={WALKTHROUGH_POSTER_URL}
-                    alt="EVAL platform walkthrough thumbnail"
+                    alt="Roster platform walkthrough thumbnail"
                     className="absolute inset-0 w-full h-full object-cover"
                     onError={() => setPosterMissing(true)}
                   />
@@ -220,7 +220,7 @@ export default function HomePage() {
             Product Walkthrough
           </div>
           <h2 className="text-2xl sm:text-3xl font-semibold">
-            Inside the EVAL workspace
+            Inside the Roster workspace
           </h2>
           <p className="text-sm sm:text-base leading-relaxed" style={{ color: 'var(--eval-muted)' }}>
             Follow the complete instructor and student workflow—from importing verified email rosters and organizing nested quiz libraries to directing real-time classrooms and reviewing item-level analytics.
@@ -548,7 +548,7 @@ export default function HomePage() {
       {/* 7. Closing CTA */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 text-center space-y-5">
         <h2 className="text-2xl sm:text-4xl font-semibold tracking-tight">
-          Ready to run your next classroom assessment on EVAL?
+          Ready to run your next classroom assessment on Roster?
         </h2>
         <p className="text-sm max-w-xl mx-auto" style={{ color: 'var(--eval-muted)' }}>
           Create an instructor account in under a minute, or sign in through your instructor&apos;s verified student roster.

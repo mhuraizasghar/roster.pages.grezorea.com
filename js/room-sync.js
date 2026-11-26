@@ -1,5 +1,5 @@
 /**
- * QuizHub Live Room Real-Time Synchronization Engine
+ * Roster Live Room Real-Time Synchronization Engine
  * Socrative-style teacher-paced classroom synchronization.
  * Supports BroadcastChannel (0ms local tabs), localStorage events, and /api/room network sync.
  */

@@ -20,7 +20,7 @@ import {
   sanitizeQuestionForStudent,
 } from './grading.js';
 
-export function createEvalApp(db, { broadcastRoom = () => {}, mailer = null } = {}) {
+export function createRosterApp(db, { broadcastRoom = () => {}, mailer = null } = {}) {
   const app = express();
   app.use(cors({ origin: true, credentials: true }));
   app.use(express.json({ limit: '2mb' }));
@@ -1996,7 +1996,7 @@ export function createEvalApp(db, { broadcastRoom = () => {}, mailer = null } = 
 
     const csv = buildCsvReport(headers, rows);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="eval-report-${req.query.id}.csv"`);
+    res.setHeader('Content-Disposition', `attachment; filename="roster-report-${req.query.id}.csv"`);
     res.send(csv);
   });
 

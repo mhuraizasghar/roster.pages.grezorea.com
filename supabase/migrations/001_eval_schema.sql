@@ -1,5 +1,5 @@
 -- =============================================================================
--- EVAL Platform — Supabase PostgreSQL Schema, RLS Policies & Server RPCs
+-- Roster Platform — Supabase PostgreSQL Schema, RLS Policies & Server RPCs
 -- Target: db.zimpzoakuxacjwikfnyk.supabase.co
 -- Logically separated into:
 --   1. Identity & Roster Management
