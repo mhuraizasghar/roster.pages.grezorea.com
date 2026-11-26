@@ -29,6 +29,56 @@ CREATE TABLE IF NOT EXISTS public.users_profile (
 CREATE INDEX IF NOT EXISTS idx_users_profile_email ON public.users_profile (lower(email));
 CREATE INDEX IF NOT EXISTS idx_users_profile_role ON public.users_profile (role);
 
+CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  profile_role TEXT := 'student';
+  profile_name TEXT;
+BEGIN
+  profile_name := COALESCE(
+    NULLIF(NEW.raw_user_meta_data->>'full_name', ''),
+    NULLIF(NEW.raw_user_meta_data->>'name', ''),
+    split_part(COALESCE(NEW.email, ''), '@', 1),
+    'User'
+  );
+
+  INSERT INTO public.users_profile (
+    auth_uid,
+    email,
+    role,
+    display_name,
+    institution_name,
+    auth_provider,
+    email_verified
+  ) VALUES (
+    NEW.id,
+    lower(COALESCE(NEW.email, '')),
+    profile_role,
+    profile_name,
+    '',
+    COALESCE(NEW.raw_app_meta_data->>'provider', 'email'),
+    COALESCE(NEW.email_confirmed_at IS NOT NULL, false)
+  )
+  ON CONFLICT (auth_uid) DO UPDATE SET
+    email = EXCLUDED.email,
+    display_name = EXCLUDED.display_name,
+    auth_provider = EXCLUDED.auth_provider,
+    email_verified = EXCLUDED.email_verified,
+    updated_at = now();
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_auth_user();
+
 CREATE TABLE IF NOT EXISTS public.groups (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   teacher_id UUID NOT NULL REFERENCES public.users_profile(id) ON DELETE CASCADE,
@@ -248,6 +298,12 @@ $$;
 -- Profiles: users can view/update their own profile
 CREATE POLICY "profiles_self_read" ON public.users_profile
   FOR SELECT USING (auth_uid = auth.uid());
+
+CREATE POLICY "profiles_self_insert" ON public.users_profile
+  FOR INSERT WITH CHECK (auth_uid = auth.uid());
+
+CREATE POLICY "profiles_self_update" ON public.users_profile
+  FOR UPDATE USING (auth_uid = auth.uid()) WITH CHECK (auth_uid = auth.uid());
 
 -- Teachers manage their own library & rosters
 CREATE POLICY "groups_teacher_all" ON public.groups

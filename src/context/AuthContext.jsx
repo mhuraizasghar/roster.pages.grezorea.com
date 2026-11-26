@@ -65,6 +65,10 @@ export function AuthProvider({ children }) {
     } finally {
       setStoredToken(null);
       setUser(null);
+      if (isSupabaseConfigured && supabase) {
+        await supabase.auth.signOut().catch(() => {});
+      }
+      sessionStorage.removeItem('googleAuthPortalRole');
     }
   }, []);
 

@@ -112,6 +112,28 @@ export async function onRequest(context) {
       return Response.json({ ok: false, error: 'Google account email must be verified.' }, { status: 403, headers });
     }
 
+    const profileResponse = await fetch(`${supabaseUrl}/rest/v1/users_profile`, {
+      method: 'POST',
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify({
+        auth_uid: googleUser.id,
+        email,
+        role: portalRole,
+        display_name: displayName,
+        institution_name: String(body.institutionName || '').trim().slice(0, 120),
+        auth_provider: 'google',
+        email_verified: true,
+      }),
+    });
+    if (!profileResponse.ok) {
+      return Response.json({ ok: false, error: 'Could not create the Roster profile.' }, { status: 503, headers });
+    }
+
     if (portalRole === 'student') {
       const rosterResponse = await fetch(
         `${supabaseUrl}/rest/v1/roster_entries?select=student_email&student_email=eq.${encodeURIComponent(email)}`,
