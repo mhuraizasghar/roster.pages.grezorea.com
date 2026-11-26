@@ -60,6 +60,25 @@ export default function GoogleAuthCallbackPage() {
         sessionStorage.removeItem('googleAuthInstitutionName');
         navigate(next.startsWith('/') ? next : `/${portalRole}`, { replace: true });
       } catch (err) {
+        if ([405, 404, 503].includes(err.status)) {
+          const { data, error: userError } = await supabase.auth.getUser(accessToken);
+          if (!userError && data?.user?.email) {
+            const email = String(data.user.email).trim().toLowerCase();
+            const fallbackUser = {
+              id: `google_${data.user.id.slice(0, 12)}`,
+              email,
+              role: portalRole,
+              displayName: String(data.user.user_metadata?.full_name || data.user.user_metadata?.name || email.split('@')[0]).trim().slice(0, 80),
+              institutionName,
+              authProvider: 'google',
+              emailVerified: true,
+            };
+            loginWithToken(accessToken, fallbackUser);
+            showToast(`Signed in as ${fallbackUser.displayName}`);
+            navigate(next.startsWith('/') ? next : `/${portalRole}`, { replace: true });
+            return;
+          }
+        }
         setError(err.message || 'Google sign-in could not be completed.');
       }
     };
