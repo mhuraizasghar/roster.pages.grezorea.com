@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 
@@ -48,37 +47,33 @@ export default function GoogleAuthCallbackPage() {
       const institutionName = sessionStorage.getItem('googleAuthInstitutionName') || '';
 
       try {
-        const res = await api.post('/api/auth/google/token', {
-          accessToken,
-          portalRole,
+        const { data, error: userError } = await supabase.auth.getUser(accessToken);
+        if (userError || !data?.user?.email) {
+          throw new Error(userError?.message || 'Google sign-in could not be verified.');
+        }
+
+        const email = String(data.user.email).trim().toLowerCase();
+        const emailVerified = Boolean(data.user.email_confirmed_at || data.user.user_metadata?.email_verified);
+        if (!emailVerified) {
+          throw new Error('Google account email must be verified.');
+        }
+
+        const signedInUser = {
+          id: `google_${data.user.id.slice(0, 12)}`,
+          email,
+          role: portalRole,
+          displayName: String(data.user.user_metadata?.full_name || data.user.user_metadata?.name || email.split('@')[0]).trim().slice(0, 80),
           institutionName,
-        });
-        loginWithToken(res.token, res.user);
-        showToast(`Signed in as ${res.user.displayName}`);
-        sessionStorage.removeItem('googleAuthPortalRole');
+          authProvider: 'google',
+          emailVerified: true,
+        };
+
+        loginWithToken(accessToken, signedInUser);
+        showToast(`Signed in as ${signedInUser.displayName}`);
         sessionStorage.removeItem('googleAuthNext');
         sessionStorage.removeItem('googleAuthInstitutionName');
         navigate(next.startsWith('/') ? next : `/${portalRole}`, { replace: true });
       } catch (err) {
-        if ([405, 404, 503].includes(err.status)) {
-          const { data, error: userError } = await supabase.auth.getUser(accessToken);
-          if (!userError && data?.user?.email) {
-            const email = String(data.user.email).trim().toLowerCase();
-            const fallbackUser = {
-              id: `google_${data.user.id.slice(0, 12)}`,
-              email,
-              role: portalRole,
-              displayName: String(data.user.user_metadata?.full_name || data.user.user_metadata?.name || email.split('@')[0]).trim().slice(0, 80),
-              institutionName,
-              authProvider: 'google',
-              emailVerified: true,
-            };
-            loginWithToken(accessToken, fallbackUser);
-            showToast(`Signed in as ${fallbackUser.displayName}`);
-            navigate(next.startsWith('/') ? next : `/${portalRole}`, { replace: true });
-            return;
-          }
-        }
         setError(err.message || 'Google sign-in could not be completed.');
       }
     };
