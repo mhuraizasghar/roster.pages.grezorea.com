@@ -248,6 +248,10 @@ async function cloudRoomRequest(path, method, body) {
 }
 
 async function request(path, { method = 'GET', body = null, headers = {} } = {}) {
+  if (isWorkspacePath(path)) {
+    return workspaceRequest(method, path, body);
+  }
+
   if (/^\/api\/rooms(?:\/|$)/.test(path)) {
     try {
       return await cloudRoomRequest(path, method, body);
