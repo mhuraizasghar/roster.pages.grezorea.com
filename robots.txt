@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://quiz-project-students.pages.dev/sitemap.xml
+Sitemap: https://eval.pages.grezorea.com/sitemap.xml
