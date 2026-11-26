@@ -16,7 +16,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 
 // Configure your walkthrough video link (MP4/WebM or YouTube/Vimeo embed URL) and poster thumbnail PNG:
-const WALKTHROUGH_VIDEO_URL = import.meta.env.VITE_WALKTHROUGH_VIDEO_URL || '';
+const WALKTHROUGH_VIDEO_URL = import.meta.env.VITE_WALKTHROUGH_VIDEO_URL || '/20261126-1704-31.7221939.mp4';
 const WALKTHROUGH_POSTER_URL = import.meta.env.VITE_WALKTHROUGH_POSTER_URL || '/roster-poster.png';
 
 function toEmbedUrl(raw) {
