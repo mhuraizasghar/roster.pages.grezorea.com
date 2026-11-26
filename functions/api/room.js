@@ -155,6 +155,7 @@ export async function onRequest(context) {
         title: row.title,
         status: row.status, // 'lobby' | 'active' | 'finished'
         currentIndex: row.current_index,
+        revealedCurrent: payload.revealedCurrent === true,
         questionsCount: questions.length,
         questions: questions,
         passMark: payload.passMark || 50,
@@ -415,6 +416,16 @@ export async function onRequest(context) {
       ).bind(nextIndex, newStatus, now, code).run();
 
       return Response.json({ ok: true, currentIndex: nextIndex, status: newStatus, updatedAt: now }, { headers });
+    }
+
+    // 5b. REVEAL CURRENT ANSWER
+    if (action === "reveal") {
+      const payload = safeJson(row.payload, {});
+      payload.revealedCurrent = body.revealed === true;
+      await env.DB.prepare(
+        "UPDATE live_rooms SET payload = ?, updated_at = ? WHERE code = ?"
+      ).bind(JSON.stringify(payload), now, code).run();
+      return Response.json({ ok: true, revealed: payload.revealedCurrent, updatedAt: now }, { headers });
     }
 
     // 6. FINISH & SUBMIT LIVE QUIZ

@@ -49,15 +49,13 @@ export default function Navbar() {
 
   return (
     <header
-      className={`sticky top-0 z-40 border-b transition-all duration-200 ${
-        filled ? 'backdrop-blur-md' : ''
-      }`}
+      className={`sticky top-0 z-40 transition-all duration-200 ${filled ? 'backdrop-blur-md' : ''}`}
       style={{
         backgroundColor: filled
           ? 'color-mix(in srgb, var(--eval-surface) 92%, transparent)'
           : 'transparent',
-        borderColor: filled ? 'var(--eval-border)' : 'transparent',
-        boxShadow: filled ? '0 1px 12px rgba(10, 9, 8, 0.05)' : 'none',
+        borderColor: 'transparent',
+        boxShadow: 'none',
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
@@ -186,8 +184,8 @@ export default function Navbar() {
         {/* Mobile Menu Toggle */}
         <button
           type="button"
-          className="md:hidden p-2 rounded-lg border"
-          style={{ borderColor: 'var(--eval-border)', color: 'var(--eval-ink)' }}
+          className="md:hidden eval-btn-ghost p-2"
+          style={{ color: 'var(--eval-ink)' }}
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
           aria-expanded={open}

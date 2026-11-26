@@ -1,3 +1,5 @@
+import { supabase, isSupabaseConfigured } from './supabase';
+
 const STORAGE_KEY = 'roster.workspace.v1';
 
 const uid = (prefix) => {
@@ -29,14 +31,59 @@ export function isWorkspacePath(path) {
   return /^\/api\/(library|roster|groups|assignments|rooms|attempts|reports|student)/.test(path);
 }
 
-export function workspaceRequest(method, path, body = {}) {
+async function getTeacherProfileId() {
+  if (!isSupabaseConfigured || !supabase) return null;
+  const { data: sessionData } = await supabase.auth.getSession();
+  const authUser = sessionData?.session?.user;
+  if (!authUser) return null;
+  const { data, error } = await supabase
+    .from('users_profile')
+    .select('id')
+    .eq('auth_uid', authUser.id)
+    .maybeSingle();
+  if (error || !data?.id) return null;
+  return data.id;
+}
+
+export async function workspaceRequest(method, path, body = {}) {
   const state = read();
 
   if (method === 'GET' && path === '/api/library') return data({ folders: state.folders, quizzes: state.quizzes, trashFolders: state.trashFolders, trashQuizzes: state.trashQuizzes });
-  if (method === 'GET' && path === '/api/roster') return data({ entries: state.rosterEntries, groups: state.groups });
+  if (method === 'GET' && path === '/api/roster') {
+    if (isSupabaseConfigured && supabase) {
+      const profileId = await getTeacherProfileId();
+      if (profileId) {
+        const [groupsResult, rosterResult] = await Promise.all([
+          supabase.from('groups').select('*').eq('teacher_id', profileId).order('name'),
+          supabase.from('roster_entries').select('*').eq('teacher_id', profileId).order('created_at', { ascending: false }),
+        ]);
+        if (!groupsResult.error && !rosterResult.error) {
+          const groups = (groupsResult.data || []).map((group) => ({ id: group.id, name: group.name, createdAt: group.created_at }));
+          const entries = (rosterResult.data || []).map((entry) => ({ id: entry.id, studentEmail: entry.student_email, email: entry.student_email, displayName: entry.display_name || '', groupId: entry.group_id, status: entry.status, createdAt: entry.created_at, updatedAt: entry.updated_at }));
+          return data({ entries, groups });
+        }
+      }
+    }
+    return data({ entries: state.rosterEntries, groups: state.groups });
+  }
   if (method === 'GET' && path === '/api/assignments') return data({ assignments: state.assignments });
   if (method === 'GET' && path === '/api/rooms') return data({ rooms: state.rooms });
-  if (method === 'GET' && path === '/api/student/dashboard') return data({ assignments: state.assignments, rooms: state.rooms, attempts: state.attempts });
+  if (method === 'GET' && path === '/api/student/dashboard') {
+    let cachedEmail = '';
+    try {
+      const cached = JSON.parse(localStorage.getItem('roster.auth.user') || 'null');
+      cachedEmail = String(cached?.email || '').trim().toLowerCase();
+    } catch {}
+    const assignments = state.assignments.filter((assignment) => {
+      if (assignment.targetType === 'students') return (assignment.targetEmails || []).map((email) => String(email).toLowerCase()).includes(cachedEmail);
+      if (assignment.targetType === 'groups') {
+        const entry = state.rosterEntries.find((item) => (item.studentEmail || item.email) === cachedEmail);
+        return entry ? (assignment.targetGroupIds || []).includes(entry.groupId) : false;
+      }
+      return assignment.targetType === 'all_roster' || !assignment.targetType;
+    });
+    return data({ assignments, liveRooms: state.rooms, rooms: state.rooms, attempts: state.attempts, results: [] });
+  }
 
   if (method === 'POST' && path === '/api/library/folders') {
     const folder = { id: uid('folder'), name: body.name, parentId: body.parentId || null, isSubject: Boolean(body.isSubject), deletedAt: null, createdAt: iso(), updatedAt: iso() };
@@ -94,21 +141,51 @@ export function workspaceRequest(method, path, body = {}) {
   }
 
   if (method === 'POST' && path === '/api/groups') {
+    if (isSupabaseConfigured && supabase) {
+      const profileId = await getTeacherProfileId();
+      if (profileId) {
+        const { data: created, error } = await supabase.from('groups').insert({ teacher_id: profileId, name: body.name }).select('*').single();
+        if (!error && created) return data({ group: { id: created.id, name: created.name, createdAt: created.created_at } });
+      }
+    }
     const group = { id: uid('group'), name: body.name, createdAt: iso() }; state.groups.push(group); write(state); return data({ group });
   }
 
   if (method === 'POST' && path === '/api/roster') {
-    const entry = { id: uid('roster'), email: String(body.email || '').trim().toLowerCase(), displayName: body.displayName || '', groupId: body.groupId || null, status: body.status || 'pending', createdAt: iso(), updatedAt: iso() };
-    if (entry.email && !state.rosterEntries.some((item) => item.email === entry.email)) state.rosterEntries.push(entry);
+    const studentEmail = String(body.email || body.studentEmail || '').trim().toLowerCase();
+    if (isSupabaseConfigured && supabase) {
+      const profileId = await getTeacherProfileId();
+      if (profileId) {
+        const { data: created, error } = await supabase.from('roster_entries').upsert({ teacher_id: profileId, student_email: studentEmail, display_name: body.displayName || '', group_id: body.groupId || null, status: 'pending' }, { onConflict: 'teacher_id,student_email' }).select('*').single();
+        if (!error && created) return data({ entry: { id: created.id, studentEmail: created.student_email, email: created.student_email, displayName: created.display_name || '', groupId: created.group_id, status: created.status, createdAt: created.created_at, updatedAt: created.updated_at } });
+      }
+    }
+    const entry = { id: uid('roster'), email: studentEmail, studentEmail, displayName: body.displayName || '', groupId: body.groupId || null, status: body.status || 'pending', createdAt: iso(), updatedAt: iso() };
+    if (studentEmail && !state.rosterEntries.some((item) => (item.studentEmail || item.email) === studentEmail)) state.rosterEntries.push(entry);
     write(state); return data({ entry });
   }
 
   if (method === 'POST' && path === '/api/roster/bulk') {
+    let importedCount = 0;
+    let duplicateCount = 0;
+    const invalid = [];
     for (const item of body.entries || []) {
-      const entry = { id: uid('roster'), email: String(item.email || '').trim().toLowerCase(), displayName: item.displayName || '', groupId: item.groupId || null, status: item.status || 'pending', createdAt: iso(), updatedAt: iso() };
-      if (entry.email && !state.rosterEntries.some((existing) => existing.email === entry.email)) state.rosterEntries.push(entry);
+      const studentEmail = String(item.email || item.studentEmail || '').trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)) {
+        if (studentEmail) invalid.push(studentEmail);
+        continue;
+      }
+      if (state.rosterEntries.some((existing) => (existing.studentEmail || existing.email) === studentEmail)) {
+        duplicateCount += 1;
+        continue;
+      }
+      const namedGroup = state.groups.find((group) => group.name.toLowerCase() === String(item.groupName || '').trim().toLowerCase());
+      const entry = { id: uid('roster'), email: studentEmail, studentEmail, displayName: item.displayName || '', groupId: item.groupId || body.groupId || namedGroup?.id || null, status: item.status || 'pending', createdAt: iso(), updatedAt: iso() };
+      state.rosterEntries.push(entry);
+      importedCount += 1;
     }
-    write(state); return data({ entries: state.rosterEntries });
+    write(state);
+    return data({ entries: state.rosterEntries, importedCount, duplicateCount, invalidCount: invalid.length, invalid });
   }
 
   match = path.match(/^\/api\/roster\/([^/]+)$/);
@@ -144,7 +221,13 @@ export function workspaceRequest(method, path, body = {}) {
     if (match[2] === 'navigate') room.currentIndex = body.index ?? room.currentIndex;
     if (match[2] === 'reveal') room.revealAnswer = Boolean(body.reveal);
     if (match[2] === 'end') room.status = 'ended';
-    if (match[2] === 'join') room.participants = room.participants || [];
+    if (match[2] === 'join') {
+      room.participants = room.participants || [];
+      const participantName = String(body.studentName || 'Student').trim().slice(0, 80);
+      if (participantName && !room.participants.some((participant) => participant.name?.toLowerCase() === participantName.toLowerCase())) {
+        room.participants.push({ id: uid('participant'), name: participantName, joinedAt: iso(), active: true });
+      }
+    }
     if (match[2] === 'answer') room.answers = room.answers || {};
     room.updatedAt = iso(); write(state); return data({ room });
   }

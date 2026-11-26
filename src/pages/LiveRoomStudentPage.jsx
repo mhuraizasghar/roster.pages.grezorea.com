@@ -35,6 +35,14 @@ export default function LiveRoomStudentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMap, setFeedbackMap] = useState({});
   const [secondsLeft, setSecondsLeft] = useState(null);
+  const [joinRequested, setJoinRequested] = useState(false);
+  const [studentName, setStudentName] = useState(() => {
+    try {
+      return localStorage.getItem('roster.live.studentName') || '';
+    } catch {
+      return '';
+    }
+  });
 
   const syncState = useCallback(async () => {
     try {
@@ -52,8 +60,19 @@ export default function LiveRoomStudentPage() {
     async function init() {
       setLoading(true);
       setJoinError('');
+      if (!joinRequested) {
+        setLoading(false);
+        return;
+      }
+      const joinName = (studentName || user?.displayName || '').trim();
+      if (!joinName) {
+        setJoinError('Enter your name to join this room.');
+        setLoading(false);
+        return;
+      }
       try {
-        const res = await api.post(`/api/rooms/${encodeURIComponent(code)}/join`, {});
+        localStorage.setItem('roster.live.studentName', joinName);
+        const res = await api.post(`/api/rooms/${encodeURIComponent(code)}/join`, { studentName: joinName });
         setRoom(res.room);
         cleanupSocket = connectRoomSocket(code, {
           onUpdate: (nextRoom) => setRoom(nextRoom),
@@ -76,7 +95,7 @@ export default function LiveRoomStudentPage() {
       cleanupSocket();
       if (pollTimer) clearInterval(pollTimer);
     };
-  }, [code, showToast, syncState]);
+  }, [code, showToast, syncState, studentName, user?.displayName, joinRequested]);
 
   const activeIdx = room?.mode === 'student_paced' ? studentIdx : (room?.currentQuestionIdx || 0);
   const currentQ = room?.questions?.[activeIdx] || null;
@@ -181,6 +200,33 @@ export default function LiveRoomStudentPage() {
           <p className="text-xs leading-relaxed" style={{ color: 'var(--eval-muted)' }}>
             {joinError || 'Room could not be loaded.'}
           </p>
+          {!room && !loading && (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!studentName.trim()) {
+                  showToast('Enter your name to join.', 'warning');
+                  return;
+                }
+                setJoinError('');
+                setLoading(true);
+                setJoinRequested(true);
+              }}
+              className="space-y-3"
+            >
+              <input
+                type="text"
+                value={studentName}
+                onChange={(event) => setStudentName(event.target.value)}
+                placeholder="Enter your name"
+                className="eval-input text-sm text-center"
+                maxLength={80}
+                autoFocus
+                required
+              />
+              <button type="submit" className="eval-btn-primary w-full text-xs">Join with Name</button>
+            </form>
+          )}
           <Link to="/student" className="eval-btn-primary text-xs inline-flex">
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Student Dashboard
           </Link>

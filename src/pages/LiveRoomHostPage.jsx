@@ -17,6 +17,7 @@ import {
   Trophy,
   Users,
   Wifi,
+  X,
 } from 'lucide-react';
 import { api, connectRoomSocket } from '../lib/api';
 import { useToast } from '../components/Toast';
@@ -201,16 +202,23 @@ export default function LiveRoomHostPage() {
       </div>
 
       {showQr && qrUrl && (
-        <div className="eval-card p-6 flex flex-col sm:flex-row items-center gap-6">
-          <img src={qrUrl} alt={`QR Code for room ${room.code}`} className="w-40 h-40 rounded-lg border p-1 bg-white" />
-          <div className="space-y-1.5 text-center sm:text-left">
-            <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--eval-accent)' }}>
-              Student Join Code
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Student room QR code">
+          <button type="button" className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowQr(false)} aria-label="Close QR code" />
+          <div className="relative eval-card w-full max-w-md p-6 sm:p-7 flex flex-col items-center gap-5 text-center shadow-xl">
+            <button type="button" onClick={() => setShowQr(false)} className="eval-btn-ghost absolute right-3 top-3 p-1.5" aria-label="Close QR code">
+              <X className="w-4 h-4" />
+            </button>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--eval-accent)' }}>Student Join Code</div>
+              <div className="text-3xl sm:text-4xl font-bold font-mono tracking-widest mt-2">{room.code}</div>
             </div>
-            <div className="text-3xl font-bold font-mono tracking-widest">{room.code}</div>
-            <p className="text-xs" style={{ color: 'var(--eval-muted)' }}>
-              Students scan to open <code className="font-mono">{window.location.origin}/room/{room.code}</code>
+            <img src={qrUrl} alt={`QR Code for room ${room.code}`} className="w-52 h-52 sm:w-56 sm:h-56 rounded-lg border p-2 bg-white" />
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--eval-muted)' }}>
+              Scan with a phone or open the join link below.
             </p>
+            <button type="button" onClick={copyJoinUrl} className="eval-btn-secondary h-10 px-4 text-xs">
+              <Copy className="w-3.5 h-3.5" /> Copy Join Link
+            </button>
           </div>
         </div>
       )}

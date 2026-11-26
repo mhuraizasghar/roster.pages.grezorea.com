@@ -3,6 +3,22 @@ import { api, getStoredToken, setStoredToken } from '../lib/api';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const AuthContext = createContext(null);
+const CACHED_USER_KEY = 'roster.auth.user';
+
+function readCachedUser() {
+  try {
+    return JSON.parse(localStorage.getItem(CACHED_USER_KEY) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedUser(user) {
+  try {
+    if (user) localStorage.setItem(CACHED_USER_KEY, JSON.stringify(user));
+    else localStorage.removeItem(CACHED_USER_KEY);
+  } catch {}
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -18,13 +34,15 @@ export function AuthProvider({ children }) {
     try {
       const res = await api.get('/api/auth/me');
       setUser(res.user);
+      writeCachedUser(res.user);
       return res.user;
     } catch (error) {
+      const cachedUser = readCachedUser();
       if ([405, 404, 503].includes(error?.status) && isSupabaseConfigured && supabase) {
         const { data, error: userError } = await supabase.auth.getUser(token);
         if (!userError && data?.user?.email) {
           const email = String(data.user.email).trim().toLowerCase();
-          const role = sessionStorage.getItem('googleAuthPortalRole') === 'student' ? 'student' : 'teacher';
+          const role = cachedUser?.role || (sessionStorage.getItem('googleAuthPortalRole') === 'student' ? 'student' : 'teacher');
           const fallbackUser = {
             id: `google_${data.user.id.slice(0, 12)}`,
             email,
@@ -35,9 +53,16 @@ export function AuthProvider({ children }) {
             emailVerified: true,
           };
           setUser(fallbackUser);
+          writeCachedUser(fallbackUser);
           return fallbackUser;
         }
       }
+
+      if (cachedUser) {
+        setUser(cachedUser);
+        return cachedUser;
+      }
+
       setStoredToken(null);
       setUser(null);
       return null;
@@ -52,6 +77,7 @@ export function AuthProvider({ children }) {
 
   const loginWithToken = useCallback((token, userObj) => {
     setStoredToken(token);
+    writeCachedUser(userObj);
     setUser(userObj);
   }, []);
 
@@ -64,6 +90,7 @@ export function AuthProvider({ children }) {
       // Clear local session regardless
     } finally {
       setStoredToken(null);
+      writeCachedUser(null);
       setUser(null);
       if (isSupabaseConfigured && supabase) {
         await supabase.auth.signOut().catch(() => {});
