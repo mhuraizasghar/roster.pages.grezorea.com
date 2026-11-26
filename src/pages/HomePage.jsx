@@ -43,11 +43,7 @@ export default function HomePage() {
     e.preventDefault();
     const clean = roomCode.trim().toUpperCase();
     if (!clean) return;
-    if (user?.role === 'student') {
-      navigate(`/room/${encodeURIComponent(clean)}`);
-    } else {
-      navigate(`/student/login?next=${encodeURIComponent(`/room/${clean}`)}`);
-    }
+    navigate(`/room/${encodeURIComponent(clean)}`);
   };
 
   return (
@@ -55,17 +51,6 @@ export default function HomePage() {
       {/* 1. Clean Full-Width Editorial Hero (No boxed right div) */}
       <section className="pt-14 sm:pt-24 pb-16 sm:pb-20 border-b" style={{ borderColor: 'var(--eval-border)' }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
-          <div className="inline-flex items-center gap-2.5 px-3.5 py-1 rounded-full border text-[11px] font-semibold uppercase tracking-[0.14em]"
-            style={{
-              borderColor: 'var(--eval-border-strong)',
-              backgroundColor: 'var(--eval-surface)',
-              color: 'var(--eval-accent)',
-            }}
-          >
-            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'var(--eval-accent)' }} />
-            Roster-Gated Assessment Platform
-          </div>
-
           <h1
             className="text-4xl sm:text-6xl lg:text-[4.15rem] font-semibold tracking-tight leading-[1.06] max-w-4xl mx-auto"
             style={{ color: 'var(--eval-ink)' }}
