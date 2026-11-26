@@ -23,11 +23,36 @@ export default function GoogleAuthCallbackPage() {
         return;
       }
 
-      const { data, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !data.session?.access_token) {
-        setError(sessionError?.message || 'Google sign-in could not be completed.');
+      const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const fragmentAccessToken = fragment.get('access_token');
+      const fragmentRefreshToken = fragment.get('refresh_token');
+
+      let accessToken = '';
+      if (fragmentAccessToken) {
+        const { data, error: setSessionError } = await supabase.auth.setSession({
+          access_token: fragmentAccessToken,
+          refresh_token: fragmentRefreshToken || '',
+        });
+        if (setSessionError || !data.session?.access_token) {
+          setError(setSessionError?.message || 'Google sign-in could not be completed.');
+          return;
+        }
+        accessToken = data.session.access_token;
+      } else {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError || !data.session?.access_token) {
+          setError(sessionError?.message || 'Google sign-in could not be completed.');
+          return;
+        }
+        accessToken = data.session.access_token;
+      }
+
+      if (!accessToken) {
+        setError('Google sign-in could not be completed.');
         return;
       }
+
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
 
       const portalRole = sessionStorage.getItem('googleAuthPortalRole') === 'student' ? 'student' : 'teacher';
       const next = sessionStorage.getItem('googleAuthNext') || (portalRole === 'student' ? '/student' : '/teacher');
@@ -35,7 +60,7 @@ export default function GoogleAuthCallbackPage() {
 
       try {
         const res = await api.post('/api/auth/google/token', {
-          accessToken: data.session.access_token,
+          accessToken,
           portalRole,
           institutionName,
         });

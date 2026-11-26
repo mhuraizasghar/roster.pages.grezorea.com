@@ -8,5 +8,14 @@ const isConfigured =
   Boolean(anonKey) &&
   !String(anonKey).includes('[YOUR-SUPABASE-ANON-KEY]');
 
-export const supabase = isConfigured ? createClient(url, anonKey) : null;
+export const supabase = isConfigured
+  ? createClient(url, anonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'implicit',
+      },
+    })
+  : null;
 export const isSupabaseConfigured = isConfigured;
