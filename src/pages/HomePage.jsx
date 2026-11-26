@@ -121,8 +121,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 2. Standalone 16:9 Platform Walkthrough Video Frame + Heading Below */}
-      <section id="walkthrough" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-24 space-y-6">
+      {/* 2. Native-ratio Platform Walkthrough Video Frame + Heading Below */}
+      <section id="walkthrough" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-24 space-y-6">
         <div
           className="rounded-xl border overflow-hidden shadow-lg"
           style={{
@@ -130,10 +130,11 @@ export default function HomePage() {
             borderColor: 'var(--eval-border-strong)',
           }}
         >
-          {/* 16:9 autoplay preview; muted playback is allowed by browsers. */}
+          {/* Native 1914:984 autoplay preview; muted playback is allowed by browsers. */}
           <div
-            className="relative aspect-video w-full flex items-center justify-center overflow-hidden"
+            className="relative w-full flex items-center justify-center overflow-hidden"
             style={{
+              aspectRatio: '1914 / 984',
               background: 'radial-gradient(circle at 50% 42%, rgba(73, 17, 28, 0.36), #0a0908 72%)',
             }}
           >
