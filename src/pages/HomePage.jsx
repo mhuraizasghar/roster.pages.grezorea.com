@@ -78,25 +78,25 @@ export default function HomePage() {
           </p>
 
           {/* Primary Actions */}
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+          <div className="grid w-full max-w-[760px] grid-cols-1 sm:grid-cols-3 items-center justify-center gap-3 pt-1 mx-auto">
             {user ? (
               <Link
                 to={user.role === 'teacher' ? '/teacher' : '/student'}
-                className="eval-btn-primary px-7 py-3.5 text-sm"
+                className="eval-btn-primary w-full px-4 text-sm"
               >
                 Open {user.role === 'teacher' ? 'Teacher Workspace' : 'Student Dashboard'}
                 <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
               </Link>
             ) : (
               <>
-                <Link to="/teacher/signup" className="eval-btn-primary px-7 py-3.5 text-sm">
+                <Link to="/teacher/signup" className="eval-btn-primary w-full px-4 text-sm">
                   Sign up for free
                   <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
                 </Link>
-                <Link to="/teacher/login" className="eval-btn-secondary px-6 py-3.5 text-sm">
+                <Link to="/teacher/login" className="eval-btn-secondary w-full px-4 text-sm">
                   Instructor Log in
                 </Link>
-                <Link to="/student/login" className="eval-btn-secondary px-6 py-3.5 text-sm">
+                <Link to="/student/login" className="eval-btn-secondary w-full px-4 text-sm">
                   Student Login
                 </Link>
               </>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, LogOut, LayoutDashboard, ArrowUpRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -6,7 +6,9 @@ import { useAuth } from '../context/AuthContext';
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const profileRef = useRef(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -19,13 +21,30 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  useEffect(() => {
+    const onPointerDown = (event) => {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, []);
+
   const handleLogout = async () => {
     await logout();
     setOpen(false);
+    setProfileOpen(false);
     navigate('/');
   };
 
   const dashboardPath = user?.role === 'teacher' ? '/teacher' : '/student';
+  const initials = String(user?.displayName || user?.email || 'User')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'U';
   const filled = scrolled || open;
 
   return (
@@ -89,41 +108,65 @@ export default function Navbar() {
         {/* Right Actions */}
         <div className="hidden md:flex items-center gap-2">
           {user ? (
-            <>
-              <div
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs"
-                style={{
-                  borderColor: 'var(--eval-border)',
-                  backgroundColor: filled ? 'var(--eval-bg)' : 'var(--eval-surface)',
-                }}
-              >
-                <span className="font-medium truncate max-w-[140px]" style={{ color: 'var(--eval-ink)' }}>
-                  {user.displayName}
-                </span>
-                <span
-                  className="uppercase tracking-wider text-[10px] font-medium px-1.5 py-0.5 rounded"
-                  style={{
-                    backgroundColor: 'var(--eval-accent-soft)',
-                    color: 'var(--eval-accent)',
-                  }}
-                >
-                  {user.role}
-                </span>
-              </div>
-              <Link to={dashboardPath} className="eval-btn-primary py-2 px-3.5 text-xs">
-                <LayoutDashboard className="w-3.5 h-3.5" strokeWidth={1.75} />
-                Workspace
-              </Link>
+            <div className="relative" ref={profileRef}>
               <button
                 type="button"
-                onClick={handleLogout}
-                className="eval-btn-secondary py-2 px-3 text-xs"
-                aria-label="Sign out"
+                onClick={() => setProfileOpen((value) => !value)}
+                className="w-10 h-10 rounded-full border overflow-hidden flex items-center justify-center text-sm font-semibold shrink-0"
+                style={{
+                  borderColor: 'var(--eval-border-strong)',
+                  backgroundColor: 'var(--eval-accent-soft)',
+                  color: 'var(--eval-accent)',
+                }}
+                aria-label="Open profile menu"
+                aria-haspopup="menu"
+                aria-expanded={profileOpen}
               >
-                <LogOut className="w-3.5 h-3.5" strokeWidth={1.75} />
-                Sign out
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : initials}
               </button>
-            </>
+
+              {profileOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-12 w-64 rounded-lg border p-2 shadow-lg"
+                  style={{
+                    borderColor: 'var(--eval-border)',
+                    backgroundColor: 'var(--eval-surface)',
+                  }}
+                >
+                  <div className="px-3 py-2.5 border-b mb-1" style={{ borderColor: 'var(--eval-border)' }}>
+                    <p className="text-sm font-semibold truncate" style={{ color: 'var(--eval-ink)' }}>
+                      {user.displayName}
+                    </p>
+                    <p className="text-xs truncate mt-0.5" style={{ color: 'var(--eval-muted)' }}>
+                      {user.email}
+                    </p>
+                  </div>
+                  <Link
+                    to={dashboardPath}
+                    role="menuitem"
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-md text-xs font-medium hover:opacity-80"
+                    style={{ color: 'var(--eval-ink)' }}
+                  >
+                    <LayoutDashboard className="w-4 h-4" strokeWidth={1.75} />
+                    {user.role === 'teacher' ? 'Teacher Workspace' : 'Student Dashboard'}
+                  </Link>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md text-xs font-medium hover:opacity-80"
+                    style={{ color: 'var(--eval-ink)' }}
+                  >
+                    <LogOut className="w-4 h-4" strokeWidth={1.75} />
+                    Sign out
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               <Link to="/student/login" className="eval-btn-ghost text-xs">

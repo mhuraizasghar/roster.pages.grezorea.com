@@ -98,7 +98,7 @@ html.dark {
   }
 
   .eval-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 font-medium rounded-lg px-4 py-2.5 text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex h-11 items-center justify-center gap-2 font-medium rounded-lg px-4 py-2.5 text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed;
     background-color: var(--eval-accent);
     color: #f2f4f3;
   }
@@ -107,7 +107,7 @@ html.dark {
   }
 
   .eval-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 font-medium rounded-lg px-4 py-2.5 text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex h-11 items-center justify-center gap-2 font-medium rounded-lg px-4 py-2.5 text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed;
     background-color: var(--eval-surface);
     color: var(--eval-ink);
     border: 1px solid var(--eval-border-strong);
@@ -117,7 +117,7 @@ html.dark {
   }
 
   .eval-btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 font-medium rounded-lg px-3 py-2 text-sm transition-colors;
+    @apply inline-flex h-11 items-center justify-center gap-2 font-medium rounded-lg px-3 py-2 text-sm transition-colors;
     color: var(--eval-muted);
   }
   .eval-btn-ghost:hover {
