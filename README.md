@@ -1,66 +1,63 @@
-# QuizHub
+# Roster
 
-QuizHub is a browser-based quiz application for taking timed multiple-choice quizzes, reviewing answers, and comparing scores. It also includes an admin area for creating quizzes, managing enrolled emails, viewing results, and importing or exporting quiz data.
+Roster is a teacher-managed quiz and classroom platform for creating assessments, managing student rosters, running live rooms, and reviewing submissions.
 
 ## Repository
 
-GitHub: https://github.com/mhuraizasghar/quiz
+GitHub: https://github.com/mhuraizasghar/roster.pages.grezorea.com
 
 ## Features
 
-- Timed quizzes with automatic submission
-- Student sign-in through an enrolled email list
-- Randomized question order
-- Score, percentage, answer review, and high-score results
-- Admin quiz and question editor
-- Student enrolment management
-- Import and export of quiz data
-- Browser storage for quizzes and student attempts
+- Teacher account authentication
+- Structured quiz library with folders and subjects
+- Student email roster management
+- Timed quizzes and assignment attempts
+- Live classroom rooms with real-time participation
+- Submission reports and CSV export
+- Supabase-backed storage and authentication
+- Cloudflare and Vercel deployment support
 
 ## Run locally
 
-No build step or package installation is required.
+Install dependencies and start the Vite development server:
 
 ```bash
-python3 -m http.server 8000
+npm install
+npm run dev
 ```
 
-Open http://localhost:8000 in a browser.
+To run the application server and frontend together:
 
-### Demo login
+```bash
+npm run dev:all
+```
 
-Use a name and either `student@example.com` or `demo@example.com` for the student view.
+The React application is served through Vite. Configure Supabase and server environment variables before running against hosted data.
 
-Open `admin.html` to use the admin panel. The default admin password is `admin123`.
+## Build
+
+```bash
+npm run build
+```
 
 ## Testing
 
-Run the tests with Node.js:
-
 ```bash
-node --test
+npm test
 ```
 
-The test suite covers quiz scoring, email rules, result tables, imports, backups, and stored quizzes.
+Node test suites cover quizzes, stored attempts, and live room synchronization.
 
-## Project files
+## Project structure
 
-- `index.html` - student sign-in and dashboard
-- `quiz.html` - quiz instructions and timed quiz runner
-- `result.html` - score and answer review
-- `admin.html` - quiz and student management
-- `css/style.css` - application styles
-- `js/` - page controllers and browser data storage
-- `data/` - question and published quiz data
+- `src/` - React application pages and components
+- `server/` - Express API and server configuration
+- `supabase/migrations/` - Supabase database migrations
+- `migrations/` - Cloudflare D1 migrations
+- `public/` - static assets
 - `tests/` - automated tests
-- `scripts/` - build and repository scripts
+- `functions/api/` - Cloudflare Pages API handlers
 
-## Data storage
+## Security
 
-Quiz content and enrolment information are stored in `data/published.json` so they can be shared by publishing the file with the site.
-
-Student sessions use the browser, while submitted attempts and high scores are saved to Cloudflare D1 for global access. `localStorage` remains as an offline cache.
-
-## Security note
-
-The sign-in screens are intended for simple access control. They are not a secure exam system. Admin passwords and quiz answers are visible in browser-side code and data files, so this project should not be used for graded or high-stakes examinations without a backend authentication and scoring system.
+Roster is intended for roster-gated academic access. Production deployments should use authenticated backend authorization and properly configured database policies rather than relying on browser-side checks alone.

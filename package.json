@@ -1,7 +1,7 @@
 {
-  "name": "eval-platform",
+  "name": "roster-platform",
   "version": "2.0.0",
-  "description": "EVAL (eval.pages.grezorea.com) - Teacher-managed quiz library, roster-gated assessments, and real-time live classroom platform.",
+  "description": "Roster (roster.pages.grezorea.com) - Teacher-managed quiz library, roster-gated assessments, and real-time live classroom platform.",
   "private": true,
   "license": "MIT",
   "scripts": {

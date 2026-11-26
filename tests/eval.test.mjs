@@ -270,7 +270,7 @@ test('API integration: dual portals, roster gating, assignment attempt, and live
   assert.ok(csvRes.raw.includes('zainab.iqbal@institute.org'));
 });
 
-test('Mailer renders branded Resend emails with EVAL logo and delivers verification, OTP, recovery, and results', async (t) => {
+test('Mailer renders branded Resend emails with Roster logo and delivers verification, OTP, recovery, and results', async (t) => {
   const sentEmails = [];
   const origFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
@@ -291,7 +291,7 @@ test('Mailer renders branded Resend emails with EVAL logo and delivers verificat
   const mailer = createMailer({
     apiKey: 're_test_dummy_key',
     fromEmail: 'noreply@pages.grezorea.com',
-    appUrl: 'https://eval.pages.grezorea.com',
+    appUrl: 'https://roster.pages.grezorea.com',
   });
 
   assert.equal(mailer.isConfigured(), true);
@@ -313,7 +313,7 @@ test('Mailer renders branded Resend emails with EVAL logo and delivers verificat
   assert.equal(sentEmails.length, 4);
   for (const mail of sentEmails) {
     assert.equal(mail.from, 'EVAL Assessment <noreply@pages.grezorea.com>');
-    assert.ok(mail.html.includes('https://eval.pages.grezorea.com/eval-logo.png'));
+    assert.ok(mail.html.includes('https://roster.pages.grezorea.com/roster-logo.png'));
     assert.ok(mail.html.includes('#49111c'));
   }
   assert.ok(sentEmails[0].html.includes('/teacher/login?verify=tok123'));

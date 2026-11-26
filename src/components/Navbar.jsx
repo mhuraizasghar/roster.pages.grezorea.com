@@ -45,15 +45,15 @@ export default function Navbar() {
         {/* Brand Logo + Wordmark */}
         <Link to="/" className="flex items-center gap-2.5 shrink-0" onClick={() => setOpen(false)}>
           <img
-            src="/eval-logo.png"
-            alt="EVAL"
+            src="/roster-logo.png"
+            alt="Roster"
             className="h-7 w-auto object-contain dark:invert"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
             }}
           />
           <span className="text-lg font-semibold tracking-tight" style={{ color: 'var(--eval-ink)' }}>
-            EVAL
+            Roster
           </span>
         </Link>
 

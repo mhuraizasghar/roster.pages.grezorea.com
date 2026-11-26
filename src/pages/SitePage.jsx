@@ -14,7 +14,7 @@ import { api } from '../lib/api';
 const SUPPORT_FAQS = [
   {
     q: 'Why does Student Sign In say my email has not been added by a teacher yet?',
-    a: 'EVAL does not offer open student sign-up. An instructor must add your exact email address to their roster first. Ask your instructor to verify the spelling of your email in their Student Roster tab.',
+    a: 'Roster does not offer open student sign-up. An instructor must add your exact email address to their roster first. Ask your instructor to verify the spelling of your email in their Student Roster tab.',
   },
   {
     q: 'I have both a Teacher and a Student role at different institutions. Can I switch roles?',

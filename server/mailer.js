@@ -1,6 +1,6 @@
 /**
  * EVAL Transactional Mailer (Resend REST API)
- * Sends branded HTML & plain-text emails with the EVAL logo and Night Bordeaux theme.
+ * Sends branded HTML & plain-text emails with the Roster logo and Night Bordeaux theme.
  */
 
 function escapeHtml(val) {
@@ -26,7 +26,7 @@ function resolveMailerConfig(overrides = {}) {
   const appUrl = (
     overrides.appUrl ??
     process.env.PUBLIC_APP_URL ??
-    'https://eval.pages.grezorea.com'
+    'https://roster.pages.grezorea.com'
   ).replace(/\/+$/, '');
 
   const cleanKey = String(apiKey).trim();
@@ -42,7 +42,7 @@ function resolveMailerConfig(overrides = {}) {
 }
 
 function renderEmailLayout({ appUrl, eyebrow, heading, bodyHtml, ctaLabel, ctaUrl, footerNote }) {
-  const logoUrl = `${appUrl}/eval-logo.png`;
+  const logoUrl = `${appUrl}/roster-logo.png`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -55,7 +55,7 @@ function renderEmailLayout({ appUrl, eyebrow, heading, bodyHtml, ctaLabel, ctaUr
     <tr>
       <td align="center">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:580px;background-color:#ffffff;border:1px solid #d9d0c7;border-radius:10px;overflow:hidden;">
-          <!-- Header with EVAL Logo -->
+          <!-- Header with Roster Logo -->
           <tr>
             <td style="padding:24px 28px;border-bottom:1px solid #eae6e1;background-color:#ffffff;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">

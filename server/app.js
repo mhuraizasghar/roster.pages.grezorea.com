@@ -27,7 +27,7 @@ export function createEvalApp(db, { broadcastRoom = () => {}, mailer = null } = 
 
   const noopMailer = {
     isConfigured: () => false,
-    getStatus: () => ({ configured: false, fromEmail: 'noreply@pages.grezorea.com', appUrl: 'https://eval.pages.grezorea.com' }),
+    getStatus: () => ({ configured: false, fromEmail: 'noreply@pages.grezorea.com', appUrl: 'https://roster.pages.grezorea.com' }),
     sendTeacherVerification: async () => ({ sent: false, skipped: true }),
     sendStudentOtp: async () => ({ sent: false, skipped: true }),
     sendPasswordReset: async () => ({ sent: false, skipped: true }),

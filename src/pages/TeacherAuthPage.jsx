@@ -68,7 +68,7 @@ export default function TeacherAuthPage({ initialMode = 'login' }) {
         const res = await api.post('/api/auth/teacher/verify-email', { token: verifyParam });
         if (!active) return;
         loginWithToken(res.token, res.user);
-        showToast('Email verified. Welcome to EVAL.');
+        showToast('Email verified. Welcome to Roster.');
         navigate('/teacher', { replace: true });
       } catch (err) {
         if (!active) return;

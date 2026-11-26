@@ -13,7 +13,7 @@
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; connect-src 'self' https://zimpzoakuxacjwikfnyk.supabase.co wss://zimpzoakuxacjwikfnyk.supabase.co https://eval.pages.grezorea.com wss://eval.pages.grezorea.com ws://localhost:* http://localhost:*; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; connect-src 'self' https://zimpzoakuxacjwikfnyk.supabase.co wss://zimpzoakuxacjwikfnyk.supabase.co https://roster.pages.grezorea.com wss://roster.pages.grezorea.com ws://localhost:* http://localhost:*; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         }
       ]
     }

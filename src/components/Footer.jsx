@@ -135,15 +135,15 @@ export default function Footer() {
           <div className="lg:col-span-3 space-y-3">
             <Link to="/" className="inline-flex items-center gap-2.5">
               <img
-                src="/eval-logo.png"
-                alt="EVAL"
+                src="/roster-logo.png"
+                alt="Roster"
                 className="h-7 w-auto object-contain rounded-sm dark:invert"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                 }}
               />
               <span className="text-lg font-semibold tracking-tight" style={{ color: 'var(--eval-ink)' }}>
-                EVAL
+                Roster
               </span>
             </Link>
             <p className="text-xs leading-relaxed max-w-xs" style={{ color: 'var(--eval-muted)' }}>

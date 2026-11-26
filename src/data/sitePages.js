@@ -1,5 +1,5 @@
 /**
- * Dedicated public pages registry for EVAL (eval.pages.grezorea.com).
+ * Dedicated public pages registry for Roster (roster.pages.grezorea.com).
  * Every public route linked in the footer and sitemap resolves to a real, structured page.
  */
 
@@ -7,7 +7,7 @@ export const SITE_PAGES = {
   features: {
     eyebrow: 'Platform Overview',
     title: 'Complete assessment infrastructure for modern classrooms',
-    lead: 'EVAL combines a structured instructor quiz library, verified email rosters, real-time live rooms, and self-paced assignments under one cohesive platform.',
+    lead: 'Roster combines a structured instructor quiz library, verified email rosters, real-time live rooms, and self-paced assignments under one cohesive platform.',
     updated: '2026',
     primaryCta: { label: 'Sign up for free', to: '/teacher/signup' },
     secondaryCta: { label: 'Instructor Guide', to: '/guide/instructors' },

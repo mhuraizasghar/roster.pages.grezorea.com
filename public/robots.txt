@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://eval.pages.grezorea.com/sitemap.xml
+Sitemap: https://roster.pages.grezorea.com/sitemap.xml
