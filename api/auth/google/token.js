@@ -56,20 +56,20 @@ function configuredSupabase(accessToken) {
     const matchingProject = configs.filter((config) => {
       try { return new URL(config.url).origin === issuerOrigin; } catch { return false; }
     });
-    const matchingKey = matchingProject.find((config) => {
+    const matchingKeys = matchingProject.filter((config) => {
       try {
         const urlRef = new URL(config.url).hostname.split('.')[0];
         const keyRef = jwtPayload(config.key)?.ref;
         return !keyRef || keyRef === urlRef;
       } catch { return false; }
     });
-    if (matchingKey) return matchingKey;
+    if (matchingKeys.length) return matchingKeys;
     if (matchingProject.length) {
       console.error('Roster Supabase API key does not match the sign-in project.');
     }
     return null;
   }
-  return configs[0] || null;
+  return configs.length ? configs : null;
 }
 
 module.exports = async function handler(req, res) {
@@ -85,37 +85,52 @@ module.exports = async function handler(req, res) {
   if (!['teacher', 'student'].includes(portalRole)) return res.status(400).json({ error: 'Invalid portal role.' });
   if (!accessToken) return res.status(400).json({ error: 'Missing Supabase access token.' });
 
-  const supabaseConfig = configuredSupabase(accessToken);
+  const selectedConfig = configuredSupabase(accessToken);
   const sessionSecret = process.env.SESSION_SECRET;
-  if (!supabaseConfig || !sessionSecret || sessionSecret.length < 32) {
+  if (!selectedConfig || !sessionSecret || sessionSecret.length < 32) {
     console.error('Roster auth configuration is incomplete:', JSON.stringify({
-      supabaseConfig: Boolean(supabaseConfig),
+      supabaseConfig: Boolean(selectedConfig),
       sessionSecret: Boolean(sessionSecret && sessionSecret.length >= 32),
     }));
     return res.status(503).json({ errorCode: 'AUTH_CONFIGURATION', error: 'Sign-in is temporarily unavailable. Please try again later.' });
   }
 
   try {
+    const configs = Array.isArray(selectedConfig) ? selectedConfig : [selectedConfig];
+    let supabaseConfig = null;
+    let authBody = null;
+    let lastAuthResponse = null;
+    for (const config of configs) {
+      const authResponse = await fetch(`${config.url.replace(/\/$/, '')}/auth/v1/user`, {
+        headers: {
+          apikey: config.key,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      const responseBody = await authResponse.json().catch(() => ({}));
+      if (authResponse.ok && responseBody?.id) {
+        supabaseConfig = config;
+        authBody = responseBody;
+        break;
+      }
+      const authCode = String(responseBody.code || responseBody.error_code || '');
+      const authMessage = String(responseBody.msg || responseBody.message || '');
+      lastAuthResponse = { status: authResponse.status, code: authCode, message: authMessage };
+      if (/invalid api key|api key.*invalid/i.test(authMessage)) {
+        continue;
+      }
+      console.error('Supabase token check failed:', authResponse.status, authCode || authMessage.slice(0, 100));
+      return res.status(401).json({ error: 'Google did not return a valid sign-in session. Please try again.' });
+    }
+    if (!supabaseConfig || !authBody) {
+      console.error('Supabase rejected all configured API keys:', lastAuthResponse?.status, lastAuthResponse?.code || lastAuthResponse?.message?.slice(0, 100));
+      return res.status(503).json({ errorCode: 'SUPABASE_API_KEY', error: 'Sign-in is temporarily unavailable. Please try again later.' });
+    }
+
     const supabase = createClient(supabaseConfig.url, supabaseConfig.key, {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { Authorization: `Bearer ${accessToken}` } },
     });
-    const authResponse = await fetch(`${supabaseConfig.url.replace(/\/$/, '')}/auth/v1/user`, {
-      headers: {
-        apikey: supabaseConfig.key,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-    const authBody = await authResponse.json().catch(() => ({}));
-    if (!authResponse.ok || !authBody?.id) {
-      const authCode = String(authBody.code || authBody.error_code || '');
-      const authMessage = String(authBody.msg || authBody.message || '');
-      console.error('Supabase token check failed:', authResponse.status, authCode || authMessage.slice(0, 100));
-      if (/invalid api key|api key.*invalid/i.test(authMessage)) {
-        return res.status(503).json({ errorCode: 'SUPABASE_API_KEY', error: 'Sign-in is temporarily unavailable. Please try again later.' });
-      }
-      return res.status(401).json({ error: 'Google did not return a valid sign-in session. Please try again.' });
-    }
 
     const authUser = authBody;
     const authProvider = authUser.app_metadata?.provider === 'google' ? 'google' : 'email';
