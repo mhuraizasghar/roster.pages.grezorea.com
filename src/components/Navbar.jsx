@@ -51,7 +51,7 @@ export default function Navbar() {
   const platformGroups = [
     { title: 'Roster', links: [['Overview', '/#workflow'], ['Quiz Library', '/features'], ['Live Classrooms', '/live-rooms'], ['Assignments', '/assignments'], ['Results & Analytics', '/architecture']] },
     { title: 'For Instructors', links: [['Instructor Guide', '/guide/instructors'], ['Manage Student Roster', '/teacher'], ['Import Quiz Templates', '/guide/instructors'], ['Security & Privacy', '/security']] },
-    { title: 'For Students', links: [['Student Guide', '/guide/students'], ['Student Login', '/student/login'], ['Join a Room', '/student/login#room-join'], ['Support & FAQs', '/support']] },
+    { title: 'For Students', links: [['Student Guide', '/guide/students'], ['Student Login', '/student/login'], ['Join a Room', '/#join'], ['Support & FAQs', '/support']] },
   ];
 
   return (
@@ -88,7 +88,7 @@ export default function Navbar() {
           </button>
           <Link to="/features" className="nav-link">Features</Link>
           <Link to="/guide/instructors" className="nav-link">Instructor Guide</Link>
-          <Link to={user?.role === 'student' ? '/student' : '/student/login#room-join'} className="nav-link">
+          <Link to={user?.role === 'student' ? '/student' : '/#join'} className="nav-link">
             Join Room
           </Link>
           {user && (
@@ -223,7 +223,7 @@ export default function Navbar() {
           <div className="flex flex-col gap-1">
             {platformGroups.flatMap((group) => group.links).map(([label, to]) => <Link key={label} to={to} className="eval-btn-ghost justify-start" onClick={() => setOpen(false)}>{label}</Link>)}
             <Link
-              to={user?.role === 'student' ? '/student' : '/student/login#room-join'}
+              to={user?.role === 'student' ? '/student' : '/#join'}
               className="eval-btn-ghost justify-start"
               onClick={() => setOpen(false)}
             >

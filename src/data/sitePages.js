@@ -42,7 +42,7 @@ export const SITE_PAGES = {
     title: 'Live Classrooms & Interactive Pacing',
     lead: 'Run synchronized sessions over WebSockets across phones and laptops with automatic reconnection and persistent server-side responses.',
     primaryCta: { label: 'Launch a Room', to: '/teacher' },
-    secondaryCta: { label: 'Join with Room Code', to: '/student/login#room-join' },
+    secondaryCta: { label: 'Join with Room Code', to: '/#join' },
     sections: [
       {
         heading: 'Four Live Classroom Modes',
@@ -185,7 +185,7 @@ export const SITE_PAGES = {
     title: 'Student Guide',
     lead: 'How to sign in via an instructor roster, join live classrooms from phone or laptop, and review your completed assessments.',
     primaryCta: { label: 'Student Sign In', to: '/student/login' },
-    secondaryCta: { label: 'Join a Live Room', to: '/student/login#room-join' },
+    secondaryCta: { label: 'Join a Live Room', to: '/#join' },
     sections: [
       {
         heading: '1. Verify Your Rostered Email',

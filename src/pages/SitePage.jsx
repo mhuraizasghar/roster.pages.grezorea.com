@@ -53,7 +53,7 @@ const SITEMAP_GROUPS = [
       { label: 'Instructor Log in', to: '/teacher/login' },
       { label: 'Instructor Password Recovery', to: '/teacher/reset' },
       { label: 'Student Login', to: '/student/login' },
-      { label: 'Join Live Classroom', to: '/student/login#room-join' },
+      { label: 'Join Live Classroom', to: '/#join' },
     ],
   },
   {

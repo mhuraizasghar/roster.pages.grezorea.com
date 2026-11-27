@@ -21,7 +21,7 @@ const FOOTER_ROW_1 = [
       { label: 'Instructor Log in', to: '/teacher/login' },
       { label: 'Password Recovery', to: '/teacher/reset' },
       { label: 'Student Login', to: '/student/login' },
-      { label: 'Join Live Room', to: '/student/login#room-join' },
+      { label: 'Join Live Room', to: '/#join' },
     ],
   },
   {
