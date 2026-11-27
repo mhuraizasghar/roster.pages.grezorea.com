@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LoaderCircle } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, anonKey, isSupabaseConfigured } from '../lib/supabase';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -69,6 +69,7 @@ export default function GoogleAuthCallbackPage() {
         // same-origin server request; do not depend on a browser fetch to Supabase.
         const session = await api.post('/api/auth/google/token', {
           accessToken,
+          anonKey,
           portalRole,
           institutionName,
         });

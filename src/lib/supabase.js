@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const url = String(import.meta.env.VITE_SUPABASE_URL || '').trim().replace(/\/$/, '');
-const anonKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '')
+export const anonKey = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '')
   .trim()
   .replace(/^\[(.*)\]$/, '$1')
   .replace(/^['"]|['"]$/g, '');

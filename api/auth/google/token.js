@@ -43,7 +43,7 @@ function jwtPayload(token) {
   }
 }
 
-function configuredSupabase(accessToken) {
+function configuredSupabase(accessToken, clientAnonKey) {
   const configs = [
     { url: process.env.VITE_SUPABASE_URL, key: process.env.VITE_SUPABASE_ANON_KEY },
     { url: process.env.SUPABASE_URL, key: process.env.SUPABASE_ANON_KEY },
@@ -63,6 +63,11 @@ function configuredSupabase(accessToken) {
         return !keyRef || keyRef === urlRef;
       } catch { return false; }
     });
+    const projectRef = (() => { try { return new URL(matchingProject[0]?.url).hostname.split('.')[0]; } catch { return ''; } })();
+    const clientKeyClaims = jwtPayload(clientAnonKey);
+    if (clientKeyClaims?.role === 'anon' && clientKeyClaims?.ref === projectRef) {
+      matchingKeys.push({ url: matchingProject[0].url, key: clientAnonKey });
+    }
     if (matchingKeys.length) return matchingKeys;
     if (matchingProject.length) {
       console.error('Roster Supabase API key does not match the sign-in project.');
@@ -80,12 +85,13 @@ module.exports = async function handler(req, res) {
   const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
   const portalRole = body.portalRole;
   const accessToken = String(body.accessToken || '').trim();
+  const clientAnonKey = String(body.anonKey || '').trim();
   const institutionName = String(body.institutionName || '').trim().slice(0, 120);
 
   if (!['teacher', 'student'].includes(portalRole)) return res.status(400).json({ error: 'Invalid portal role.' });
   if (!accessToken) return res.status(400).json({ error: 'Missing Supabase access token.' });
 
-  const selectedConfig = configuredSupabase(accessToken);
+  const selectedConfig = configuredSupabase(accessToken, clientAnonKey);
   const sessionSecret = process.env.SESSION_SECRET;
   if (!selectedConfig || !sessionSecret || sessionSecret.length < 32) {
     console.error('Roster auth configuration is incomplete:', JSON.stringify({
