@@ -31,6 +31,7 @@ module.exports = function handler(req, res) {
       role: session.role,
       displayName: session.displayName,
       institutionName: session.institutionName || '',
+      avatarUrl: session.avatarUrl || '',
       authProvider: session.authProvider || 'google',
       emailVerified: Boolean(session.emailVerified),
     } });

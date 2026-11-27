@@ -47,6 +47,13 @@ ALTER TABLE public.roster_live_room_keys ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.roster_live_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.roster_live_reports ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "roster_live_room_read" ON public.roster_live_rooms;
+DROP POLICY IF EXISTS "roster_live_room_teacher_write" ON public.roster_live_rooms;
+DROP POLICY IF EXISTS "roster_live_keys_teacher_only" ON public.roster_live_room_keys;
+DROP POLICY IF EXISTS "roster_live_participant_teacher_update" ON public.roster_live_participants;
+DROP POLICY IF EXISTS "roster_live_reports_teacher_only" ON public.roster_live_reports;
+DROP POLICY IF EXISTS "roster_live_participant_read" ON public.roster_live_participants;
+
 CREATE POLICY "roster_live_room_read" ON public.roster_live_rooms FOR SELECT USING (
   teacher_id = public.current_profile_id() OR open_join OR EXISTS (
     SELECT 1 FROM public.roster_entries r
@@ -95,6 +102,7 @@ CREATE OR REPLACE FUNCTION public.roster_join_live_room(p_code TEXT, p_name TEXT
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE r public.roster_live_rooms; profile UUID; email_value TEXT; participant public.roster_live_participants;
 BEGIN
+  IF nullif(trim(p_name), '') IS NULL THEN RAISE EXCEPTION 'Enter your name to join'; END IF;
   SELECT * INTO r FROM public.roster_live_rooms WHERE code = upper(trim(p_code));
   IF NOT FOUND OR r.status = 'ended' THEN RAISE EXCEPTION 'Room not found or ended'; END IF;
   profile := public.current_profile_id();
@@ -116,7 +124,7 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.roster_submit_live_answer(p_code TEXT, p_participant UUID, p_question INTEGER, p_response JSONB)
 RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
-DECLARE r public.roster_live_rooms; participant public.roster_live_participants; key_questions JSONB; new_responses JSONB;
+DECLARE r public.roster_live_rooms; participant public.roster_live_participants; key_questions JSONB; new_responses JSONB; expected_question INTEGER;
 BEGIN
   SELECT * INTO r FROM public.roster_live_rooms WHERE code = upper(trim(p_code));
   IF NOT FOUND OR r.status <> 'active' THEN RAISE EXCEPTION 'Room is not active'; END IF;
@@ -128,6 +136,15 @@ BEGIN
   IF p_question < 0 OR p_question >= jsonb_array_length(key_questions) OR p_response IS NULL THEN RAISE EXCEPTION 'Invalid answer'; END IF;
   new_responses := participant.responses;
   IF new_responses ? p_question::TEXT THEN RETURN jsonb_build_object('locked', true); END IF;
+  IF r.mode = 'student_paced' THEN
+    expected_question := 0;
+    WHILE new_responses ? expected_question::TEXT LOOP
+      expected_question := expected_question + 1;
+    END LOOP;
+  ELSE
+    expected_question := r.current_index;
+  END IF;
+  IF p_question <> expected_question THEN RAISE EXCEPTION 'Answer the current question'; END IF;
   new_responses := jsonb_set(new_responses, ARRAY[p_question::TEXT], p_response, true);
   UPDATE public.roster_live_participants SET responses = new_responses WHERE id = participant.id;
   RETURN jsonb_build_object('locked', false);
@@ -137,5 +154,19 @@ $$;
 GRANT EXECUTE ON FUNCTION public.roster_join_live_room(TEXT, TEXT) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.roster_get_my_live_participant(TEXT, UUID) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.roster_submit_live_answer(TEXT, UUID, INTEGER, JSONB) TO anon, authenticated;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.roster_live_rooms;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.roster_live_participants;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'roster_live_rooms'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.roster_live_rooms;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'roster_live_participants'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.roster_live_participants;
+  END IF;
+END;
+$$;

@@ -99,7 +99,7 @@ export default function TeacherAuthPage({ initialMode = 'login' }) {
     setNeedsVerificationEmail(false);
     setBusy(true);
     try {
-      if (!isSupabaseConfigured || !supabase) throw new Error('Supabase is not configured.');
+      if (!isSupabaseConfigured || !supabase) throw new Error('Sign-in is temporarily unavailable. Please try again later.');
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
@@ -143,7 +143,7 @@ export default function TeacherAuthPage({ initialMode = 'login' }) {
     setErrorInfo(null);
     setBusy(true);
     try {
-      if (!isSupabaseConfigured || !supabase) throw new Error('Supabase is not configured.');
+      if (!isSupabaseConfigured || !supabase) throw new Error('Sign-in is temporarily unavailable. Please try again later.');
       const cleanEmail = email.trim().toLowerCase();
       const cleanName = displayName.trim();
       if (!cleanName) throw new Error('Enter a display name.');
@@ -529,7 +529,7 @@ export default function TeacherAuthPage({ initialMode = 'login' }) {
                 className="eval-input"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                placeholder="Enter your password"
                 required
               />
             </div>

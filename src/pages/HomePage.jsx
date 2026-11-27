@@ -141,7 +141,7 @@ export default function HomePage() {
               </video>
             ) : (
               <div className="px-6 text-center text-sm" style={{ color: '#f2f4f3' }}>
-                Walkthrough video is not configured.
+                The instructor walkthrough is not available yet.
               </div>
             )}
           </div>

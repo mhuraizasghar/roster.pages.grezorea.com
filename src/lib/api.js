@@ -58,7 +58,7 @@ async function request(path, { method = 'GET', body = null, headers = {} } = {})
   } catch {
     data = {
       error: /^\s*<!doctype html/i.test(text)
-        ? `The API route ${path} is not deployed on this host yet. Redeploy the Roster serverless functions.`
+        ? 'This service is temporarily unavailable. Please try again later.'
         : text,
     };
   }

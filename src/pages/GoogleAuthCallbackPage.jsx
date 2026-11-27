@@ -21,7 +21,11 @@ export default function GoogleAuthCallbackPage() {
       const portalRole = sessionStorage.getItem('googleAuthPortalRole') === 'student' ? 'student' : 'teacher';
       ['googleAuthPortalRole', 'googleAuthNext', 'googleAuthInstitutionName', 'googleAuthStudentName'].forEach((key) => sessionStorage.removeItem(key));
       const loginPath = portalRole === 'student' ? '/student/login' : '/teacher/login';
-      navigate(`${loginPath}?google_error=${encodeURIComponent(String(message || 'Google sign-in failed.').slice(0, 240))}`, { replace: true });
+      const rawMessage = String(message || 'Google sign-in failed.');
+      const safeMessage = /failed to fetch|not configured|could not reach|schema|polic|server settings|auth function|supabase|sign-in service/i.test(rawMessage)
+        ? 'Sign-in is temporarily unavailable. Please try again in a moment. If the problem continues, contact your instructor.'
+        : rawMessage;
+      navigate(`${loginPath}?google_error=${encodeURIComponent(safeMessage.slice(0, 240))}`, { replace: true });
     };
 
     const completeLogin = async () => {
@@ -31,22 +35,22 @@ export default function GoogleAuthCallbackPage() {
         return;
       }
       if (!isSupabaseConfigured || !supabase) {
-        returnToPortal('Supabase is not configured for this deployment. Ask the administrator to check its public URL and anon key.');
+        returnToPortal('Sign-in is temporarily unavailable. Please try again later.');
         return;
       }
 
       const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''));
       const fragmentAccessToken = fragment.get('access_token');
 
-      let accessToken = fragmentAccessToken || '';
-      if (!accessToken) {
-        const { data, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !data.session?.access_token) {
-          returnToPortal(sessionError?.message || 'Google sign-in could not be completed. Please try again.');
-          return;
-        }
-        accessToken = data.session.access_token;
+      let savedSession = null;
+      try {
+        const { data } = await supabase.auth.getSession();
+        savedSession = data?.session || null;
+      } catch {
+        // The callback fragment can still carry a valid Supabase access token;
+        // the server exchange below verifies it before creating a Roster session.
       }
+      const accessToken = fragmentAccessToken || savedSession?.access_token || '';
 
       if (!accessToken) {
         returnToPortal('Google did not return a sign-in session. Please try again.');
@@ -61,58 +65,33 @@ export default function GoogleAuthCallbackPage() {
       const studentName = sessionStorage.getItem('googleAuthStudentName') || '';
 
       try {
-        const { data, error: userError } = await supabase.auth.getUser(accessToken);
-        if (userError || !data?.user?.email) {
-          throw new Error(userError?.message || 'Google sign-in could not be verified.');
-        }
-
-        const email = String(data.user.email).trim().toLowerCase();
-        const emailVerified = Boolean(data.user.email_confirmed_at || data.user.user_metadata?.email_verified);
-        if (!emailVerified) {
-          throw new Error('Google account email must be verified.');
-        }
-
-        const signedInUser = {
-          id: `google_${data.user.id.slice(0, 12)}`,
-          email,
-          role: portalRole,
-          displayName: String(data.user.user_metadata?.full_name || data.user.user_metadata?.name || email.split('@')[0]).trim().slice(0, 80),
-          avatarUrl: String(data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture || '').trim(),
-          institutionName,
-          authProvider: 'google',
-          emailVerified: true,
-        };
-
-        // The Supabase access token rotates. Exchange it for Roster's signed,
-        // longer lived session so /api/auth/me can restore identity on reload.
+        // Validate the Supabase token and create the Roster session in one
+        // same-origin server request; do not depend on a browser fetch to Supabase.
         const session = await api.post('/api/auth/google/token', {
           accessToken,
           portalRole,
           institutionName,
         });
-        loginWithToken(session.token, { ...signedInUser, ...session.user, avatarUrl: signedInUser.avatarUrl });
+        if (!session?.token || !session?.user?.email) throw new Error('Sign-in could not be completed. Please try again.');
+        loginWithToken(session.token, session.user);
         if (studentName) {
           try { localStorage.setItem('roster.live.studentName', studentName); } catch {}
         }
-        showToast(`Signed in as ${signedInUser.displayName}`);
+        showToast(`Signed in as ${session.user.displayName}`);
         sessionStorage.removeItem('googleAuthPortalRole');
         sessionStorage.removeItem('googleAuthNext');
         sessionStorage.removeItem('googleAuthInstitutionName');
         sessionStorage.removeItem('googleAuthStudentName');
         navigate(next.startsWith('/') && !next.startsWith('//') ? next : `/${portalRole}`, { replace: true });
       } catch (err) {
-        const message = err.message === 'Failed to fetch'
-          ? 'Roster could not reach its sign-in service. Check the Vercel auth function and Supabase server settings, then try again.'
-          : (err.message || 'Google sign-in could not be completed.');
-        returnToPortal(message);
+        console.error('Google sign-in exchange failed:', err?.message || 'Unknown error');
+        returnToPortal(err.message || 'Google sign-in could not be completed.');
       }
     };
 
     completeLogin().catch((err) => {
-      const message = err?.message === 'Failed to fetch'
-        ? 'Roster could not reach its sign-in service. Check the Vercel auth function and Supabase server settings, then try again.'
-        : (err?.message || 'Google sign-in could not be completed.');
-      returnToPortal(message);
+      console.error('Google sign-in callback failed:', err?.message || 'Unknown error');
+      returnToPortal(err?.message || 'Google sign-in could not be completed.');
     });
   }, [loginWithToken, navigate, showToast, searchParams]);
 

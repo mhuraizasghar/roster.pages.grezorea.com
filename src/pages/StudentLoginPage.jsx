@@ -56,7 +56,7 @@ export default function StudentLoginPage() {
     setErrorInfo(null);
     setBusy(true);
     try {
-      if (!isSupabaseConfigured || !supabase) throw new Error('Email sign-in is not configured.');
+      if (!isSupabaseConfigured || !supabase) throw new Error('Sign-in is temporarily unavailable. Please try again later.');
       const cleanEmail = email.trim().toLowerCase();
       const { error } = await supabase.auth.signInWithOtp({
         email: cleanEmail,
@@ -77,7 +77,7 @@ export default function StudentLoginPage() {
     setErrorInfo(null);
     setBusy(true);
     try {
-      if (!isSupabaseConfigured || !supabase) throw new Error('Email sign-in is not configured.');
+      if (!isSupabaseConfigured || !supabase) throw new Error('Sign-in is temporarily unavailable. Please try again later.');
       const cleanEmail = email.trim().toLowerCase();
       const { data, error } = await supabase.auth.verifyOtp({
         email: cleanEmail,

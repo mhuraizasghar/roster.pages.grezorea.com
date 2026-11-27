@@ -66,7 +66,7 @@ Node test suites cover quizzes, stored attempts, and live room synchronization.
 - `public/` - static assets
 - `tests/` - active application tests
 - `functions/api/` - Supabase-backed authentication endpoints for Cloudflare Pages
-Apply SQL files in `supabase/migrations/` to the Supabase project before using shared workspace data. Cloudflare Pages is a static host and does not require a database binding.
+Apply `supabase/migrations/001_eval_schema.sql` first, then `supabase/migrations/002_roster_live_rooms.sql` in the Supabase SQL Editor before using shared workspace data. The second migration adds live-room storage and its protected answer keys. Cloudflare Pages is a static host and does not require a database binding.
 
 ## Security
 

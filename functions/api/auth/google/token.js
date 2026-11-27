@@ -49,6 +49,7 @@ async function createSessionToken(env, payload) {
     sub: payload.userId,
     role: payload.role,
     email: payload.email,
+    avatarUrl: payload.avatarUrl || '',
     authProvider: payload.authProvider || 'google',
     exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
   };
@@ -83,9 +84,9 @@ export async function onRequest(context) {
     const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
     const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
     if (!supabaseUrl || !supabaseAnonKey) {
-      return Response.json({ ok: false, error: 'Supabase authentication is not configured.' }, { status: 503, headers });
+      return Response.json({ ok: false, error: 'Sign-in is temporarily unavailable. Please try again later.' }, { status: 503, headers });
     }
-    if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32) return Response.json({ ok: false, error: 'Roster session signing is not configured.' }, { status: 503, headers });
+    if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32) return Response.json({ ok: false, error: 'Sign-in is temporarily unavailable. Please try again later.' }, { status: 503, headers });
 
     const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
@@ -121,14 +122,14 @@ export async function onRequest(context) {
         `${supabaseUrl}/rest/v1/roster_entries?select=student_email&student_email=eq.${encodeURIComponent(email)}`,
         { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${accessToken}` } },
       );
-      if (!rosterResponse.ok) return Response.json({ ok: false, error: 'Could not verify the student roster.' }, { status: 403, headers });
+      if (!rosterResponse.ok) return Response.json({ ok: false, error: 'We could not verify your student invitation. Please try again or contact your instructor.' }, { status: 403, headers });
       const rosterEntries = await rosterResponse.json();
       if (!Array.isArray(rosterEntries) || rosterEntries.length === 0) {
         return Response.json({ ok: false, errorCode: 'NOT_ON_ROSTER', error: "Your email hasn't been added by a teacher yet. Ask your teacher to add this address." }, { status: 403, headers });
       }
     }
 
-    const profileResponse = await fetch(`${supabaseUrl}/rest/v1/users_profile`, {
+    const profileResponse = await fetch(`${supabaseUrl}/rest/v1/users_profile?on_conflict=auth_uid`, {
       method: 'POST',
       headers: {
         apikey: supabaseAnonKey,
@@ -147,7 +148,7 @@ export async function onRequest(context) {
       }),
     });
     if (!profileResponse.ok) {
-      return Response.json({ ok: false, error: 'Could not create the Roster profile.' }, { status: 503, headers });
+      return Response.json({ ok: false, error: 'We could not finish setting up your account. Please try again or contact support.' }, { status: 503, headers });
     }
 
     const userId = `${portalRole === 'teacher' ? 't' : 's'}_${googleUser.id.slice(0, 10)}`;
@@ -158,6 +159,7 @@ export async function onRequest(context) {
       displayName,
       institutionName: String(body.institutionName || '').trim().slice(0, 120),
       authProvider,
+      avatarUrl: String(googleUser.user_metadata?.avatar_url || googleUser.user_metadata?.picture || '').trim().slice(0, 500),
       emailVerified: true,
     };
 
@@ -165,6 +167,7 @@ export async function onRequest(context) {
       userId,
       role: portalRole,
       email,
+      avatarUrl: user.avatarUrl,
       authProvider,
     });
 
@@ -172,7 +175,7 @@ export async function onRequest(context) {
   } catch (error) {
     return Response.json({
       ok: false,
-      error: error?.message || 'Could not complete Google sign-in.',
+      error: 'Sign-in is temporarily unavailable. Please try again later.',
     }, { status: 500, headers });
   }
 }

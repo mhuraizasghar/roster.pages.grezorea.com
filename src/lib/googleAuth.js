@@ -4,7 +4,7 @@ const GOOGLE_AUTH_KEYS = ['googleAuthPortalRole', 'googleAuthNext', 'googleAuthI
 
 export async function beginGoogleSignIn({ portalRole, next, institutionName = '', studentName = '' }) {
   if (!isSupabaseConfigured || !supabase) {
-    throw new Error('Google sign-in is not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, then restart the app.');
+    throw new Error('Sign-in is temporarily unavailable. Please try again later.');
   }
   if (!['teacher', 'student'].includes(portalRole)) throw new Error('Choose a valid sign-in portal.');
 

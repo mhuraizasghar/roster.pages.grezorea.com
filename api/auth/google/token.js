@@ -25,6 +25,7 @@ function createSessionToken(secret, user) {
     displayName: user.displayName,
     institutionName: user.institutionName,
     authProvider: user.authProvider,
+    avatarUrl: user.avatarUrl,
     emailVerified: true,
     exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
   })).toString('base64url');
@@ -48,8 +49,10 @@ module.exports = async function handler(req, res) {
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
   const sessionSecret = process.env.SESSION_SECRET;
-  if (!url || !anonKey) return res.status(503).json({ error: 'Supabase authentication is not configured on the server.' });
-  if (!sessionSecret || sessionSecret.length < 32) return res.status(503).json({ error: 'Roster session signing is not configured. Set SESSION_SECRET to a random value of at least 32 characters.' });
+  if (!url || !anonKey || !sessionSecret || sessionSecret.length < 32) {
+    console.error('Roster auth configuration is incomplete.');
+    return res.status(503).json({ error: 'Sign-in is temporarily unavailable. Please try again later.' });
+  }
 
   try {
     const supabase = createClient(url, anonKey, {
@@ -57,7 +60,7 @@ module.exports = async function handler(req, res) {
       global: { headers: { Authorization: `Bearer ${accessToken}` } },
     });
     const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
-    if (authError || !authData?.user) return res.status(401).json({ error: 'Google sign-in session is invalid or expired.' });
+    if (authError || !authData?.user) return res.status(401).json({ error: 'Your Google sign-in expired. Please try again.' });
 
     const authUser = authData.user;
     const authProvider = authUser.app_metadata?.provider === 'google' ? 'google' : 'email';
@@ -70,8 +73,14 @@ module.exports = async function handler(req, res) {
       supabase.from('users_profile').select('id,role').eq('auth_uid', authUser.id).maybeSingle(),
       supabase.from('roster_entries').select('id').eq('student_email', email).limit(1),
     ]);
-    if (profileLookupError) return res.status(503).json({ error: 'Could not load your Roster profile. Check the Supabase schema and policies.' });
-    if (rosterLookupError) return res.status(503).json({ error: 'Could not verify your student roster. Check the Supabase schema and policies.' });
+    if (profileLookupError) {
+      console.error('Roster profile lookup failed:', profileLookupError.code || profileLookupError.message);
+      return res.status(503).json({ error: 'We could not load your account. Please try again or contact support.' });
+    }
+    if (rosterLookupError) {
+      console.error('Student roster lookup failed:', rosterLookupError.code || rosterLookupError.message);
+      return res.status(503).json({ error: 'We could not verify your student invitation. Please try again or contact your instructor.' });
+    }
 
     const onRoster = Array.isArray(rosterEntries) && rosterEntries.length > 0;
     if (portalRole === 'student') {
@@ -88,6 +97,7 @@ module.exports = async function handler(req, res) {
       displayName: String(authUser.user_metadata?.full_name || authUser.user_metadata?.name || email.split('@')[0]).trim().slice(0, 80),
       institutionName,
       authProvider,
+      avatarUrl: String(authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || '').trim().slice(0, 500),
       emailVerified: true,
     };
 
@@ -100,11 +110,14 @@ module.exports = async function handler(req, res) {
       auth_provider: authProvider,
       email_verified: true,
     }, { onConflict: 'auth_uid' });
-    if (profileWriteError) return res.status(503).json({ error: 'Could not save your Roster profile. Check the Supabase schema and policies.' });
+    if (profileWriteError) {
+      console.error('Roster profile save failed:', profileWriteError.code || profileWriteError.message);
+      return res.status(503).json({ error: 'We could not finish setting up your account. Please try again or contact support.' });
+    }
 
     return res.status(200).json({ ok: true, token: createSessionToken(sessionSecret, user), user });
   } catch (error) {
     console.error('Roster auth exchange failed:', error?.message || 'Unknown error');
-    return res.status(503).json({ error: 'Roster could not reach Supabase to finish sign-in. Check the server Supabase settings and try again.' });
+    return res.status(503).json({ error: 'Sign-in is temporarily unavailable. Please try again later.' });
   }
 };
