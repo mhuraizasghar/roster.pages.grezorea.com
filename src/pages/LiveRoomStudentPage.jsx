@@ -157,7 +157,8 @@ export default function LiveRoomStudentPage() {
   const handleLeave = async () => {
     if (window.confirm('Leave this live classroom?')) {
       try {
-        await api.post(`/api/rooms/${encodeURIComponent(code)}/leave`, {});
+        const result = await api.post(`/api/rooms/${encodeURIComponent(code)}/leave`, {});
+        if (result.attendanceUpdated === false) showToast('You left the room. Your attendance may remain visible until the room ends.', 'info');
       } catch (error) {
         showToast(error.message || 'Could not update your room status.', 'error');
       }

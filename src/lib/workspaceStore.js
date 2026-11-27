@@ -9,6 +9,10 @@ const uid = (prefix) => {
 
 const iso = () => new Date().toISOString();
 
+function isMissingRpcSignature(error) {
+  return error?.code === 'PGRST202' || /could not find the function .* in the schema cache/i.test(String(error?.message || ''));
+}
+
 function blank() {
   return {
     folders: [], quizzes: [], trashFolders: [], trashQuizzes: [],
@@ -235,7 +239,14 @@ export async function workspaceRequest(method, path, body = {}) {
     if (method === 'POST' && joinMatch) {
       const code = decodeURIComponent(joinMatch[1]).toUpperCase();
       const savedParticipantId = localStorage.getItem(`roster.room.participant.${code}`) || null;
-      const { data: joined, error } = await supabase.rpc('roster_join_live_room', { p_code: code, p_name: String(body.studentName || 'Student').trim().slice(0, 80), p_participant: savedParticipantId });
+      const studentName = String(body.studentName || 'Student').trim().slice(0, 80);
+      let { data: joined, error } = await supabase.rpc('roster_join_live_room', { p_code: code, p_name: studentName, p_participant: savedParticipantId });
+      // Migration 004 added guest rejoin identities. Older deployed databases
+      // still expose the original two argument RPC, so preserve room joining
+      // while that schema catches up.
+      if (error && isMissingRpcSignature(error)) {
+        ({ data: joined, error } = await supabase.rpc('roster_join_live_room', { p_code: code, p_name: studentName }));
+      }
       if (error) throw error;
       const participantId = joined?.participantId;
       if (!participantId) throw new Error('Room join did not return a participant identity.');
@@ -283,8 +294,9 @@ export async function workspaceRequest(method, path, body = {}) {
       const participantId = localStorage.getItem(`roster.room.participant.${code}`);
       if (!participantId) throw new Error('Your participant session was not found.');
       const { error } = await supabase.rpc('roster_leave_live_room', { p_code: code, p_participant: participantId });
+      if (error && isMissingRpcSignature(error)) return { ok: true, attendanceUpdated: false };
       if (error) throw error;
-      return { ok: true };
+      return { ok: true, attendanceUpdated: true };
     }
   }
 
