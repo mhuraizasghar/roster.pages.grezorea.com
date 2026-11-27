@@ -71,7 +71,6 @@ export async function onRequest(context) {
   try {
     const body = await request.json();
     const portalRole = body.portalRole;
-    const authProvider = body.authProvider === 'email' ? 'email' : 'google';
     const accessToken = String(body.accessToken || '').trim();
 
     if (portalRole !== 'teacher' && portalRole !== 'student') {
@@ -86,7 +85,7 @@ export async function onRequest(context) {
     if (!supabaseUrl || !supabaseAnonKey) {
       return Response.json({ ok: false, error: 'Supabase authentication is not configured.' }, { status: 503, headers });
     }
-    if (!env.SESSION_SECRET) return Response.json({ ok: false, error: 'Roster session signing is not configured.' }, { status: 503, headers });
+    if (!env.SESSION_SECRET || env.SESSION_SECRET.length < 32) return Response.json({ ok: false, error: 'Roster session signing is not configured.' }, { status: 503, headers });
 
     const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
@@ -99,6 +98,7 @@ export async function onRequest(context) {
     }
 
     const googleUser = await userResponse.json();
+    const authProvider = googleUser.app_metadata?.provider === 'google' ? 'google' : 'email';
     const email = normalizeEmail(googleUser.email);
     const displayName = String(
       googleUser.user_metadata?.full_name ||

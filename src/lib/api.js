@@ -56,7 +56,11 @@ async function request(path, { method = 'GET', body = null, headers = {} } = {})
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
-    data = { error: text };
+    data = {
+      error: /^\s*<!doctype html/i.test(text)
+        ? `The API route ${path} is not deployed on this host yet. Redeploy the Roster serverless functions.`
+        : text,
+    };
   }
 
   if (!res.ok) {

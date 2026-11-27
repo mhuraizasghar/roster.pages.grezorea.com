@@ -31,7 +31,10 @@ export default function TeacherAuthPage({ initialMode = 'login' }) {
   const [pendingVerify, setPendingVerify] = useState(Boolean(verifyParam));
   const [pendingResetConfirm, setPendingResetConfirm] = useState(Boolean(resetParam));
   const [needsVerificationEmail, setNeedsVerificationEmail] = useState(false);
-  const [errorInfo, setErrorInfo] = useState(null);
+  const [errorInfo, setErrorInfo] = useState(() => {
+    const googleError = searchParams.get('google_error');
+    return googleError ? { message: googleError } : null;
+  });
   const [busy, setBusy] = useState(false);
 
   const { loginWithToken } = useAuth();

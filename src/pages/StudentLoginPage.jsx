@@ -13,11 +13,14 @@ export default function StudentLoginPage() {
   const [otpCode, setOtpCode] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [errorInfo, setErrorInfo] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const emailInputRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [errorInfo, setErrorInfo] = useState(() => {
+    const googleError = searchParams.get('google_error');
+    return googleError ? { message: googleError } : null;
+  });
   const nextPath = searchParams.get('next');
   const safeNext = nextPath && nextPath.startsWith('/') ? nextPath : '/student';
 

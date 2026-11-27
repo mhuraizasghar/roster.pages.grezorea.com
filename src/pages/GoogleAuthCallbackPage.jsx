@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { LoaderCircle } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -12,20 +12,26 @@ export default function GoogleAuthCallbackPage() {
   const { loginWithToken } = useAuth();
   const { showToast } = useToast();
   const handled = useRef(false);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     if (handled.current) return;
     handled.current = true;
 
+    const returnToPortal = (message) => {
+      const portalRole = sessionStorage.getItem('googleAuthPortalRole') === 'student' ? 'student' : 'teacher';
+      ['googleAuthPortalRole', 'googleAuthNext', 'googleAuthInstitutionName', 'googleAuthStudentName'].forEach((key) => sessionStorage.removeItem(key));
+      const loginPath = portalRole === 'student' ? '/student/login' : '/teacher/login';
+      navigate(`${loginPath}?google_error=${encodeURIComponent(String(message || 'Google sign-in failed.').slice(0, 240))}`, { replace: true });
+    };
+
     const completeLogin = async () => {
       const providerError = searchParams.get('error_description') || searchParams.get('error');
       if (providerError) {
-        setError(providerError);
+        returnToPortal(providerError);
         return;
       }
       if (!isSupabaseConfigured || !supabase) {
-        setError('Supabase API key is missing or invalid.');
+        returnToPortal('Supabase is not configured for this deployment. Ask the administrator to check its public URL and anon key.');
         return;
       }
 
@@ -36,14 +42,14 @@ export default function GoogleAuthCallbackPage() {
       if (!accessToken) {
         const { data, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !data.session?.access_token) {
-          setError(sessionError?.message || 'Google sign-in could not be completed.');
+          returnToPortal(sessionError?.message || 'Google sign-in could not be completed. Please try again.');
           return;
         }
         accessToken = data.session.access_token;
       }
 
       if (!accessToken) {
-        setError('Google sign-in could not be completed.');
+        returnToPortal('Google did not return a sign-in session. Please try again.');
         return;
       }
 
@@ -95,30 +101,29 @@ export default function GoogleAuthCallbackPage() {
         sessionStorage.removeItem('googleAuthStudentName');
         navigate(next.startsWith('/') && !next.startsWith('//') ? next : `/${portalRole}`, { replace: true });
       } catch (err) {
-        setError(err.message || 'Google sign-in could not be completed.');
+        const message = err.message === 'Failed to fetch'
+          ? 'Roster could not reach its sign-in service. Check the Vercel auth function and Supabase server settings, then try again.'
+          : (err.message || 'Google sign-in could not be completed.');
+        returnToPortal(message);
       }
     };
 
-    completeLogin();
+    completeLogin().catch((err) => {
+      const message = err?.message === 'Failed to fetch'
+        ? 'Roster could not reach its sign-in service. Check the Vercel auth function and Supabase server settings, then try again.'
+        : (err?.message || 'Google sign-in could not be completed.');
+      returnToPortal(message);
+    });
   }, [loginWithToken, navigate, showToast, searchParams]);
 
   return (
     <div className="max-w-md mx-auto px-4 py-16 text-center">
       <div className="eval-card p-6 space-y-3">
         <h1 className="text-lg font-semibold">Completing Google sign-in</h1>
-        {error ? (
-          <>
-            <p className="text-sm text-red-700">{error}</p>
-            <button type="button" className="eval-btn-secondary text-xs" onClick={() => navigate(-1)}>
-              Go back
-            </button>
-          </>
-        ) : (
-          <p className="inline-flex items-center justify-center gap-2 text-xs" style={{ color: 'var(--eval-muted)' }}>
-            <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
-            Verifying your Google account…
-          </p>
-        )}
+        <p className="inline-flex items-center justify-center gap-2 text-xs" style={{ color: 'var(--eval-muted)' }}>
+          <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+          Verifying your Google account...
+        </p>
       </div>
     </div>
   );
