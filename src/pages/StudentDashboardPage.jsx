@@ -451,9 +451,13 @@ export default function StudentDashboardPage() {
                                   {r.submittedAt ? new Date(r.submittedAt).toLocaleDateString() : '—'}
                                 </td>
                                 <td className="py-3 px-4 text-right">
-                                  <Link to={`/review/${r.id}`} className="eval-btn-secondary py-1 px-2.5 text-xs">
-                                    View Review
-                                  </Link>
+                                  {r.source === 'Live classroom' ? (
+                                    <span className="text-[11px]" style={{ color: 'var(--eval-muted)' }}>Room complete</span>
+                                  ) : (
+                                    <Link to={`/review/${r.id}`} className="eval-btn-secondary py-1 px-2.5 text-xs">
+                                      View Review
+                                    </Link>
+                                  )}
                                 </td>
                               </tr>
                             ))}

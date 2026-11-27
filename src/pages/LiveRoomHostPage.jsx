@@ -141,6 +141,19 @@ export default function LiveRoomHostPage() {
   const currentQ = questions[room.currentQuestionIdx] || null;
   const dist = (room.distributions || {})[room.currentQuestionIdx] || {};
   const totalResponsesForQ = Object.values(dist).reduce((s, c) => s + Number(c || 0), 0);
+  const activeStudentsByIdentity = new Map();
+  for (const participant of (room.participants || []).filter((item) => !item.leftAt)) {
+    const identity = participant.studentEmail
+      ? `email:${participant.studentEmail.toLowerCase()}`
+      : `guest:${String(participant.displayName || participant.name || '').trim().toLowerCase()}`;
+    activeStudentsByIdentity.set(identity, participant);
+  }
+  const activeStudents = [...activeStudentsByIdentity.values()];
+  const activeIds = new Set(activeStudents.map((participant) => participant.studentId));
+  const visibleLeaderboard = (room.leaderboard || [])
+    .filter((entry) => room.status === 'ended' || activeIds.has(entry.studentId))
+    .slice(0, 10)
+    .map((entry, index) => ({ ...entry, rank: index + 1 }));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
@@ -398,13 +411,13 @@ export default function LiveRoomHostPage() {
               <Trophy className="w-4 h-4" style={{ color: 'var(--eval-accent)' }} />
               {room.mode === 'challenge' ? 'Live Challenge Leaderboard' : 'Scoreboard'}
             </h3>
-            {(room.leaderboard || []).length === 0 ? (
+            {visibleLeaderboard.length === 0 ? (
               <p className="text-xs" style={{ color: 'var(--eval-muted)' }}>
                 No participants have joined yet.
               </p>
             ) : (
               <div className="space-y-2">
-                {room.leaderboard.slice(0, 10).map((entry) => (
+                {visibleLeaderboard.map((entry) => (
                   <div
                     key={entry.studentId}
                     className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-xs"
@@ -427,15 +440,15 @@ export default function LiveRoomHostPage() {
           <div className="eval-card p-5 space-y-3">
             <h3 className="text-sm font-semibold flex items-center gap-2">
               <Users className="w-4 h-4" style={{ color: 'var(--eval-accent)' }} />
-              Joined Students ({room.participantsCount})
+              Joined Students ({activeStudents.length})
             </h3>
-            {(room.participants || []).filter((p) => !p.leftAt).length === 0 ? (
+            {activeStudents.length === 0 ? (
               <p className="text-xs" style={{ color: 'var(--eval-muted)' }}>
                 Share code <strong className="font-mono">{room.code}</strong> with your class.
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {room.participants.filter((p) => !p.leftAt).map((p) => {
+                {activeStudents.map((p) => {
                   const answeredCurrent =
                     currentQ && Boolean(room.responses?.[p.studentId]?.[currentQ.id]);
                   return (

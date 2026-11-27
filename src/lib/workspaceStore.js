@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 
 const STORAGE_KEY = 'roster.workspace.v1';
+const liveRoomJoinRequests = new Map();
 
 const uid = (prefix) => {
   const random = globalThis.crypto?.randomUUID?.() || `${Date.now()}${Math.random()}`;
@@ -11,6 +12,25 @@ const iso = () => new Date().toISOString();
 
 function isMissingRpcSignature(error) {
   return error?.code === 'PGRST202' || /could not find the function .* in the schema cache/i.test(String(error?.message || ''));
+}
+
+async function joinLiveRoomWithSchemaFallback(code, studentName, savedParticipantId) {
+  const current = liveRoomJoinRequests.get(code);
+  if (current) return current;
+  const request = (async () => {
+    let { data, error } = await supabase.rpc('roster_join_live_room', { p_code: code, p_name: studentName, p_participant: savedParticipantId });
+    if (error && isMissingRpcSignature(error)) {
+      ({ data, error } = await supabase.rpc('roster_join_live_room', { p_code: code, p_name: studentName }));
+    }
+    if (error) throw error;
+    const participantId = data?.participantId;
+    if (!participantId) throw new Error('Room join did not return a participant identity.');
+    localStorage.setItem(`roster.room.participant.${code}`, participantId);
+    return data;
+  })();
+  liveRoomJoinRequests.set(code, request);
+  try { return await request; }
+  finally { liveRoomJoinRequests.delete(code); }
 }
 
 function blank() {
@@ -240,17 +260,11 @@ export async function workspaceRequest(method, path, body = {}) {
       const code = decodeURIComponent(joinMatch[1]).toUpperCase();
       const savedParticipantId = localStorage.getItem(`roster.room.participant.${code}`) || null;
       const studentName = String(body.studentName || 'Student').trim().slice(0, 80);
-      let { data: joined, error } = await supabase.rpc('roster_join_live_room', { p_code: code, p_name: studentName, p_participant: savedParticipantId });
-      // Migration 004 added guest rejoin identities. Older deployed databases
-      // still expose the original two argument RPC, so preserve room joining
-      // while that schema catches up.
-      if (error && isMissingRpcSignature(error)) {
-        ({ data: joined, error } = await supabase.rpc('roster_join_live_room', { p_code: code, p_name: studentName }));
-      }
-      if (error) throw error;
+      // Share one in-flight join across React StrictMode's setup/cleanup replay
+      // so an unverified guest does not create duplicate participant rows.
+      const joined = await joinLiveRoomWithSchemaFallback(code, studentName, savedParticipantId);
       const participantId = joined?.participantId;
       if (!participantId) throw new Error('Room join did not return a participant identity.');
-      localStorage.setItem(`roster.room.participant.${code}`, participantId);
       const result = await loadSupabaseRoom(code, participantId);
       return { room: result.room };
     }
@@ -454,12 +468,13 @@ export async function workspaceRequest(method, path, body = {}) {
       const profile = await getCurrentProfile();
       if (profile.role !== 'student') throw new Error('Sign in to the student account to view this dashboard.');
       const email = String(profile.email || '').toLowerCase();
-      const [rosterResult, assignmentResult, attemptResult] = await Promise.all([
+      const [rosterResult, assignmentResult, attemptResult, participantResult] = await Promise.all([
         supabase.from('roster_entries').select('teacher_id,group_id').ilike('student_email', email),
         supabase.from('assignments').select('*').order('created_at', { ascending: false }).limit(200),
         supabase.from('attempts').select('id,assignment_id,status,started_at,submitted_at,score,max_score,percent').eq('student_id', profile.id).order('started_at', { ascending: false }).limit(200),
+        supabase.from('roster_live_participants').select('id,room_code,total_score,joined_at').eq('student_id', profile.id).order('joined_at', { ascending: false }).limit(100),
       ]);
-      for (const result of [rosterResult, assignmentResult, attemptResult]) if (result.error) throw result.error;
+      for (const result of [rosterResult, assignmentResult, attemptResult, participantResult]) if (result.error) throw result.error;
       const rosterRows = rosterResult.data || [];
       const rosterTeacherIds = new Set(rosterRows.map((row) => row.teacher_id));
       const groupIds = new Set(rosterRows.map((row) => row.group_id).filter(Boolean));
@@ -470,18 +485,30 @@ export async function workspaceRequest(method, path, body = {}) {
         return row.target_type === 'all_roster';
       });
       const versionsIds = [...new Set(assignedRows.map((row) => row.quiz_version_id))];
-      const [versionsResult, roomsForRosterResult] = await Promise.all([
+      const roomCodes = [...new Set((participantResult.data || []).map((item) => item.room_code))];
+      const [versionsResult, roomsForRosterResult, completedRoomsResult] = await Promise.all([
         versionsIds.length ? supabase.from('quiz_versions').select('id,quiz_id,title,subject,question_count').in('id', versionsIds) : Promise.resolve({ data: [], error: null }),
         rosterTeacherIds.size ? supabase.from('roster_live_rooms').select('*').in('teacher_id', [...rosterTeacherIds]).in('status', ['lobby', 'active']).order('updated_at', { ascending: false }).limit(50) : Promise.resolve({ data: [], error: null }),
+        roomCodes.length ? supabase.from('roster_live_rooms').select('code,title,mode,status,updated_at,questions').in('code', roomCodes).eq('status', 'ended') : Promise.resolve({ data: [], error: null }),
       ]);
       if (versionsResult.error) throw versionsResult.error;
       if (roomsForRosterResult.error) throw roomsForRosterResult.error;
+      if (completedRoomsResult.error) throw completedRoomsResult.error;
       const assignments = assignedRows.map((row) => mapAssignment(row, (versionsResult.data || []).find((version) => version.id === row.quiz_version_id), attemptResult.data || [], true));
       const attempts = attemptResult.data || [];
       const results = attempts.filter((attempt) => attempt.status !== 'in_progress').map((attempt) => {
         const assignment = assignments.find((row) => row.id === attempt.assignment_id);
-        return { id: attempt.id, attemptId: attempt.id, assignmentId: attempt.assignment_id, title: assignment?.title || 'Assessment', subject: assignment?.subject || 'General', status: attempt.status, score: Number(attempt.score || 0), maxScore: Number(attempt.max_score || 0), percent: Number(attempt.percent || 0), submittedAt: attempt.submitted_at };
+        return { id: attempt.id, attemptId: attempt.id, assignmentId: attempt.assignment_id, title: assignment?.title || 'Assessment', subject: assignment?.subject || 'General', status: attempt.status, source: 'Self-paced quiz', score: Number(attempt.score || 0), maxScore: Number(attempt.max_score || 0), percent: Number(attempt.percent || 0), submittedAt: attempt.submitted_at };
       });
+      const completedRoomMap = new Map((completedRoomsResult.data || []).map((row) => [row.code, row]));
+      for (const participant of participantResult.data || []) {
+        const room = completedRoomMap.get(participant.room_code);
+        if (!room) continue;
+        const maxScore = (room.questions || []).reduce((sum, question) => sum + Number(question.points || 1), 0);
+        const score = Number(participant.total_score || 0);
+        results.push({ id: `room-${participant.id}`, roomCode: room.code, title: room.title, subject: 'Live Classroom', teacherName: 'Instructor', status: 'submitted', source: 'Live classroom', score, maxScore, percent: maxScore ? Math.round((score / maxScore) * 1000) / 10 : 0, submittedAt: room.updated_at });
+      }
+      results.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
       const roomRows = roomsForRosterResult.data || [];
       return { assignments, liveRooms: roomRows.map((row) => ({ id: row.code, code: row.code, title: row.title, mode: row.mode, status: row.status, participantsCount: row.participant_count || 0, teacherName: 'Instructor' })), attempts, results };
     }
