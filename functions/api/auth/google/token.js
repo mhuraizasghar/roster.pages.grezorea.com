@@ -26,6 +26,19 @@ function getJwtIssuer(token) {
   }
 }
 
+function getJwtRef(token) {
+  try {
+    const encoded = String(token || '').split('.')[1];
+    if (!encoded) return '';
+    let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    base64 += '='.repeat((4 - base64.length % 4) % 4);
+    const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))));
+    return String(payload?.ref || '');
+  } catch {
+    return '';
+  }
+}
+
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -99,9 +112,18 @@ export async function onRequest(context) {
       { url: env.SUPABASE_URL, key: env.SUPABASE_ANON_KEY },
     ].filter((config) => config.url && config.key);
     const issuer = getJwtIssuer(accessToken);
-    const supabaseConfig = (issuer && configs.find((config) => {
+    const issuerConfigs = issuer ? configs.filter((config) => {
       try { return new URL(config.url).origin === issuer; } catch { return false; }
-    })) || (!issuer ? configs[0] : null);
+    }) : [];
+    const supabaseConfig = issuer
+      ? issuerConfigs.find((config) => {
+        try {
+          const urlRef = new URL(config.url).hostname.split('.')[0];
+          const keyRef = getJwtRef(config.key);
+          return !keyRef || keyRef === urlRef;
+        } catch { return false; }
+      }) || null
+      : (configs[0] || null);
     const supabaseUrl = supabaseConfig?.url;
     const supabaseAnonKey = supabaseConfig?.key;
     if (!supabaseUrl || !supabaseAnonKey) {

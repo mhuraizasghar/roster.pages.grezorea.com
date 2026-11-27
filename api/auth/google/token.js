@@ -53,10 +53,20 @@ function configuredSupabase(accessToken) {
     try { return claims?.iss ? new URL(claims.iss).origin : ''; } catch { return ''; }
   })();
   if (issuerOrigin) {
-    const match = configs.find((config) => {
+    const matchingProject = configs.filter((config) => {
       try { return new URL(config.url).origin === issuerOrigin; } catch { return false; }
     });
-    if (match) return match;
+    const matchingKey = matchingProject.find((config) => {
+      try {
+        const urlRef = new URL(config.url).hostname.split('.')[0];
+        const keyRef = jwtPayload(config.key)?.ref;
+        return !keyRef || keyRef === urlRef;
+      } catch { return false; }
+    });
+    if (matchingKey) return matchingKey;
+    if (matchingProject.length) {
+      console.error('Roster Supabase API key does not match the sign-in project.');
+    }
     return null;
   }
   return configs[0] || null;
