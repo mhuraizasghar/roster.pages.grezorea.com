@@ -33,6 +33,35 @@ function createSessionToken(secret, user) {
   return `${payload}.${signature}`;
 }
 
+function jwtPayload(token) {
+  try {
+    const encoded = String(token || '').split('.')[1];
+    if (!encoded) return null;
+    return JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function configuredSupabase(accessToken) {
+  const configs = [
+    { url: process.env.VITE_SUPABASE_URL, key: process.env.VITE_SUPABASE_ANON_KEY },
+    { url: process.env.SUPABASE_URL, key: process.env.SUPABASE_ANON_KEY },
+  ].filter((config) => config.url && config.key);
+  const claims = jwtPayload(accessToken);
+  const issuerOrigin = (() => {
+    try { return claims?.iss ? new URL(claims.iss).origin : ''; } catch { return ''; }
+  })();
+  if (issuerOrigin) {
+    const match = configs.find((config) => {
+      try { return new URL(config.url).origin === issuerOrigin; } catch { return false; }
+    });
+    if (match) return match;
+    return null;
+  }
+  return configs[0] || null;
+}
+
 module.exports = async function handler(req, res) {
   setCors(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -46,21 +75,23 @@ module.exports = async function handler(req, res) {
   if (!['teacher', 'student'].includes(portalRole)) return res.status(400).json({ error: 'Invalid portal role.' });
   if (!accessToken) return res.status(400).json({ error: 'Missing Supabase access token.' });
 
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  const supabaseConfig = configuredSupabase(accessToken);
   const sessionSecret = process.env.SESSION_SECRET;
-  if (!url || !anonKey || !sessionSecret || sessionSecret.length < 32) {
+  if (!supabaseConfig || !sessionSecret || sessionSecret.length < 32) {
     console.error('Roster auth configuration is incomplete.');
     return res.status(503).json({ error: 'Sign-in is temporarily unavailable. Please try again later.' });
   }
 
   try {
-    const supabase = createClient(url, anonKey, {
+    const supabase = createClient(supabaseConfig.url, supabaseConfig.key, {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { Authorization: `Bearer ${accessToken}` } },
     });
     const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
-    if (authError || !authData?.user) return res.status(401).json({ error: 'Your Google sign-in expired. Please try again.' });
+    if (authError || !authData?.user) {
+      console.error('Supabase rejected the Roster sign-in token:', authError?.code || authError?.status || 'unknown');
+      return res.status(401).json({ error: 'We could not verify this Google sign-in. Please try again.' });
+    }
 
     const authUser = authData.user;
     const authProvider = authUser.app_metadata?.provider === 'google' ? 'google' : 'email';

@@ -13,6 +13,19 @@ function normalizeEmail(value) {
   return String(value || '').trim().toLowerCase();
 }
 
+function getJwtIssuer(token) {
+  try {
+    const encoded = String(token || '').split('.')[1];
+    if (!encoded) return '';
+    let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
+    base64 += '='.repeat((4 - base64.length % 4) % 4);
+    const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))));
+    return payload?.iss ? new URL(payload.iss).origin : '';
+  } catch {
+    return '';
+  }
+}
+
 function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -81,8 +94,16 @@ export async function onRequest(context) {
       return Response.json({ ok: false, error: 'Missing Google sign-in token.' }, { status: 400, headers });
     }
 
-    const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
+    const configs = [
+      { url: env.VITE_SUPABASE_URL, key: env.VITE_SUPABASE_ANON_KEY },
+      { url: env.SUPABASE_URL, key: env.SUPABASE_ANON_KEY },
+    ].filter((config) => config.url && config.key);
+    const issuer = getJwtIssuer(accessToken);
+    const supabaseConfig = (issuer && configs.find((config) => {
+      try { return new URL(config.url).origin === issuer; } catch { return false; }
+    })) || (!issuer ? configs[0] : null);
+    const supabaseUrl = supabaseConfig?.url;
+    const supabaseAnonKey = supabaseConfig?.key;
     if (!supabaseUrl || !supabaseAnonKey) {
       return Response.json({ ok: false, error: 'Sign-in is temporarily unavailable. Please try again later.' }, { status: 503, headers });
     }
