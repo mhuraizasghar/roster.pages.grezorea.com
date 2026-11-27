@@ -6,18 +6,6 @@ import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 
-function readJwtSubject(token) {
-  try {
-    const encoded = String(token || '').split('.')[1];
-    if (!encoded) return '';
-    let base64 = encoded.replace(/-/g, '+').replace(/_/g, '/');
-    base64 += '='.repeat((4 - base64.length % 4) % 4);
-    return JSON.parse(atob(base64)).sub || '';
-  } catch {
-    return '';
-  }
-}
-
 export default function GoogleAuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -62,11 +50,7 @@ export default function GoogleAuthCallbackPage() {
         // The callback fragment can still carry a valid Supabase access token;
         // the server exchange below verifies it before creating a Roster session.
       }
-      const sameCallbackUser = fragmentAccessToken && savedSession?.user?.id
-        && readJwtSubject(fragmentAccessToken) === savedSession.user.id;
-      const accessToken = (sameCallbackUser ? savedSession.access_token : fragmentAccessToken)
-        || savedSession?.access_token
-        || '';
+      const accessToken = fragmentAccessToken || savedSession?.access_token || '';
 
       if (!accessToken) {
         returnToPortal('Google did not return a sign-in session. Please try again.');

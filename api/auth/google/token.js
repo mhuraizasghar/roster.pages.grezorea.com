@@ -97,13 +97,24 @@ module.exports = async function handler(req, res) {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { Authorization: `Bearer ${accessToken}` } },
     });
-    const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
-    if (authError || !authData?.user) {
-      console.error('Supabase rejected the Roster sign-in token:', authError?.code || authError?.status || 'unknown');
-      return res.status(401).json({ error: 'We could not verify this Google sign-in. Please try again.' });
+    const authResponse = await fetch(`${supabaseConfig.url.replace(/\/$/, '')}/auth/v1/user`, {
+      headers: {
+        apikey: supabaseConfig.key,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    const authBody = await authResponse.json().catch(() => ({}));
+    if (!authResponse.ok || !authBody?.id) {
+      const authCode = String(authBody.code || authBody.error_code || '');
+      const authMessage = String(authBody.msg || authBody.message || '');
+      console.error('Supabase token check failed:', authResponse.status, authCode || authMessage.slice(0, 100));
+      if (/invalid api key|api key.*invalid/i.test(authMessage)) {
+        return res.status(503).json({ error: 'Sign-in is temporarily unavailable. Please try again later.' });
+      }
+      return res.status(401).json({ error: 'Google did not return a valid sign-in session. Please try again.' });
     }
 
-    const authUser = authData.user;
+    const authUser = authBody;
     const authProvider = authUser.app_metadata?.provider === 'google' ? 'google' : 'email';
     const email = String(authUser.email || '').trim().toLowerCase();
     const emailVerified = Boolean(authUser.email_confirmed_at || authUser.user_metadata?.email_verified);
