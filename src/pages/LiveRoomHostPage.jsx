@@ -429,13 +429,13 @@ export default function LiveRoomHostPage() {
               <Users className="w-4 h-4" style={{ color: 'var(--eval-accent)' }} />
               Joined Students ({room.participantsCount})
             </h3>
-            {(room.participants || []).length === 0 ? (
+            {(room.participants || []).filter((p) => !p.leftAt).length === 0 ? (
               <p className="text-xs" style={{ color: 'var(--eval-muted)' }}>
                 Share code <strong className="font-mono">{room.code}</strong> with your class.
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
-                {room.participants.map((p) => {
+                {room.participants.filter((p) => !p.leftAt).map((p) => {
                   const answeredCurrent =
                     currentQ && Boolean(room.responses?.[p.studentId]?.[currentQ.id]);
                   return (

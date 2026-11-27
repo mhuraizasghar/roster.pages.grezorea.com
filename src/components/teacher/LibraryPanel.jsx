@@ -291,81 +291,63 @@ export default function LibraryPanel({
 
   return (
     <div className="space-y-5">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowTrash(false)}
-            className={!showTrash ? 'eval-btn-primary text-xs py-2' : 'eval-btn-secondary text-xs py-2'}
-          >
-            <Folder className="w-3.5 h-3.5" />
-            Library
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowTrash(true)}
-            className={showTrash ? 'eval-btn-primary text-xs py-2' : 'eval-btn-secondary text-xs py-2'}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Trash ({trashCount})
-          </button>
+      {/* Compact, grouped library controls */}
+      <div className="eval-card p-3 sm:p-4 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">{showTrash ? 'Quiz Trash' : 'Quiz Library'}</h2>
+            <p className="mt-0.5 text-[11px]" style={{ color: 'var(--eval-muted)' }}>
+              {showTrash ? 'Restore removed items or permanently delete them.' : 'Create, organize, import, and export assessments.'}
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-1 rounded-lg border p-1" style={{ borderColor: 'var(--eval-border)', backgroundColor: 'var(--eval-bg)' }} role="tablist" aria-label="Library views">
+            <button type="button" role="tab" aria-selected={!showTrash} onClick={() => setShowTrash(false)} className={!showTrash ? 'eval-btn-primary px-3 py-1.5 text-xs' : 'eval-btn-ghost px-3 py-1.5 text-xs'}>
+              <Folder className="h-3.5 w-3.5" /> Library
+            </button>
+            <button type="button" role="tab" aria-selected={showTrash} onClick={() => setShowTrash(true)} className={showTrash ? 'eval-btn-primary px-3 py-1.5 text-xs' : 'eval-btn-ghost px-3 py-1.5 text-xs'}>
+              <Trash2 className="h-3.5 w-3.5" /> Trash ({trashCount})
+            </button>
+          </div>
         </div>
 
         {!showTrash && (
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="eval-btn-secondary text-xs py-2 cursor-pointer">
-              <Upload className="w-3.5 h-3.5" /> {importing ? 'Importing…' : 'Import Quiz'}
-              <input type="file" accept=".json,.csv,application/json,text/csv" className="sr-only" onChange={handleImport} disabled={importing} />
-            </label>
-            <button type="button" onClick={() => exportQuizzes('json')} className="eval-btn-secondary text-xs py-2" title="Export visible quizzes as JSON">
-              <Download className="w-3.5 h-3.5" /> JSON
-            </button>
-            <button type="button" onClick={() => exportQuizzes('csv')} className="eval-btn-secondary text-xs py-2" title="Export visible quiz questions as CSV">
-              <Download className="w-3.5 h-3.5" /> CSV
-            </button>
-            <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--eval-muted)' }}>
-              <a className="underline underline-offset-2" href="/templates/quiz-import-sample.json" download>JSON sample</a>
-              <a className="underline underline-offset-2" href="/templates/quiz-import-sample.csv" download>CSV sample</a>
-              <a className="underline underline-offset-2" href="/templates/quiz-import-format.md" download>Format guide</a>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
+              <button type="button" onClick={handleCreateQuiz} className="eval-btn-primary w-full justify-center py-2 text-xs">
+                <Plus className="h-3.5 w-3.5" /> New Quiz
+              </button>
+              <label className="eval-btn-secondary w-full justify-center py-2 text-xs cursor-pointer">
+                <Upload className="h-3.5 w-3.5" /> {importing ? 'Importing…' : 'Import Quiz'}
+                <input type="file" accept=".json,.csv,application/json,text/csv" className="sr-only" onChange={handleImport} disabled={importing} />
+              </label>
+              <button type="button" onClick={() => exportQuizzes('json')} className="eval-btn-secondary w-full justify-center py-2 text-xs" title="Export visible quizzes as JSON">
+                <Download className="h-3.5 w-3.5" /> Export JSON
+              </button>
+              <button type="button" onClick={() => exportQuizzes('csv')} className="eval-btn-secondary w-full justify-center py-2 text-xs" title="Export visible quiz questions as CSV">
+                <Download className="h-3.5 w-3.5" /> Export CSV
+              </button>
+              <button type="button" onClick={() => setShowNewFolder((value) => !value)} className="eval-btn-secondary w-full justify-center py-2 text-xs">
+                <FolderPlus className="h-3.5 w-3.5" /> {currentFolderId ? 'New Subfolder' : 'New Subject / Folder'}
+              </button>
             </div>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--eval-muted)' }} />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search library..."
-                aria-label="Search library"
-                className="eval-input pl-8 py-2 text-xs w-44 sm:w-56"
-              />
+
+            <div className="flex flex-col lg:flex-row lg:items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--eval-muted)' }} />
+                <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search library…" aria-label="Search library" className="eval-input w-full pl-8 py-2 text-xs" />
+              </div>
+              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label="Sort library" className="eval-input py-2 text-xs lg:w-48">
+                <option value="name">Sort: Name</option>
+                <option value="updated">Sort: Last Updated</option>
+              </select>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] lg:pl-1" style={{ color: 'var(--eval-muted)' }}>
+                <span>Templates:</span>
+                <a className="underline underline-offset-2" href="/templates/quiz-import-sample.json" download>JSON</a>
+                <a className="underline underline-offset-2" href="/templates/quiz-import-sample.csv" download>CSV</a>
+                <a className="underline underline-offset-2" href="/templates/quiz-import-format.md" download>Format guide</a>
+              </div>
             </div>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              aria-label="Sort library"
-              className="eval-input py-2 text-xs w-auto"
-            >
-              <option value="name">Sort: Name</option>
-              <option value="updated">Sort: Last Updated</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => setShowNewFolder((v) => !v)}
-              className="eval-btn-secondary text-xs py-2"
-            >
-              <FolderPlus className="w-3.5 h-3.5" />
-              {currentFolderId ? 'New Subfolder' : 'New Subject / Folder'}
-            </button>
-            <button
-              type="button"
-              onClick={handleCreateQuiz}
-              className="eval-btn-primary text-xs py-2"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              New Quiz
-            </button>
-          </div>
+          </>
         )}
       </div>
 

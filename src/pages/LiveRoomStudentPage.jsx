@@ -21,6 +21,14 @@ import { useToast } from '../components/Toast';
 import { beginGoogleSignIn } from '../lib/googleAuth';
 import GoogleAuthButton from '../components/auth/GoogleAuthButton';
 
+function questionKind(question) {
+  const type = String(question?.type || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+  if (['tf', 'true_false', 'truefalse'].includes(type)) return 'tf';
+  if (['short_answer', 'shortanswer', 'text', 'free_response'].includes(type)) return 'short_answer';
+  if (['mcq', 'challenge', 'choice', 'single_choice', 'multiple_choice', 'multi_select', 'multiple_select'].includes(type)) return 'choice';
+  return Array.isArray(question?.options) && question.options.length ? 'choice' : 'short_answer';
+}
+
 export default function LiveRoomStudentPage() {
   const { code } = useParams();
   const [searchParams] = useSearchParams();
@@ -74,7 +82,6 @@ export default function LiveRoomStudentPage() {
 
   useEffect(() => {
     let cleanupSocket = () => {};
-    let pollTimer = null;
 
     async function init() {
       setLoading(true);
@@ -101,7 +108,6 @@ export default function LiveRoomStudentPage() {
           },
           onStatusChange: (st) => setWsStatus(st),
         });
-        pollTimer = setInterval(syncState, 8000);
       } catch (err) {
         setJoinError(err.message || 'Could not join this live room.');
       } finally {
@@ -112,9 +118,14 @@ export default function LiveRoomStudentPage() {
     init();
     return () => {
       cleanupSocket();
-      if (pollTimer) clearInterval(pollTimer);
     };
   }, [code, showToast, syncState, studentName, user?.displayName, joinRequested]);
+
+  useEffect(() => {
+    if (!joinRequested || !room || wsStatus === 'connected') return undefined;
+    const pollTimer = setInterval(syncState, 25000);
+    return () => clearInterval(pollTimer);
+  }, [joinRequested, room?.code, wsStatus, syncState]);
 
   const activeIdx = room?.mode === 'student_paced' ? studentIdx : (room?.currentQuestionIdx || 0);
   const currentQ = room?.questions?.[activeIdx] || null;
@@ -143,8 +154,13 @@ export default function LiveRoomStudentPage() {
     return () => clearInterval(t);
   }, [room?.mode, room?.status, room?.questionStartedAt, currentQ?.id, currentQ?.timeLimitSec]);
 
-  const handleLeave = () => {
+  const handleLeave = async () => {
     if (window.confirm('Leave this live classroom?')) {
+      try {
+        await api.post(`/api/rooms/${encodeURIComponent(code)}/leave`, {});
+      } catch (error) {
+        showToast(error.message || 'Could not update your room status.', 'error');
+      }
       navigate('/student');
     }
   };
@@ -160,26 +176,27 @@ export default function LiveRoomStudentPage() {
     if (!currentQ) return;
 
     let responsePayload = draftResponse;
-    if (currentQ.type === 'mcq' || currentQ.type === 'challenge') {
+    const kind = questionKind(currentQ);
+    if (kind === 'choice') {
       if (currentQ.multiSelect) {
         if (draftMulti.length === 0) {
           showToast('Select at least one option before submitting.', 'warning');
           return;
         }
         responsePayload = draftMulti;
-      } else if (draftResponse === '' || draftResponse === null) {
+      } else if (draftResponse === '' || draftResponse === null || draftResponse === undefined) {
         showToast('Choose an option first.', 'warning');
         return;
       } else {
         responsePayload = Number(draftResponse);
       }
-    } else if (currentQ.type === 'tf') {
+    } else if (kind === 'tf') {
       if (draftResponse !== true && draftResponse !== false) {
         showToast('Select True or False first.', 'warning');
         return;
       }
       responsePayload = draftResponse;
-    } else if (!String(draftResponse || '').trim()) {
+    } else if (!String(draftResponse ?? '').trim()) {
       showToast('Type your answer before submitting.', 'warning');
       return;
     }
@@ -377,7 +394,7 @@ export default function LiveRoomStudentPage() {
           )}
 
           {/* Question Card */}
-          <form onSubmit={handleSubmitAnswer} className="eval-card p-5 sm:p-7 space-y-5">
+          <form onSubmit={handleSubmitAnswer} className="eval-card p-4 sm:p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="eval-badge eval-badge-brand font-mono">
                 Question {activeIdx + 1} of {room.questions.length}
@@ -400,16 +417,16 @@ export default function LiveRoomStudentPage() {
               </div>
             </div>
 
-            <h2 className="text-lg sm:text-xl font-semibold leading-snug">{currentQ.prompt}</h2>
+            <h2 className="text-base sm:text-lg font-semibold leading-snug">{currentQ.prompt}</h2>
 
-            {currentQ.multiSelect && !mySaved && (
+            {questionKind(currentQ) === 'choice' && currentQ.multiSelect && !mySaved && (
               <p className="text-xs font-medium" style={{ color: 'var(--eval-accent)' }}>
                 Select all answers that apply.
               </p>
             )}
 
             {/* Answer Inputs */}
-            {currentQ.type === 'tf' ? (
+            {questionKind(currentQ) === 'tf' ? (
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { val: true, label: 'True' },
@@ -435,7 +452,7 @@ export default function LiveRoomStudentPage() {
                   );
                 })}
               </div>
-            ) : currentQ.type === 'short_answer' ? (
+            ) : questionKind(currentQ) === 'short_answer' ? (
               <div>
                 <label htmlFor="liveShortAnswer" className="block text-xs font-medium mb-1.5">
                   Your Answer
@@ -451,7 +468,7 @@ export default function LiveRoomStudentPage() {
                 />
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2">
                 {(currentQ.options || []).map((opt, idx) => {
                   const chosen = mySaved
                     ? Array.isArray(mySaved.response)
@@ -475,7 +492,7 @@ export default function LiveRoomStudentPage() {
                       onClick={() =>
                         currentQ.multiSelect ? toggleMultiOption(idx) : setDraftResponse(idx)
                       }
-                      className="w-full text-left p-4 rounded-xl border text-sm font-medium transition-all flex items-center gap-3"
+                      className="w-full text-left px-3 py-2.5 rounded-lg border text-xs sm:text-sm font-medium transition-colors flex items-center gap-2.5"
                       style={{
                         borderColor: revealedCorrect
                           ? 'var(--status-pass)'
@@ -489,7 +506,7 @@ export default function LiveRoomStudentPage() {
                             : 'var(--eval-bg)',
                       }}
                     >
-                      <span className="w-6 h-6 rounded-md border flex items-center justify-center text-xs font-mono shrink-0" style={{ borderColor: 'var(--eval-border-strong)' }}>
+                      <span className="w-5 h-5 rounded border flex items-center justify-center text-[10px] font-mono shrink-0" style={{ borderColor: 'var(--eval-border-strong)' }}>
                         {String.fromCharCode(65 + idx)}
                       </span>
                       <span className="flex-1">{opt}</span>

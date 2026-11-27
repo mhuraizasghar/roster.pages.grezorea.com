@@ -186,6 +186,15 @@ module.exports = async function handler(req, res) {
       return res.status(503).json({ error: 'We could not finish setting up your account. Please try again or contact support.' });
     }
 
+    if (portalRole === 'student') {
+      const { error: activationError } = await supabase.rpc('roster_activate_student_links');
+      if (activationError) {
+        // Login remains available without a roster; this only updates an
+        // invitation badge for a student who already has roster links.
+        console.error('Student roster activation was skipped:', activationError.code || activationError.message);
+      }
+    }
+
     return res.status(200).json({ ok: true, token: createSessionToken(sessionSecret, user), user });
   } catch (error) {
     console.error('Roster auth exchange failed:', error?.message || 'Unknown error');

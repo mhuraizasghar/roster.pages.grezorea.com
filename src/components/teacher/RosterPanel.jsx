@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Download, FolderPlus, Search, Trash2, Upload, UserPlus, Check, Edit2, X, Users } from 'lucide-react';
+import { Download, Search, Trash2, Upload, UserPlus, Check, Edit2, X } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useToast } from '../Toast';
 
@@ -10,13 +10,9 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
   const [bulkText, setBulkText] = useState('');
   const [bulkGroupId, setBulkGroupId] = useState('');
   const [importReport, setImportReport] = useState(null);
-  const [newGroupName, setNewGroupName] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [removeConfirmId, setRemoveConfirmId] = useState(null);
   const [editName, setEditName] = useState('');
-  const [editingGroupId, setEditingGroupId] = useState(null);
-  const [editingGroupName, setEditingGroupName] = useState('');
-  const [removeGroupConfirmId, setRemoveGroupConfirmId] = useState(null);
   const [filterGroup, setFilterGroup] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -105,45 +101,6 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
         setBulkText(JSON.stringify(students, null, 2));
       } else setBulkText(text);
     } catch (error) { showToast(error.message || 'Could not read that file.', 'error'); }
-  };
-
-  const handleCreateGroup = async (e) => {
-    e.preventDefault();
-    if (!newGroupName.trim()) return;
-    try {
-      await api.post('/api/groups', { name: newGroupName.trim() });
-      setNewGroupName('');
-      showToast('Group created.');
-      onRefresh();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  const handleSaveGroupName = async (groupId) => {
-    const name = editingGroupName.trim();
-    if (!name) return;
-    try {
-      await api.patch(`/api/groups/${groupId}`, { name });
-      setEditingGroupId(null);
-      setEditingGroupName('');
-      showToast('Group renamed.');
-      onRefresh();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  };
-
-  const handleDeleteGroup = async (groupId) => {
-    try {
-      await api.del(`/api/groups/${groupId}`);
-      if (filterGroup === groupId) setFilterGroup('');
-      setRemoveGroupConfirmId(null);
-      showToast('Group deleted. Students moved to No group.', 'info');
-      onRefresh();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
   };
 
   const handleSaveName = async (entryId) => {
@@ -320,95 +277,8 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
         </form>
       </div>
 
-      {/* Groups & Search Filter Bar */}
-      <div className="eval-card p-4 space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="text-sm font-semibold flex items-center gap-2">
-              <Users className="w-4 h-4" style={{ color: 'var(--eval-accent)' }} />
-              Groups / Sections
-            </div>
-            <p className="text-[11px] mt-0.5" style={{ color: 'var(--eval-muted)' }}>
-              Organize students, filter rosters, and manage sections.
-            </p>
-          </div>
-
-          <form onSubmit={handleCreateGroup} className="flex items-center gap-2">
-            <input
-              className="eval-input py-1.5 text-xs w-44"
-              value={newGroupName}
-              onChange={(e) => setNewGroupName(e.target.value)}
-              placeholder="New section name"
-            />
-            <button type="submit" className="eval-btn-secondary text-xs py-1.5 px-3">
-              <FolderPlus className="w-3.5 h-3.5" /> Add Group
-            </button>
-          </form>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setFilterGroup('')}
-            className={!filterGroup ? 'eval-badge eval-badge-brand cursor-pointer' : 'eval-badge eval-badge-neutral cursor-pointer'}
-          >
-            All ({entries.length})
-          </button>
-          {groups.map((g) => {
-            const memberCount = entries.filter((entry) => entry.groupId === g.id).length;
-            return editingGroupId === g.id ? (
-              <div key={g.id} className="inline-flex items-center gap-1 px-1 py-1 rounded-lg border" style={{ borderColor: 'var(--eval-border)' }}>
-                <input
-                  className="eval-input py-1 px-2 text-xs w-36"
-                  value={editingGroupName}
-                  onChange={(e) => setEditingGroupName(e.target.value)}
-                  aria-label="Group name"
-                />
-                <button type="button" onClick={() => handleSaveGroupName(g.id)} className="eval-btn-primary py-1 px-2 text-xs" title="Save group name">
-                  <Check className="w-3 h-3" />
-                </button>
-                <button type="button" onClick={() => setEditingGroupId(null)} className="eval-btn-ghost p-1" title="Cancel"><X className="w-3 h-3" /></button>
-              </div>
-            ) : removeGroupConfirmId === g.id ? (
-              <div key={g.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border" style={{ borderColor: 'var(--status-fail)', backgroundColor: 'var(--eval-bg)' }}>
-                <span className="text-[11px]">Delete {g.name}?</span>
-                <button type="button" onClick={() => handleDeleteGroup(g.id)} className="eval-btn-primary py-1 px-2 text-[11px]">Delete</button>
-                <button type="button" onClick={() => setRemoveGroupConfirmId(null)} className="eval-btn-ghost p-1" title="Cancel"><X className="w-3 h-3" /></button>
-              </div>
-            ) : (
-              <div key={g.id} className="inline-flex items-center rounded-lg border" style={{ borderColor: filterGroup === g.id ? 'var(--eval-accent)' : 'var(--eval-border)' }}>
-                <button
-                  type="button"
-                  onClick={() => setFilterGroup(filterGroup === g.id ? '' : g.id)}
-                  className="px-2.5 py-1.5 text-xs font-medium"
-                  style={{ color: filterGroup === g.id ? 'var(--eval-accent)' : 'var(--eval-ink)' }}
-                >
-                  {g.name} <span className="font-mono" style={{ color: 'var(--eval-muted)' }}>({memberCount})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setEditingGroupId(g.id); setEditingGroupName(g.name); }}
-                  className="eval-btn-ghost p-1.5 border-l"
-                  style={{ borderColor: 'var(--eval-border)' }}
-                  title={`Rename ${g.name}`}
-                >
-                  <Edit2 className="w-3 h-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRemoveGroupConfirmId(g.id)}
-                  className="eval-btn-ghost p-1.5 border-l"
-                  style={{ borderColor: 'var(--eval-border)', color: 'var(--status-fail)' }}
-                  title={`Delete ${g.name}`}
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="pt-3 border-t flex flex-wrap items-center justify-between gap-3" style={{ borderColor: 'var(--eval-border)' }}>
+      {/* Roster search and filters */}
+      <div className="eval-card p-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--eval-muted)' }} />
@@ -421,6 +291,15 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
                 className="eval-input pl-8 py-1.5 text-xs w-52"
               />
             </div>
+            <select
+              className="eval-input py-1.5 text-xs w-auto"
+              value={filterGroup}
+              onChange={(e) => setFilterGroup(e.target.value)}
+              aria-label="Filter roster by group"
+            >
+              <option value="">All groups</option>
+              {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+            </select>
             <div className="inline-flex items-center p-0.5 rounded-lg border text-[11px]" style={{ borderColor: 'var(--eval-border)', backgroundColor: 'var(--eval-bg)' }}>
               {['all', 'active', 'pending'].map((st) => (
                 <button
@@ -442,7 +321,6 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
           <button type="button" onClick={handleExportRosterCsv} className="eval-btn-secondary py-1.5 px-3 text-xs">
             <Download className="w-3.5 h-3.5" /> Export CSV
           </button>
-        </div>
       </div>
 
       {/* Roster Table */}

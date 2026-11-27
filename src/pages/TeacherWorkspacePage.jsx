@@ -12,6 +12,7 @@ import { useToast } from '../components/Toast';
 import LibraryPanel from '../components/teacher/LibraryPanel';
 import QuizEditorPanel from '../components/teacher/QuizEditorPanel';
 import RosterPanel from '../components/teacher/RosterPanel';
+import GroupManagementPanel from '../components/teacher/GroupManagementPanel';
 import AssignmentPanel, { AssignQuizModal } from '../components/teacher/AssignmentPanel';
 import RoomsPanel from '../components/teacher/RoomsPanel';
 import ReportsPanel from '../components/teacher/ReportsPanel';
@@ -19,6 +20,7 @@ import ReportsPanel from '../components/teacher/ReportsPanel';
 const TABS = [
   { id: 'library', label: 'Quiz Library', icon: FolderTree },
   { id: 'roster', label: 'Student Roster', icon: Users },
+  { id: 'groups', label: 'Groups', icon: Users },
   { id: 'assignments', label: 'Assignments', icon: CalendarClock },
   { id: 'rooms', label: 'Live Classrooms', icon: Radio },
   { id: 'reports', label: 'Results & Analytics', icon: BarChart3 },
@@ -71,6 +73,34 @@ export default function TeacherWorkspacePage() {
     } finally {
       setLoading(false);
     }
+  }, [showToast]);
+
+  const loadLibrary = useCallback(async () => {
+    try {
+      const result = await api.get('/api/library');
+      setLibrary({ folders: result.folders || [], quizzes: result.quizzes || [], trashFolders: result.trashFolders || [], trashQuizzes: result.trashQuizzes || [] });
+    } catch (err) { showToast(err.message || 'Could not refresh the quiz library.', 'error'); }
+  }, [showToast]);
+
+  const loadRoster = useCallback(async () => {
+    try {
+      const result = await api.get('/api/roster');
+      setRoster({ entries: result.entries || [], groups: result.groups || [] });
+    } catch (err) { showToast(err.message || 'Could not refresh students and groups.', 'error'); }
+  }, [showToast]);
+
+  const loadAssignments = useCallback(async () => {
+    try {
+      const result = await api.get('/api/assignments');
+      setAssignments(result.assignments || []);
+    } catch (err) { showToast(err.message || 'Could not refresh assignments.', 'error'); }
+  }, [showToast]);
+
+  const loadRooms = useCallback(async () => {
+    try {
+      const result = await api.get('/api/rooms');
+      setRooms(result.rooms || []);
+    } catch (err) { showToast(err.message || 'Could not refresh live rooms.', 'error'); }
   }, [showToast]);
 
   useEffect(() => {
@@ -152,11 +182,11 @@ export default function TeacherWorkspacePage() {
           quiz={editingQuiz}
           onBack={() => {
             setEditingQuiz(null);
-            loadAll();
+            loadLibrary();
           }}
           onSaved={(updated) => {
             setEditingQuiz(updated);
-            loadAll();
+            loadLibrary();
           }}
         />
       ) : (
@@ -167,7 +197,7 @@ export default function TeacherWorkspacePage() {
               quizzes={library.quizzes}
               trashFolders={library.trashFolders}
               trashQuizzes={library.trashQuizzes}
-              onRefresh={loadAll}
+              onRefresh={loadLibrary}
               onEditQuiz={(quiz) => setEditingQuiz(quiz)}
               onAssignQuiz={(quiz) => setAssigningQuiz(quiz)}
               onLaunchLive={(quiz) => {
@@ -181,14 +211,18 @@ export default function TeacherWorkspacePage() {
             <RosterPanel
               entries={roster.entries}
               groups={roster.groups}
-              onRefresh={loadAll}
+              onRefresh={loadRoster}
             />
+          )}
+
+          {activeTab === 'groups' && (
+            <GroupManagementPanel groups={roster.groups} entries={roster.entries} onRefresh={loadRoster} />
           )}
 
           {activeTab === 'assignments' && (
             <AssignmentPanel
               assignments={assignments}
-              onRefresh={loadAll}
+              onRefresh={loadAssignments}
             />
           )}
 
@@ -198,7 +232,7 @@ export default function TeacherWorkspacePage() {
               quizzes={library.quizzes}
               initialQuiz={initialRoomQuiz}
               onClearInitialQuiz={() => setInitialRoomQuiz(null)}
-              onRefresh={loadAll}
+              onRefresh={loadRooms}
               onViewReport={(target) => {
                 setInitialReportTarget(target);
                 setActiveTab('reports');
@@ -219,7 +253,7 @@ export default function TeacherWorkspacePage() {
           groups={roster.groups}
           rosterEntries={roster.entries}
           onClose={() => setAssigningQuiz(null)}
-          onAssigned={() => loadAll()}
+          onAssigned={() => loadAssignments()}
         />
       )}
     </div>

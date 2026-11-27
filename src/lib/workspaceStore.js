@@ -57,7 +57,7 @@ function normalizeStoredRoom(row, questions = [], participants = [], host = fals
       const keys = Array.isArray(answer) ? answer : [answer];
       keys.forEach((key) => { const dist = distributions[index] || (distributions[index] = {}); dist[String(key)] = (dist[String(key)] || 0) + 1; });
     });
-    return { id: item.id, studentId: item.id, name: item.display_name, displayName: item.display_name, studentEmail: item.student_email, joinedAt: item.joined_at, totalScore: item.total_score || 0 };
+    return { id: item.id, studentId: item.id, name: item.display_name, displayName: item.display_name, studentEmail: item.student_email, joinedAt: item.joined_at, leftAt: item.left_at || null, totalScore: item.total_score || 0 };
   });
   const room = {
     id: row.code, code: row.code, title: row.title, mode: row.mode, status: row.status,
@@ -79,7 +79,9 @@ async function loadSupabaseRoom(code, participantId = '') {
   const { data: row, error } = await supabase.from('roster_live_rooms').select('*').eq('code', String(code).toUpperCase()).maybeSingle();
   if (error) throw error;
   if (!row) throw new Error('Room not found. Check the room code or ask the teacher for a new link.');
-  const ownerId = await getTeacherProfileId();
+  let cachedRole = '';
+  try { cachedRole = JSON.parse(localStorage.getItem('roster.auth.user') || 'null')?.role || ''; } catch {}
+  const ownerId = cachedRole === 'teacher' ? await getTeacherProfileId() : null;
   const host = Boolean(ownerId && row.teacher_id === ownerId);
   let questions = row.questions || [];
   if (host || row.status === 'ended' || row.revealed_current) {
@@ -156,13 +158,11 @@ export async function workspaceRequest(method, path, body = {}) {
     }
 
     if (method === 'GET' && path === '/api/rooms') {
-      const { data: rows, error } = await supabase.from('roster_live_rooms').select('*').order('updated_at', { ascending: false }).limit(100);
+      const teacherId = await getTeacherProfileId();
+      if (!teacherId) throw new Error('Sign in to view your live rooms.');
+      const { data: rows, error } = await supabase.from('roster_live_rooms').select('*').eq('teacher_id', teacherId).order('updated_at', { ascending: false }).limit(50);
       if (error) throw error;
-      const rooms = await Promise.all((rows || []).map(async (row) => {
-        const { data: participants, error: participantError } = await supabase.from('roster_live_participants').select('*').eq('room_code', row.code);
-        if (participantError) throw participantError;
-        return normalizeStoredRoom(row, row.questions || [], participants || [], true);
-      }));
+      const rooms = (rows || []).map((row) => normalizeStoredRoom(row, row.questions || [], [], true));
       return { rooms };
     }
 
@@ -204,7 +204,8 @@ export async function workspaceRequest(method, path, body = {}) {
     const joinMatch = path.match(/^\/api\/rooms\/([^/]+)\/join$/);
     if (method === 'POST' && joinMatch) {
       const code = decodeURIComponent(joinMatch[1]).toUpperCase();
-      const { data: joined, error } = await supabase.rpc('roster_join_live_room', { p_code: code, p_name: String(body.studentName || 'Student').trim().slice(0, 80) });
+      const savedParticipantId = localStorage.getItem(`roster.room.participant.${code}`) || null;
+      const { data: joined, error } = await supabase.rpc('roster_join_live_room', { p_code: code, p_name: String(body.studentName || 'Student').trim().slice(0, 80), p_participant: savedParticipantId });
       if (error) throw error;
       const participantId = joined?.participantId;
       if (!participantId) throw new Error('Room join did not return a participant identity.');
@@ -244,6 +245,16 @@ export async function workspaceRequest(method, path, body = {}) {
       }
       result = await loadSupabaseRoom(code, localStorage.getItem(`roster.room.participant.${code}`) || '');
       return { room: result.room, feedback: null };
+    }
+
+    const leaveMatch = path.match(/^\/api\/rooms\/([^/]+)\/leave$/);
+    if (method === 'POST' && leaveMatch) {
+      const code = decodeURIComponent(leaveMatch[1]).toUpperCase();
+      const participantId = localStorage.getItem(`roster.room.participant.${code}`);
+      if (!participantId) throw new Error('Your participant session was not found.');
+      const { error } = await supabase.rpc('roster_leave_live_room', { p_code: code, p_participant: participantId });
+      if (error) throw error;
+      return { ok: true };
     }
   }
 
@@ -439,10 +450,14 @@ export async function workspaceRequest(method, path, body = {}) {
     const groupId = path.split('/').pop();
     if (isSupabaseConfigured && supabase) {
       const profileId = await getTeacherProfileId();
-      if (profileId) {
-        const { data: updated, error } = await supabase.from('groups').update({ name: body.name }).eq('id', groupId).eq('teacher_id', profileId).select('*').single();
-        if (!error && updated) return data({ group: { id: updated.id, name: updated.name, createdAt: updated.created_at } });
-      }
+      if (!profileId) throw new Error('Your Roster profile is still loading. Sign in again and retry.');
+      const name = String(body.name || '').trim().slice(0, 80);
+      if (!name) throw new Error('Group name is required.');
+      const { data: updated, error } = await supabase.from('groups').update({ name }).eq('id', groupId).eq('teacher_id', profileId).select('*').maybeSingle();
+      if (error?.code === '23505') throw new Error('A group with this name already exists.');
+      if (error) throw error;
+      if (!updated) throw new Error('Group not found.');
+      return data({ group: { id: updated.id, name: updated.name, createdAt: updated.created_at } });
     }
     const group = state.groups.find((item) => item.id === groupId);
     if (!group) return Promise.reject(new Error('Group not found'));
@@ -455,10 +470,11 @@ export async function workspaceRequest(method, path, body = {}) {
     const groupId = path.split('/').pop();
     if (isSupabaseConfigured && supabase) {
       const profileId = await getTeacherProfileId();
-      if (profileId) {
-        await supabase.from('roster_entries').update({ group_id: null }).eq('teacher_id', profileId).eq('group_id', groupId);
-        await supabase.from('groups').delete().eq('id', groupId).eq('teacher_id', profileId);
-      }
+      if (!profileId) throw new Error('Your Roster profile is still loading. Sign in again and retry.');
+      const { data: deleted, error } = await supabase.from('groups').delete().eq('id', groupId).eq('teacher_id', profileId).select('id').maybeSingle();
+      if (error) throw error;
+      if (!deleted) throw new Error('Group not found.');
+      return data({ ok: true });
     }
     state.groups = state.groups.filter((item) => item.id !== groupId);
     state.rosterEntries = state.rosterEntries.map((item) => item.groupId === groupId ? { ...item, groupId: null } : item);
@@ -469,10 +485,13 @@ export async function workspaceRequest(method, path, body = {}) {
   if (method === 'POST' && path === '/api/groups') {
     if (isSupabaseConfigured && supabase) {
       const profileId = await getTeacherProfileId();
-      if (profileId) {
-        const { data: created, error } = await supabase.from('groups').insert({ teacher_id: profileId, name: body.name }).select('*').single();
-        if (!error && created) return data({ group: { id: created.id, name: created.name, createdAt: created.created_at } });
-      }
+      if (!profileId) throw new Error('Your Roster profile is still loading. Sign in again and retry.');
+      const name = String(body.name || '').trim().slice(0, 80);
+      if (!name) throw new Error('Group name is required.');
+      const { data: created, error } = await supabase.from('groups').insert({ teacher_id: profileId, name }).select('*').single();
+      if (error?.code === '23505') throw new Error('A group with this name already exists.');
+      if (error) throw error;
+      return data({ group: { id: created.id, name: created.name, createdAt: created.created_at } });
     }
     const group = { id: uid('group'), name: body.name, createdAt: iso() }; state.groups.push(group); write(state); return data({ group });
   }
@@ -481,14 +500,16 @@ export async function workspaceRequest(method, path, body = {}) {
     const studentEmail = String(body.email || body.studentEmail || '').trim().toLowerCase();
     if (isSupabaseConfigured && supabase) {
       const profileId = await getTeacherProfileId();
-      if (profileId) {
+      if (!profileId) throw new Error('Your Roster profile is still loading. Sign in again and retry.');
+      {
         if (body.groupId) {
           const { data: group, error: groupError } = await supabase.from('groups').select('id').eq('id', body.groupId).eq('teacher_id', profileId).maybeSingle();
           if (groupError) throw groupError;
           if (!group) throw new Error('Choose a group that belongs to your roster.');
         }
         const { data: created, error } = await supabase.from('roster_entries').upsert({ teacher_id: profileId, student_email: studentEmail, display_name: body.displayName || '', group_id: body.groupId || null, status: 'pending' }, { onConflict: 'teacher_id,student_email' }).select('*').single();
-        if (!error && created) return data({ entry: { id: created.id, studentEmail: created.student_email, email: created.student_email, displayName: created.display_name || '', groupId: created.group_id, status: created.status, createdAt: created.created_at, updatedAt: created.updated_at } });
+        if (error) throw error;
+        return data({ entry: { id: created.id, studentEmail: created.student_email, email: created.student_email, displayName: created.display_name || '', groupId: created.group_id, status: created.status, createdAt: created.created_at, updatedAt: created.updated_at } });
       }
     }
     const entry = { id: uid('roster'), email: studentEmail, studentEmail, displayName: body.displayName || '', groupId: body.groupId || null, status: body.status || 'pending', createdAt: iso(), updatedAt: iso() };
@@ -558,11 +579,40 @@ export async function workspaceRequest(method, path, body = {}) {
 
   match = path.match(/^\/api\/roster\/([^/]+)$/);
   if (match && method === 'PATCH') {
+    if (isSupabaseConfigured && supabase) {
+      const profileId = await getTeacherProfileId();
+      if (!profileId) throw new Error('Your Roster profile is still loading. Sign in again and retry.');
+      const updates = {};
+      if (Object.prototype.hasOwnProperty.call(body, 'displayName')) updates.display_name = String(body.displayName || '').trim().slice(0, 120);
+      if (Object.prototype.hasOwnProperty.call(body, 'groupId')) {
+        const groupId = body.groupId || null;
+        if (groupId) {
+          const { data: group, error: groupError } = await supabase.from('groups').select('id').eq('id', groupId).eq('teacher_id', profileId).maybeSingle();
+          if (groupError) throw groupError;
+          if (!group) throw new Error('Choose a group that belongs to your roster.');
+        }
+        updates.group_id = groupId;
+      }
+      if (!Object.keys(updates).length) throw new Error('No roster changes were provided.');
+      updates.updated_at = iso();
+      const { data: updated, error } = await supabase.from('roster_entries').update(updates).eq('id', match[1]).eq('teacher_id', profileId).select('*').maybeSingle();
+      if (error) throw error;
+      if (!updated) throw new Error('Roster entry not found. Refresh the roster and try again.');
+      return data({ entry: { id: updated.id, email: updated.student_email, studentEmail: updated.student_email, displayName: updated.display_name || '', groupId: updated.group_id, status: updated.status, createdAt: updated.created_at, updatedAt: updated.updated_at } });
+    }
     const entry = state.rosterEntries.find((item) => item.id === match[1]);
     if (!entry) return Promise.reject(new Error('Roster entry not found.'));
     Object.assign(entry, body, { updatedAt: iso() }); write(state); return data({ entry });
   }
   if (match && method === 'DELETE') {
+    if (isSupabaseConfigured && supabase) {
+      const profileId = await getTeacherProfileId();
+      if (!profileId) throw new Error('Your Roster profile is still loading. Sign in again and retry.');
+      const { data: removed, error } = await supabase.from('roster_entries').delete().eq('id', match[1]).eq('teacher_id', profileId).select('id').maybeSingle();
+      if (error) throw error;
+      if (!removed) throw new Error('Roster entry not found. Refresh the roster and try again.');
+      return data({ ok: true });
+    }
     state.rosterEntries = state.rosterEntries.filter((item) => item.id !== match[1]); write(state); return data({ ok: true });
   }
 
