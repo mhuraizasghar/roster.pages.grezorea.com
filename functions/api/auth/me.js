@@ -25,7 +25,8 @@ function base64UrlDecode(value) {
 async function verifySessionToken(env, token) {
   if (!token || !token.includes('.')) return null;
   const [encoded, suppliedSignature] = token.split('.');
-  const secret = env.SESSION_SECRET || 'eval-dev-session-secret-change-in-production';
+  const secret = env.SESSION_SECRET;
+  if (!secret) return null;
   const key = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret),
@@ -74,7 +75,7 @@ export async function onRequest(context) {
       role: data.role,
       displayName: data.email.split('@')[0],
       institutionName: '',
-      authProvider: 'google',
+      authProvider: data.authProvider || 'google',
       emailVerified: true,
     },
   }, { headers });

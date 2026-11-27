@@ -15,7 +15,7 @@ GitHub: https://github.com/mhuraizasghar/roster.pages.grezorea.com
 - Live classroom rooms with real-time participation
 - Submission reports and CSV export
 - Supabase-backed storage and authentication
-- Cloudflare and Vercel deployment support
+- Cloudflare Pages and Vercel hosting support; Supabase provides authentication and shared data storage
 
 ## Run locally
 
@@ -53,10 +53,10 @@ Node test suites cover quizzes, stored attempts, and live room synchronization.
 - `src/` - React application pages and components
 - `server/` - Express API and server configuration
 - `supabase/migrations/` - Supabase database migrations
-- `migrations/` - Cloudflare D1 migrations
 - `public/` - static assets
-- `tests/` - automated tests
-- `functions/api/` - Cloudflare Pages API handlers
+- `tests/` - active application tests
+- `functions/api/` - Supabase-backed authentication endpoints for Cloudflare Pages
+Apply SQL files in `supabase/migrations/` to the Supabase project before using shared workspace data. Cloudflare Pages is a static host and does not require a database binding.
 
 ## Security
 

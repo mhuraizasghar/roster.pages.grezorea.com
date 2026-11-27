@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 
@@ -69,7 +70,14 @@ export default function GoogleAuthCallbackPage() {
           emailVerified: true,
         };
 
-        loginWithToken(accessToken, signedInUser);
+        // The Supabase access token rotates. Exchange it for Roster's signed,
+        // longer lived session so /api/auth/me can restore identity on reload.
+        const session = await api.post('/api/auth/google/token', {
+          accessToken,
+          portalRole,
+          institutionName,
+        });
+        loginWithToken(session.token, { ...signedInUser, ...session.user, avatarUrl: signedInUser.avatarUrl });
         showToast(`Signed in as ${signedInUser.displayName}`);
         sessionStorage.removeItem('googleAuthPortalRole');
         sessionStorage.removeItem('googleAuthNext');

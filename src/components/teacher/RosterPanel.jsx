@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Download, FolderPlus, Search, Trash2, Upload, UserPlus, Check, Edit2, X } from 'lucide-react';
+import { Download, FolderPlus, Search, Trash2, Upload, UserPlus, Check, Edit2, X, Users } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useToast } from '../Toast';
 
@@ -14,10 +14,27 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
   const [editingId, setEditingId] = useState(null);
   const [removeConfirmId, setRemoveConfirmId] = useState(null);
   const [editName, setEditName] = useState('');
+  const [editingGroupId, setEditingGroupId] = useState(null);
+  const [editingGroupName, setEditingGroupName] = useState('');
+  const [removeGroupConfirmId, setRemoveGroupConfirmId] = useState(null);
   const [filterGroup, setFilterGroup] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { showToast } = useToast();
+
+  const parseCsvRows = (text) => {
+    const rows = []; let row = []; let value = ''; let quoted = false;
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
+      if (quoted && char === '"' && text[i + 1] === '"') { value += '"'; i += 1; }
+      else if (char === '"') quoted = !quoted;
+      else if (char === ',' && !quoted) { row.push(value); value = ''; }
+      else if ((char === '\r' || char === '\n') && !quoted) { if (char === '\r' && text[i + 1] === '\n') i += 1; row.push(value); rows.push(row); row = []; value = ''; }
+      else value += char;
+    }
+    if (value || row.length) { row.push(value); rows.push(row); }
+    return rows.filter((items) => items.some((item) => item.trim()));
+  };
 
   const handleAddSingle = async (e) => {
     e.preventDefault();
@@ -40,17 +57,30 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
     e.preventDefault();
     if (!bulkText.trim()) return;
     try {
-      const lines = bulkText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-      const entries = lines.slice(lines[0]?.toLowerCase().startsWith('email') ? 1 : 0).map((line) => {
-        const parts = line.split(',').map((part) => part.trim());
+      const cleanText = bulkText.trim();
+      let entries;
+      if (cleanText.startsWith('[') || cleanText.startsWith('{')) {
+        const parsed = JSON.parse(cleanText);
+        entries = Array.isArray(parsed) ? parsed : parsed.students;
+        if (!Array.isArray(entries)) throw new Error('JSON must be a student array or contain a students array.');
+        entries = entries.map((student) => ({ email: student.email || student.studentEmail || '', displayName: student.name || student.displayName || '', groupName: student.group || student.groupName || '', groupId: student.groupId || bulkGroupId || null }));
+      } else {
+        const rows = parseCsvRows(cleanText);
+        const first = rows[0]?.map((cell) => cell.trim().toLowerCase());
+        const hasHeader = first?.some((cell) => ['email', 'studentemail', 'name', 'displayname', 'group', 'groupname'].includes(cell));
+        const header = hasHeader ? first : ['email', 'name', 'group'];
+        entries = rows.slice(hasHeader ? 1 : 0).map((parts) => {
+          const row = Object.fromEntries(header.map((key, index) => [key, parts[index]?.trim() || '']));
         return {
-          email: parts[0] || '',
-          displayName: parts[1] || '',
-          groupId: parts[2] ? null : (bulkGroupId || null),
-          groupName: parts[2] || '',
+            email: row.email || row.studentemail || '',
+            displayName: row.name || row.displayname || '',
+            groupId: row.groupid || bulkGroupId || null,
+            groupName: row.group || row.groupname || '',
         };
       });
+      }
       const res = await api.post('/api/roster/bulk', {
+        text: bulkText,
         entries,
         groupId: bulkGroupId || null,
       });
@@ -67,8 +97,14 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const text = await file.text();
-    setBulkText(text);
+    try {
+      const text = await file.text();
+      if (file.name.toLowerCase().endsWith('.json')) {
+        const parsed = JSON.parse(text); const students = Array.isArray(parsed) ? parsed : parsed.students;
+        if (!Array.isArray(students)) throw new Error('JSON file must contain a students array.');
+        setBulkText(JSON.stringify(students, null, 2));
+      } else setBulkText(text);
+    } catch (error) { showToast(error.message || 'Could not read that file.', 'error'); }
   };
 
   const handleCreateGroup = async (e) => {
@@ -78,6 +114,32 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
       await api.post('/api/groups', { name: newGroupName.trim() });
       setNewGroupName('');
       showToast('Group created.');
+      onRefresh();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleSaveGroupName = async (groupId) => {
+    const name = editingGroupName.trim();
+    if (!name) return;
+    try {
+      await api.patch(`/api/groups/${groupId}`, { name });
+      setEditingGroupId(null);
+      setEditingGroupName('');
+      showToast('Group renamed.');
+      onRefresh();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const handleDeleteGroup = async (groupId) => {
+    try {
+      await api.del(`/api/groups/${groupId}`);
+      if (filterGroup === groupId) setFilterGroup('');
+      setRemoveGroupConfirmId(null);
+      showToast('Group deleted. Students moved to No group.', 'info');
       onRefresh();
     } catch (err) {
       showToast(err.message, 'error');
@@ -209,9 +271,14 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
               Bulk Paste or CSV Upload
             </div>
             <label className="eval-btn-secondary text-xs py-1.5 px-3 cursor-pointer">
-              Upload CSV
-              <input type="file" accept=".csv,.txt,text/csv" className="hidden" onChange={handleCsvUpload} />
+              Upload CSV / JSON
+              <input type="file" accept=".csv,.txt,.json,text/csv,application/json" className="hidden" onChange={handleCsvUpload} />
             </label>
+          </div>
+          <div className="flex gap-3 text-[11px]" style={{ color: 'var(--eval-muted)' }}>
+            <a className="underline underline-offset-2" href="/templates/roster-import-sample.csv" download>CSV sample</a>
+            <a className="underline underline-offset-2" href="/templates/roster-import-sample.json" download>JSON sample</a>
+            <a className="underline underline-offset-2" href="/templates/roster-import-format.md" download>Format guide</a>
           </div>
           <textarea
             rows={3}
@@ -254,40 +321,91 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
       </div>
 
       {/* Groups & Search Filter Bar */}
-      <div className="eval-card p-3 space-y-2.5">
+      <div className="eval-card p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold">Groups / Sections:</span>
-            <button
-              type="button"
-              onClick={() => setFilterGroup('')}
-              className={!filterGroup ? 'eval-badge eval-badge-brand cursor-pointer' : 'eval-badge eval-badge-neutral cursor-pointer'}
-            >
-              All ({entries.length})
-            </button>
-            {groups.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() => setFilterGroup(filterGroup === g.id ? '' : g.id)}
-                className={filterGroup === g.id ? 'eval-badge eval-badge-brand cursor-pointer' : 'eval-badge eval-badge-neutral cursor-pointer'}
-              >
-                {g.name}
-              </button>
-            ))}
+          <div>
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <Users className="w-4 h-4" style={{ color: 'var(--eval-accent)' }} />
+              Groups / Sections
+            </div>
+            <p className="text-[11px] mt-0.5" style={{ color: 'var(--eval-muted)' }}>
+              Organize students, filter rosters, and manage sections.
+            </p>
           </div>
 
           <form onSubmit={handleCreateGroup} className="flex items-center gap-2">
             <input
-              className="eval-input py-1.5 text-xs w-40"
+              className="eval-input py-1.5 text-xs w-44"
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
-              placeholder="New group name..."
+              placeholder="New section name"
             />
             <button type="submit" className="eval-btn-secondary text-xs py-1.5 px-3">
               <FolderPlus className="w-3.5 h-3.5" /> Add Group
             </button>
           </form>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setFilterGroup('')}
+            className={!filterGroup ? 'eval-badge eval-badge-brand cursor-pointer' : 'eval-badge eval-badge-neutral cursor-pointer'}
+          >
+            All ({entries.length})
+          </button>
+          {groups.map((g) => {
+            const memberCount = entries.filter((entry) => entry.groupId === g.id).length;
+            return editingGroupId === g.id ? (
+              <div key={g.id} className="inline-flex items-center gap-1 px-1 py-1 rounded-lg border" style={{ borderColor: 'var(--eval-border)' }}>
+                <input
+                  className="eval-input py-1 px-2 text-xs w-36"
+                  value={editingGroupName}
+                  onChange={(e) => setEditingGroupName(e.target.value)}
+                  aria-label="Group name"
+                />
+                <button type="button" onClick={() => handleSaveGroupName(g.id)} className="eval-btn-primary py-1 px-2 text-xs" title="Save group name">
+                  <Check className="w-3 h-3" />
+                </button>
+                <button type="button" onClick={() => setEditingGroupId(null)} className="eval-btn-ghost p-1" title="Cancel"><X className="w-3 h-3" /></button>
+              </div>
+            ) : removeGroupConfirmId === g.id ? (
+              <div key={g.id} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border" style={{ borderColor: 'var(--status-fail)', backgroundColor: 'var(--eval-bg)' }}>
+                <span className="text-[11px]">Delete {g.name}?</span>
+                <button type="button" onClick={() => handleDeleteGroup(g.id)} className="eval-btn-primary py-1 px-2 text-[11px]">Delete</button>
+                <button type="button" onClick={() => setRemoveGroupConfirmId(null)} className="eval-btn-ghost p-1" title="Cancel"><X className="w-3 h-3" /></button>
+              </div>
+            ) : (
+              <div key={g.id} className="inline-flex items-center rounded-lg border" style={{ borderColor: filterGroup === g.id ? 'var(--eval-accent)' : 'var(--eval-border)' }}>
+                <button
+                  type="button"
+                  onClick={() => setFilterGroup(filterGroup === g.id ? '' : g.id)}
+                  className="px-2.5 py-1.5 text-xs font-medium"
+                  style={{ color: filterGroup === g.id ? 'var(--eval-accent)' : 'var(--eval-ink)' }}
+                >
+                  {g.name} <span className="font-mono" style={{ color: 'var(--eval-muted)' }}>({memberCount})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEditingGroupId(g.id); setEditingGroupName(g.name); }}
+                  className="eval-btn-ghost p-1.5 border-l"
+                  style={{ borderColor: 'var(--eval-border)' }}
+                  title={`Rename ${g.name}`}
+                >
+                  <Edit2 className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRemoveGroupConfirmId(g.id)}
+                  className="eval-btn-ghost p-1.5 border-l"
+                  style={{ borderColor: 'var(--eval-border)', color: 'var(--status-fail)' }}
+                  title={`Delete ${g.name}`}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         <div className="pt-3 border-t flex flex-wrap items-center justify-between gap-3" style={{ borderColor: 'var(--eval-border)' }}>

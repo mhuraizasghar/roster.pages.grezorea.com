@@ -125,6 +125,18 @@ html.dark {
     background-color: var(--eval-accent-soft);
   }
 
+  .nav-link {
+    @apply inline-flex h-10 items-center rounded-lg px-3 text-xs font-medium transition-colors;
+    color: var(--eval-muted);
+    background-color: transparent;
+  }
+  .nav-link:hover,
+  .menu-link:hover {
+    color: var(--eval-ink);
+    background-color: transparent;
+    font-weight: 600;
+  }
+
   .eval-input {
     @apply w-full rounded-lg px-3.5 py-2.5 text-sm transition-colors outline-none;
     background-color: var(--eval-surface);

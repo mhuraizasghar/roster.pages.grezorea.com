@@ -1,0 +1,6 @@
+{
+  "students": [
+    { "email": "aisha@example.edu", "name": "Aisha Tariq", "group": "Section A" },
+    { "email": "bilal@example.edu", "name": "Bilal Raza", "group": "Section B" }
+  ]
+}

@@ -58,18 +58,6 @@ export default function HomePage() {
             Instructors curate subject libraries, run real-time live rooms, and schedule self-paced assessments. Verified students connect across institutions without public catalogs or shared passwords.
           </p>
 
-          {user && (
-            <div className="flex justify-center pt-1">
-              <Link
-                to={user.role === 'teacher' ? '/teacher' : '/student'}
-                className="eval-btn-primary px-4 text-sm"
-              >
-                Open {user.role === 'teacher' ? 'Teacher Workspace' : 'Student Dashboard'}
-                <ArrowRight className="w-4 h-4" strokeWidth={1.75} />
-              </Link>
-            </div>
-          )}
-
           {/* Get started and live-room entry */}
           <div className="max-w-3xl mx-auto pt-3 flex flex-col sm:flex-row items-stretch gap-3">
             <Link

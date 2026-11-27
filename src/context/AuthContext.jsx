@@ -25,10 +25,35 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const refreshMe = useCallback(async () => {
-    const token = getStoredToken();
     const cachedUser = readCachedUser();
+    let token = getStoredToken();
     if (cachedUser) {
       setUser(cachedUser);
+    }
+    // Supabase rotates OAuth access tokens. A reload used to keep the old JWT
+    // in Roster storage and treat it as a session, which broke protected API
+    // requests after the first token refresh.
+    if (['google', 'email'].includes(cachedUser?.authProvider) && isSupabaseConfigured && supabase) {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (accessToken) {
+        try {
+          const session = await api.post('/api/auth/google/token', {
+            accessToken,
+            portalRole: cachedUser.role,
+            authProvider: cachedUser.authProvider,
+            institutionName: cachedUser.institutionName || '',
+          });
+          token = session.token;
+          setStoredToken(token);
+          const refreshedUser = { ...cachedUser, ...session.user };
+          setUser(refreshedUser);
+          writeCachedUser(refreshedUser);
+        } catch {
+          // Continue with the stored Roster session; a temporary auth endpoint
+          // outage should not log a teacher or student out of the workspace.
+        }
+      }
     }
     if (!token) {
       setUser(null);

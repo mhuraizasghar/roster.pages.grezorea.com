@@ -41,13 +41,15 @@ async function signHmac(secret, value) {
 }
 
 async function createSessionToken(env, payload) {
-  const secret = env.SESSION_SECRET || 'eval-dev-session-secret-change-in-production';
+  const secret = env.SESSION_SECRET;
+  if (!secret) throw new Error('Roster session signing is not configured.');
   const sid = crypto.randomUUID();
   const data = {
     sid,
     sub: payload.userId,
     role: payload.role,
     email: payload.email,
+    authProvider: payload.authProvider || 'google',
     exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
   };
   const encoded = base64UrlFromString(JSON.stringify(data));
@@ -69,6 +71,7 @@ export async function onRequest(context) {
   try {
     const body = await request.json();
     const portalRole = body.portalRole;
+    const authProvider = body.authProvider === 'email' ? 'email' : 'google';
     const accessToken = String(body.accessToken || '').trim();
 
     if (portalRole !== 'teacher' && portalRole !== 'student') {
@@ -81,8 +84,9 @@ export async function onRequest(context) {
     const supabaseUrl = env.SUPABASE_URL || env.VITE_SUPABASE_URL;
     const supabaseAnonKey = env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY;
     if (!supabaseUrl || !supabaseAnonKey) {
-      return Response.json({ ok: false, error: 'Google sign-in is not configured on Pages.' }, { status: 503, headers });
+      return Response.json({ ok: false, error: 'Supabase authentication is not configured.' }, { status: 503, headers });
     }
+    if (!env.SESSION_SECRET) return Response.json({ ok: false, error: 'Roster session signing is not configured.' }, { status: 503, headers });
 
     const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
@@ -109,7 +113,19 @@ export async function onRequest(context) {
       return Response.json({ ok: false, error: 'Google account has no valid email address.' }, { status: 400, headers });
     }
     if (!emailVerified) {
-      return Response.json({ ok: false, error: 'Google account email must be verified.' }, { status: 403, headers });
+      return Response.json({ ok: false, error: 'Your account email must be verified.' }, { status: 403, headers });
+    }
+
+    if (portalRole === 'student') {
+      const rosterResponse = await fetch(
+        `${supabaseUrl}/rest/v1/roster_entries?select=student_email&student_email=eq.${encodeURIComponent(email)}`,
+        { headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${accessToken}` } },
+      );
+      if (!rosterResponse.ok) return Response.json({ ok: false, error: 'Could not verify the student roster.' }, { status: 403, headers });
+      const rosterEntries = await rosterResponse.json();
+      if (!Array.isArray(rosterEntries) || rosterEntries.length === 0) {
+        return Response.json({ ok: false, errorCode: 'NOT_ON_ROSTER', error: "Your email hasn't been added by a teacher yet. Ask your teacher to add this address." }, { status: 403, headers });
+      }
     }
 
     const profileResponse = await fetch(`${supabaseUrl}/rest/v1/users_profile`, {
@@ -126,35 +142,12 @@ export async function onRequest(context) {
         role: portalRole,
         display_name: displayName,
         institution_name: String(body.institutionName || '').trim().slice(0, 120),
-        auth_provider: 'google',
+        auth_provider: authProvider,
         email_verified: true,
       }),
     });
     if (!profileResponse.ok) {
       return Response.json({ ok: false, error: 'Could not create the Roster profile.' }, { status: 503, headers });
-    }
-
-    if (portalRole === 'student') {
-      const rosterResponse = await fetch(
-        `${supabaseUrl}/rest/v1/roster_entries?select=student_email&student_email=eq.${encodeURIComponent(email)}`,
-        {
-          headers: {
-            apikey: supabaseAnonKey,
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
-      if (!rosterResponse.ok) {
-        return Response.json({ ok: false, error: 'Could not verify the student roster.' }, { status: 403, headers });
-      }
-      const rosterEntries = await rosterResponse.json();
-      if (!Array.isArray(rosterEntries) || rosterEntries.length === 0) {
-        return Response.json({
-          ok: false,
-          errorCode: 'NOT_ON_ROSTER',
-          error: "Your email hasn't been added by a teacher yet. Ask your teacher to add this address.",
-        }, { status: 403, headers });
-      }
     }
 
     const userId = `${portalRole === 'teacher' ? 't' : 's'}_${googleUser.id.slice(0, 10)}`;
@@ -164,7 +157,7 @@ export async function onRequest(context) {
       role: portalRole,
       displayName,
       institutionName: String(body.institutionName || '').trim().slice(0, 120),
-      authProvider: 'google',
+      authProvider,
       emailVerified: true,
     };
 
@@ -172,6 +165,7 @@ export async function onRequest(context) {
       userId,
       role: portalRole,
       email,
+      authProvider,
     });
 
     return Response.json({ ok: true, token, user }, { headers });

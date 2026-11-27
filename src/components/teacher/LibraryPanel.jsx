@@ -14,6 +14,8 @@ import {
   Send,
   Trash2,
   FileText,
+  Download,
+  Upload,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useToast } from '../Toast';
@@ -37,7 +39,96 @@ export default function LibraryPanel({
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [movingItem, setMovingItem] = useState(null);
   const [renamingFolder, setRenamingFolder] = useState(null);
+  const [importing, setImporting] = useState(false);
   const { showToast } = useToast();
+
+  const parseCsv = (text) => {
+    const rows = [];
+    let row = [], cell = '', quoted = false;
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i];
+      if (quoted && char === '"' && text[i + 1] === '"') { cell += '"'; i += 1; }
+      else if (char === '"') quoted = !quoted;
+      else if (char === ',' && !quoted) { row.push(cell); cell = ''; }
+      else if ((char === '\n' || char === '\r') && !quoted) {
+        if (char === '\r' && text[i + 1] === '\n') i += 1;
+        row.push(cell); if (row.some((value) => value.trim())) rows.push(row);
+        row = []; cell = '';
+      } else cell += char;
+    }
+    row.push(cell); if (row.some((value) => value.trim())) rows.push(row);
+    if (!rows.length) throw new Error('The CSV file is empty.');
+    const headers = rows.shift().map((value) => value.trim().toLowerCase());
+    return rows.map((values) => Object.fromEntries(headers.map((header, index) => [header, values[index] || ''])));
+  };
+
+  const handleImport = async (event) => {
+    const file = event.target.files?.[0]; event.target.value = '';
+    if (!file) return;
+    setImporting(true);
+    try {
+      let imported = [];
+      if (file.name.toLowerCase().endsWith('.json')) {
+        const parsed = JSON.parse(await file.text());
+        imported = Array.isArray(parsed) ? parsed : parsed.quizzes;
+        if (!Array.isArray(imported)) throw new Error('JSON must contain a quizzes array.');
+      } else {
+        const byTitle = new Map();
+        parseCsv(await file.text()).forEach((row, rowIndex) => {
+          const title = String(row.quiz_title || row.title || '').trim();
+          const prompt = String(row.question || row.prompt || '').trim();
+          if (!title || !prompt) throw new Error(`CSV row ${rowIndex + 2}: quiz_title and question are required.`);
+          if (!byTitle.has(title)) byTitle.set(title, { title, subject: row.subject || 'General', description: row.description || '', draftQuestions: [] });
+          const type = row.type || 'mcq';
+          const options = type === 'tf' ? ['True', 'False'] : ['option_a', 'option_b', 'option_c', 'option_d'].map((key) => String(row[key] || '').trim()).filter(Boolean);
+          const key = String(row.correct_option || '').trim();
+          const correctAnswer = type === 'tf' ? /^true$/i.test(key) : Math.max(0, ['a', 'b', 'c', 'd'].indexOf(key.toLowerCase()));
+          if (type !== 'short_answer' && (options.length < 2 || !['a', 'b', 'c', 'd'].includes(key.toLowerCase()))) throw new Error(`CSV row ${rowIndex + 2}: provide at least two options and correct_option a, b, c, or d.`);
+          byTitle.get(title).draftQuestions.push({ id: `q_${crypto.randomUUID()}`, type, prompt, text: prompt, options, correctAnswer, acceptedAnswers: type === 'short_answer' ? [key] : [], explanation: row.explanation || '', points: 1 });
+        });
+        imported = [...byTitle.values()];
+      }
+      if (!imported.length || imported.length > 100) throw new Error('Import must include between 1 and 100 quizzes.');
+      let count = 0;
+      for (const quiz of imported) {
+        if (!quiz || typeof quiz.title !== 'string' || !quiz.title.trim() || !Array.isArray(quiz.draftQuestions)) throw new Error('Each quiz needs a title and a draftQuestions array. Download the template for the supported format.');
+        if (quiz.draftQuestions.length > 500) throw new Error(`Quiz "${quiz.title}" has over 500 questions.`);
+        await api.post('/api/library/quizzes', { title: quiz.title.trim().slice(0, 160), subject: String(quiz.subject || 'General').slice(0, 80), description: String(quiz.description || '').slice(0, 2000), folderId: currentFolderId, settings: quiz.settings || { passMark: 50, shuffleOptions: false }, draftQuestions: quiz.draftQuestions });
+        count += 1;
+      }
+      await onRefresh();
+      showToast(`Imported ${count} quiz${count === 1 ? '' : 'zes'} into this folder.`);
+    } catch (error) { showToast(error.message || 'Could not import the quiz file.', 'error'); }
+    finally { setImporting(false); }
+  };
+
+  const download = (name, content, type) => {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const link = document.createElement('a'); link.href = url; link.download = name; link.click(); URL.revokeObjectURL(url);
+  };
+
+  const exportQuizzes = (format) => {
+    const list = visibleQuizzes;
+    if (format === 'json') download('roster-quizzes.json', JSON.stringify({ version: 1, quizzes: list.map(({ id, createdAt, updatedAt, ...quiz }) => quiz) }, null, 2), 'application/json');
+    else {
+      const quote = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+      const lines = ['quiz_title,subject,question,type,option_a,option_b,option_c,option_d,correct_option,explanation'];
+      list.forEach((quiz) => {
+        (quiz.draftQuestions || []).forEach((q) => {
+          const answer = q.type === 'tf'
+            ? (q.correctAnswer === false ? 'false' : 'true')
+            : q.type === 'short_answer'
+              ? (q.acceptedAnswers || [q.correctAnswer])[0]
+              : (['a', 'b', 'c', 'd'][Number(q.correctAnswer)] || q.correctAnswer);
+          const cells = [quiz.title, quiz.subject, q.prompt || q.text, q.type || 'mcq', ...(q.options || []).slice(0, 4)];
+          while (cells.length < 8) cells.push('');
+          cells.push(answer, q.explanation || '');
+          lines.push(cells.map(quote).join(','));
+        });
+      });
+      download('roster-quizzes.csv', lines.join('\r\n'), 'text/csv;charset=utf-8');
+    }
+  };
 
   const breadcrumbs = useMemo(() => {
     const chain = [];
@@ -223,6 +314,21 @@ export default function LibraryPanel({
 
         {!showTrash && (
           <div className="flex flex-wrap items-center gap-2">
+            <label className="eval-btn-secondary text-xs py-2 cursor-pointer">
+              <Upload className="w-3.5 h-3.5" /> {importing ? 'Importing…' : 'Import Quiz'}
+              <input type="file" accept=".json,.csv,application/json,text/csv" className="sr-only" onChange={handleImport} disabled={importing} />
+            </label>
+            <button type="button" onClick={() => exportQuizzes('json')} className="eval-btn-secondary text-xs py-2" title="Export visible quizzes as JSON">
+              <Download className="w-3.5 h-3.5" /> JSON
+            </button>
+            <button type="button" onClick={() => exportQuizzes('csv')} className="eval-btn-secondary text-xs py-2" title="Export visible quiz questions as CSV">
+              <Download className="w-3.5 h-3.5" /> CSV
+            </button>
+            <div className="flex items-center gap-2 text-[11px]" style={{ color: 'var(--eval-muted)' }}>
+              <a className="underline underline-offset-2" href="/templates/quiz-import-sample.json" download>JSON sample</a>
+              <a className="underline underline-offset-2" href="/templates/quiz-import-sample.csv" download>CSV sample</a>
+              <a className="underline underline-offset-2" href="/templates/quiz-import-format.md" download>Format guide</a>
+            </div>
             <div className="relative">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--eval-muted)' }} />
               <input

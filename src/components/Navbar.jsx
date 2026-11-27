@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, LogOut, LayoutDashboard, ArrowUpRight } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard, ArrowUpRight, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [platformOpen, setPlatformOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const profileRef = useRef(null);
   const location = useLocation();
@@ -45,7 +46,13 @@ export default function Navbar() {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase())
     .join('') || 'U';
-  const filled = scrolled || open;
+  const filled = scrolled || open || platformOpen;
+  useEffect(() => { setPlatformOpen(false); setOpen(false); setProfileOpen(false); }, [location.pathname]);
+  const platformGroups = [
+    { title: 'Roster', links: [['Overview', '/#workflow'], ['Quiz Library', '/features'], ['Live Classrooms', '/live-rooms'], ['Assignments', '/assignments'], ['Results & Analytics', '/architecture']] },
+    { title: 'For Instructors', links: [['Instructor Guide', '/guide/instructors'], ['Manage Student Roster', '/teacher'], ['Import Quiz Templates', '/guide/instructors'], ['Security & Privacy', '/security']] },
+    { title: 'For Students', links: [['Student Guide', '/guide/students'], ['Student Login', '/student/login'], ['Join a Room', '/student/login#room-join'], ['Support & FAQs', '/support']] },
+  ];
 
   return (
     <header
@@ -54,8 +61,8 @@ export default function Navbar() {
         backgroundColor: filled
           ? 'color-mix(in srgb, var(--eval-surface) 92%, transparent)'
           : 'transparent',
-        borderColor: 'transparent',
-        boxShadow: 'none',
+        borderColor: filled ? 'var(--eval-border)' : 'transparent',
+        boxShadow: platformOpen ? '0 4px 16px rgba(20, 16, 14, 0.06)' : 'none',
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
@@ -76,22 +83,18 @@ export default function Navbar() {
 
         {/* Center Navigation (Desktop) */}
         <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
-          <Link to="/#workflow" className="eval-btn-ghost text-xs">
-            Platform
-          </Link>
-          <Link to="/#modes" className="eval-btn-ghost text-xs">
-            Live Modes
-          </Link>
-          <Link to="/#security" className="eval-btn-ghost text-xs">
-            Access &amp; Security
-          </Link>
-          <Link to={user?.role === 'student' ? '/student' : '/student/login#room-join'} className="eval-btn-ghost text-xs">
+          <button type="button" className="nav-link" onClick={() => setPlatformOpen((value) => !value)} aria-expanded={platformOpen} aria-haspopup="true">
+            Explore <ChevronDown className={`w-3.5 h-3.5 transition-transform ${platformOpen ? 'rotate-180' : ''}`} />
+          </button>
+          <Link to="/features" className="nav-link">Features</Link>
+          <Link to="/guide/instructors" className="nav-link">Instructor Guide</Link>
+          <Link to={user?.role === 'student' ? '/student' : '/student/login#room-join'} className="nav-link">
             Join Room
           </Link>
           {user && (
             <Link
               to={dashboardPath}
-              className="eval-btn-ghost text-xs"
+              className="nav-link"
               style={
                 location.pathname.startsWith(dashboardPath)
                   ? { color: 'var(--eval-accent)', fontWeight: 600 }
@@ -102,6 +105,20 @@ export default function Navbar() {
             </Link>
           )}
         </nav>
+
+        {platformOpen && (
+          <>
+          <button type="button" aria-label="Close navigation menu" onClick={() => setPlatformOpen(false)} className="fixed inset-0 top-16 z-30 cursor-default bg-black/5 backdrop-blur-[3px]" />
+          <div className="absolute left-0 right-0 top-full z-50 border-y shadow-lg" style={{ borderColor: 'var(--eval-border)', backgroundColor: 'var(--eval-surface)' }}>
+            <div className="max-w-7xl mx-auto px-6 lg:px-8 py-6 grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {platformGroups.map((group) => <section key={group.title} aria-label={group.title}>
+                <h2 className="text-[11px] font-semibold uppercase tracking-wider mb-2 px-3" style={{ color: 'var(--eval-muted)' }}>{group.title}</h2>
+                <div className="grid gap-0.5">{group.links.map(([label, to]) => <Link key={label} to={to} className="menu-link rounded-md px-3 py-2 text-sm" style={{ color: 'var(--eval-ink)' }}>{label}</Link>)}</div>
+              </section>)}
+            </div>
+          </div>
+          </>
+        )}
 
         {/* Right Actions */}
         <div className="hidden md:flex items-center gap-2">
@@ -204,15 +221,7 @@ export default function Navbar() {
           }}
         >
           <div className="flex flex-col gap-1">
-            <Link to="/#workflow" className="eval-btn-ghost justify-start" onClick={() => setOpen(false)}>
-              Platform
-            </Link>
-            <Link to="/#modes" className="eval-btn-ghost justify-start" onClick={() => setOpen(false)}>
-              Live Modes
-            </Link>
-            <Link to="/#security" className="eval-btn-ghost justify-start" onClick={() => setOpen(false)}>
-              Access &amp; Security
-            </Link>
+            {platformGroups.flatMap((group) => group.links).map(([label, to]) => <Link key={label} to={to} className="eval-btn-ghost justify-start" onClick={() => setOpen(false)}>{label}</Link>)}
             <Link
               to={user?.role === 'student' ? '/student' : '/student/login#room-join'}
               className="eval-btn-ghost justify-start"

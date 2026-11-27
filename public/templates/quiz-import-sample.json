@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "quizzes": [
+    {
+      "title": "Intro to Biology",
+      "subject": "Biology",
+      "description": "Sample quiz. Replace these questions with your own.",
+      "settings": { "passMark": 50, "shuffleOptions": false },
+      "draftQuestions": [
+        {
+          "id": "q1",
+          "type": "mcq",
+          "prompt": "Which structure contains a cell's genetic material?",
+          "options": ["Nucleus", "Ribosome", "Cell wall", "Golgi apparatus"],
+          "correctAnswer": 0,
+          "explanation": "In eukaryotic cells, most genetic material is stored in the nucleus.",
+          "points": 1
+        }
+      ]
+    }
+  ]
+}
