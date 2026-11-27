@@ -51,7 +51,7 @@ export default function RoomsPanel({
   const [quizId, setQuizId] = useState(initialQuiz?.id || quizzes[0]?.id || '');
   const [mode, setMode] = useState('teacher_paced');
   const [customTitle, setCustomTitle] = useState(initialQuiz?.title || '');
-  const [openJoin, setOpenJoin] = useState(false);
+  const openJoin = true;
   const [showFeedbackImmediately, setShowFeedbackImmediately] = useState(false);
   const [qqPrompt, setQqPrompt] = useState('');
   const [qqType, setQqType] = useState('mcq');
@@ -346,14 +346,7 @@ export default function RoomsPanel({
               />
               Show feedback right after each response
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={openJoin}
-                onChange={(e) => setOpenJoin(e.target.checked)}
-              />
-              Allow any signed-in student (bypass roster check for this room)
-            </label>
+            <span style={{ color: 'var(--eval-muted)' }}>Students can join with the room code and their name. No student login or roster email is required.</span>
           </div>
           <button type="submit" disabled={creating} className="eval-btn-primary text-xs">
             <Plus className="w-3.5 h-3.5" />

@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.roster_live_rooms (
   current_index INTEGER NOT NULL DEFAULT 0,
   participant_count INTEGER NOT NULL DEFAULT 0,
   revealed_current BOOLEAN NOT NULL DEFAULT false,
-  open_join BOOLEAN NOT NULL DEFAULT false,
+  open_join BOOLEAN NOT NULL DEFAULT true,
   questions JSONB NOT NULL DEFAULT '[]'::jsonb,
   settings JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

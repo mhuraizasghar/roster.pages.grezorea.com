@@ -4,7 +4,7 @@ import { AlertCircle, ArrowRight, KeyRound, Mail, ShieldCheck } from 'lucide-rea
 import { api, ApiError } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, anonKey, isSupabaseConfigured } from '../lib/supabase';
 import { beginGoogleSignIn } from '../lib/googleAuth';
 import GoogleAuthButton from '../components/auth/GoogleAuthButton';
 
@@ -96,7 +96,7 @@ export default function StudentLoginPage() {
         authProvider: 'email',
         emailVerified: Boolean(data.user.email_confirmed_at),
       };
-      const rosterSession = await api.post('/api/auth/google/token', { accessToken: data.session.access_token, portalRole: 'student', authProvider: 'email' });
+      const rosterSession = await api.post('/api/auth/google/token', { accessToken: data.session.access_token, anonKey, portalRole: 'student', authProvider: 'email' });
       loginWithToken(rosterSession.token, { ...studentUser, ...rosterSession.user });
       showToast(`Signed in as ${studentUser.displayName}`);
       navigate(safeNext);
@@ -117,7 +117,7 @@ export default function StudentLoginPage() {
           </div>
           <h1 className="text-2xl font-semibold">Student Sign In</h1>
           <p className="text-xs leading-relaxed" style={{ color: 'var(--eval-muted)' }}>
-            Access is granted by invitation through your instructor&apos;s roster. Sign in with the verified email your instructor added.
+            Sign in with your Google account or verified email. Instructor assignments and grades appear here when they are shared with your account.
           </p>
         </div>
 
@@ -167,7 +167,7 @@ export default function StudentLoginPage() {
           <form onSubmit={handleRequestOtp} className="space-y-3.5">
             <div>
               <label htmlFor="stuEmail" className="block text-xs font-medium mb-1">
-                Rostered Email Address
+                Email Address
               </label>
               <input
                 ref={emailInputRef}

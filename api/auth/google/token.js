@@ -145,24 +145,19 @@ module.exports = async function handler(req, res) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Google account has no valid email address.' });
     if (!emailVerified) return res.status(403).json({ error: 'Your account email must be verified.' });
 
-    const [{ data: profile, error: profileLookupError }, { data: rosterEntries, error: rosterLookupError }] = await Promise.all([
-      supabase.from('users_profile').select('id,role').eq('auth_uid', authUser.id).maybeSingle(),
-      supabase.from('roster_entries').select('id').eq('student_email', email).limit(1),
-    ]);
+    const { data: profile, error: profileLookupError } = await supabase
+      .from('users_profile')
+      .select('id,role')
+      .eq('auth_uid', authUser.id)
+      .maybeSingle();
     if (profileLookupError) {
       console.error('Roster profile lookup failed:', profileLookupError.code || profileLookupError.message);
       return res.status(503).json({ error: 'We could not load your account. Please try again or contact support.' });
     }
-    if (rosterLookupError) {
-      console.error('Student roster lookup failed:', rosterLookupError.code || rosterLookupError.message);
-      return res.status(503).json({ error: 'We could not verify your student invitation. Please try again or contact your instructor.' });
-    }
 
-    const onRoster = Array.isArray(rosterEntries) && rosterEntries.length > 0;
     if (portalRole === 'student') {
       if (profile?.role === 'teacher') return res.status(403).json({ errorCode: 'WRONG_PORTAL', actualRole: 'teacher', expectedRole: 'student', redirectPath: '/teacher/login', error: 'This account is registered as a teacher. Use the Teacher Portal.' });
-      if (!onRoster) return res.status(403).json({ errorCode: 'NOT_ON_ROSTER', error: "Your email hasn't been added by a teacher yet. Ask your teacher to add this address." });
-    } else if (profile?.role === 'student' && onRoster) {
+    } else if (profile?.role === 'student') {
       return res.status(403).json({ errorCode: 'WRONG_PORTAL', actualRole: 'student', expectedRole: 'teacher', redirectPath: '/student/login', error: 'This account is registered as a student. Use the Student Portal.' });
     }
 

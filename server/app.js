@@ -418,14 +418,6 @@ export function createRosterApp(db, { broadcastRoom = () => {}, mailer = null } 
       });
     }
 
-    const rosterLinks = db.getTeachersForStudentEmail(email);
-    if (rosterLinks.length === 0) {
-      return res.status(403).json({
-        errorCode: 'NOT_ON_ROSTER',
-        error: "Your email hasn't been added by a teacher yet. Ask your teacher to add this address.",
-      });
-    }
-
     const otp = createOtpEntry(email);
     db.state.otps[email] = otp;
     db.save();
@@ -462,14 +454,7 @@ export function createRosterApp(db, { broadcastRoom = () => {}, mailer = null } 
 
     delete db.state.otps[email];
 
-    // Re-check roster before issuing account/session
     const rosterLinks = db.getTeachersForStudentEmail(email);
-    if (rosterLinks.length === 0) {
-      return res.status(403).json({
-        errorCode: 'NOT_ON_ROSTER',
-        error: "Your email hasn't been added by a teacher yet. Ask your teacher to add this address.",
-      });
-    }
 
     let user = db.state.users.find((u) => normalizeEmail(u.email) === email);
     if (user && user.role !== 'student') {
@@ -556,12 +541,6 @@ export function createRosterApp(db, { broadcastRoom = () => {}, mailer = null } 
 
       if (portalRole === 'student') {
         const rosterLinks = db.getTeachersForStudentEmail(email);
-        if (rosterLinks.length === 0) {
-          return res.status(403).json({
-            errorCode: 'NOT_ON_ROSTER',
-            error: "Your email hasn't been added by a teacher yet. Ask your teacher to add this address.",
-          });
-        }
         if (!user) {
           const rosterName = rosterLinks.find((r) => r.displayName)?.displayName || email.split('@')[0];
           user = {
