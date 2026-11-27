@@ -32,6 +32,12 @@ export default function AttemptRunnerPage() {
   const answersRef = useRef({});
   answersRef.current = answersMap;
   const submittedOnceRef = useRef(false);
+  const saveTimersRef = useRef(new Map());
+
+  useEffect(() => () => {
+    saveTimersRef.current.forEach((timer) => clearTimeout(timer));
+    saveTimersRef.current.clear();
+  }, []);
 
   useEffect(() => {
     async function startOrResume() {
@@ -59,6 +65,8 @@ export default function AttemptRunnerPage() {
     if (!attempt || submittedOnceRef.current) return;
     submittedOnceRef.current = true;
     setSubmitting(true);
+    saveTimersRef.current.forEach((timer) => clearTimeout(timer));
+    saveTimersRef.current.clear();
     try {
       await api.post(`/api/attempts/${attempt.id}/submit`, {
         answers: answersRef.current,
@@ -96,15 +104,16 @@ export default function AttemptRunnerPage() {
     setAnswersMap((prev) => ({ ...prev, [questionId]: value }));
     if (!attempt) return;
     setSavingState('saving');
-    try {
-      await api.put(`/api/attempts/${attempt.id}/answer`, {
-        questionId,
-        response: value,
-      });
-      setSavingState('saved');
-    } catch {
-      setSavingState('error');
-    }
+    const existing = saveTimersRef.current.get(questionId);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(async () => {
+      saveTimersRef.current.delete(questionId);
+      try {
+        await api.put(`/api/attempts/${attempt.id}/answer`, { questionId, response: value });
+        if (!saveTimersRef.current.size) setSavingState('saved');
+      } catch { setSavingState('error'); }
+    }, 500);
+    saveTimersRef.current.set(questionId, timer);
   };
 
   const toggleMultiOption = (questionId, optIdx) => {

@@ -45,6 +45,36 @@ async function getTeacherProfileId() {
   return data.id;
 }
 
+async function getCurrentProfile() {
+  if (!isSupabaseConfigured || !supabase) return null;
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  const authUser = sessionData?.session?.user;
+  if (!authUser) throw new Error('Your verified session is not ready. Sign in again.');
+  const { data, error } = await supabase.from('users_profile').select('id,email,role,display_name').eq('auth_uid', authUser.id).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('Your Roster profile is still loading. Sign in again and retry.');
+  return data;
+}
+
+const mapAssignment = (row, version, attempts = [], student = false) => {
+  const settings = row.settings || {};
+  const ownAttempts = attempts.filter((attempt) => attempt.assignment_id === row.id);
+  const inProgress = ownAttempts.find((attempt) => attempt.status === 'in_progress');
+  const submitted = ownAttempts.filter((attempt) => attempt.status !== 'in_progress');
+  const maxAllowedAttempts = Number(settings.maxAttempts ?? 1);
+  return {
+    id: row.id, quizId: version?.quiz_id || null, quizVersionId: row.quiz_version_id,
+    title: row.title, subject: version?.subject || 'General', teacherName: 'Instructor',
+    targetType: row.target_type, targetEmails: row.target_emails || [], targetGroupIds: row.target_group_ids || [],
+    dueAt: row.due_at, settings, createdAt: row.created_at, status: inProgress ? 'in_progress' : submitted.length ? 'submitted' : 'not_started',
+    attemptsUsed: submitted.length, maxAllowedAttempts, hasInProgress: Boolean(inProgress),
+    canStart: Boolean(inProgress) || maxAllowedAttempts === 0 || ownAttempts.length < maxAllowedAttempts,
+    questionsCount: Number(version?.question_count || 0), snapshot: version ? { versionId: version.id, questionCount: Number(version.question_count || 0) } : undefined,
+    ...(student ? { attemptId: inProgress?.id || null } : {}),
+  };
+};
+
 function normalizeStoredRoom(row, questions = [], participants = [], host = false, participantId = '') {
   const keyedResponses = {};
   const distributions = {};
@@ -372,9 +402,77 @@ export async function workspaceRequest(method, path, body = {}) {
     }
     return data({ entries: state.rosterEntries, groups: state.groups });
   }
+  if (isSupabaseConfigured && supabase && method === 'GET' && path === '/api/assignments') {
+    const profile = await getCurrentProfile();
+    if (profile.role !== 'teacher') throw new Error('Sign in to the instructor account to view assignments.');
+    const { data: rows, error } = await supabase.from('assignments').select('*').eq('teacher_id', profile.id).order('created_at', { ascending: false }).limit(200);
+    if (error) throw error;
+    const versionIds = [...new Set((rows || []).map((row) => row.quiz_version_id))];
+    const { data: versions, error: versionError } = versionIds.length
+      ? await supabase.from('quiz_versions').select('id,quiz_id,title,subject,question_count').in('id', versionIds)
+      : { data: [], error: null };
+    if (versionError) throw versionError;
+    const assignmentIds = (rows || []).map((row) => row.id);
+    const [rosterResult, attemptsResult] = await Promise.all([
+      supabase.from('roster_entries').select('student_email,display_name,group_id').eq('teacher_id', profile.id).limit(2000),
+      assignmentIds.length ? supabase.from('attempts').select('id,assignment_id,student_email,status,score,max_score,percent,submitted_at,started_at').in('assignment_id', assignmentIds).order('started_at', { ascending: false }).limit(5000) : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (rosterResult.error) throw rosterResult.error;
+    if (attemptsResult.error) throw attemptsResult.error;
+    const assignments = (rows || []).map((row) => {
+      const version = (versions || []).find((v) => v.id === row.quiz_version_id);
+      const assignment = mapAssignment(row, version);
+      const audience = (rosterResult.data || []).filter((student) => row.target_type === 'all_roster'
+        || (row.target_type === 'students' && (row.target_emails || []).some((email) => String(email).toLowerCase() === String(student.student_email).toLowerCase()))
+        || (row.target_type === 'groups' && (row.target_group_ids || []).includes(student.group_id)));
+      assignment.studentStatuses = audience.map((student) => {
+        const ownAttempts = (attemptsResult.data || []).filter((attempt) => attempt.assignment_id === row.id && String(attempt.student_email).toLowerCase() === String(student.student_email).toLowerCase());
+        const submitted = ownAttempts.filter((attempt) => attempt.status !== 'in_progress');
+        const active = ownAttempts.some((attempt) => attempt.status === 'in_progress');
+        return { studentEmail: student.student_email, displayName: student.display_name || student.student_email, status: active ? 'in_progress' : submitted.some((attempt) => attempt.status === 'late') ? 'late' : submitted.length ? 'submitted' : 'not_started', attemptsCount: ownAttempts.length, bestPercent: submitted.length ? Math.max(...submitted.map((attempt) => Number(attempt.percent || 0))) : null };
+      });
+      return assignment;
+    });
+    return { assignments };
+  }
   if (method === 'GET' && path === '/api/assignments') return data({ assignments: state.assignments });
   if (method === 'GET' && path === '/api/rooms') return data({ rooms: state.rooms });
   if (method === 'GET' && path === '/api/student/dashboard') {
+    if (isSupabaseConfigured && supabase) {
+      const profile = await getCurrentProfile();
+      if (profile.role !== 'student') throw new Error('Sign in to the student account to view this dashboard.');
+      const email = String(profile.email || '').toLowerCase();
+      const [rosterResult, assignmentResult, attemptResult] = await Promise.all([
+        supabase.from('roster_entries').select('teacher_id,group_id').ilike('student_email', email),
+        supabase.from('assignments').select('*').order('created_at', { ascending: false }).limit(200),
+        supabase.from('attempts').select('id,assignment_id,status,started_at,submitted_at,score,max_score,percent').eq('student_id', profile.id).order('started_at', { ascending: false }).limit(200),
+      ]);
+      for (const result of [rosterResult, assignmentResult, attemptResult]) if (result.error) throw result.error;
+      const rosterRows = rosterResult.data || [];
+      const rosterTeacherIds = new Set(rosterRows.map((row) => row.teacher_id));
+      const groupIds = new Set(rosterRows.map((row) => row.group_id).filter(Boolean));
+      const assignedRows = (assignmentResult.data || []).filter((row) => {
+        if (!rosterTeacherIds.has(row.teacher_id)) return false;
+        if (row.target_type === 'students') return (row.target_emails || []).some((item) => String(item).toLowerCase() === email);
+        if (row.target_type === 'groups') return (row.target_group_ids || []).some((id) => groupIds.has(id));
+        return row.target_type === 'all_roster';
+      });
+      const versionsIds = [...new Set(assignedRows.map((row) => row.quiz_version_id))];
+      const [versionsResult, roomsForRosterResult] = await Promise.all([
+        versionsIds.length ? supabase.from('quiz_versions').select('id,quiz_id,title,subject,question_count').in('id', versionsIds) : Promise.resolve({ data: [], error: null }),
+        rosterTeacherIds.size ? supabase.from('roster_live_rooms').select('*').in('teacher_id', [...rosterTeacherIds]).in('status', ['lobby', 'active']).order('updated_at', { ascending: false }).limit(50) : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (versionsResult.error) throw versionsResult.error;
+      if (roomsForRosterResult.error) throw roomsForRosterResult.error;
+      const assignments = assignedRows.map((row) => mapAssignment(row, (versionsResult.data || []).find((version) => version.id === row.quiz_version_id), attemptResult.data || [], true));
+      const attempts = attemptResult.data || [];
+      const results = attempts.filter((attempt) => attempt.status !== 'in_progress').map((attempt) => {
+        const assignment = assignments.find((row) => row.id === attempt.assignment_id);
+        return { id: attempt.id, attemptId: attempt.id, assignmentId: attempt.assignment_id, title: assignment?.title || 'Assessment', subject: assignment?.subject || 'General', status: attempt.status, score: Number(attempt.score || 0), maxScore: Number(attempt.max_score || 0), percent: Number(attempt.percent || 0), submittedAt: attempt.submitted_at };
+      });
+      const roomRows = roomsForRosterResult.data || [];
+      return { assignments, liveRooms: roomRows.map((row) => ({ id: row.code, code: row.code, title: row.title, mode: row.mode, status: row.status, participantsCount: row.participant_count || 0, teacherName: 'Instructor' })), attempts, results };
+    }
     let cachedEmail = '';
     try {
       const cached = JSON.parse(localStorage.getItem('roster.auth.user') || 'null');
@@ -616,6 +714,58 @@ export async function workspaceRequest(method, path, body = {}) {
     state.rosterEntries = state.rosterEntries.filter((item) => item.id !== match[1]); write(state); return data({ ok: true });
   }
 
+  if (method === 'POST' && path === '/api/assignments' && isSupabaseConfigured && supabase) {
+    const profile = await getCurrentProfile();
+    if (profile.role !== 'teacher') throw new Error('Only an instructor can publish an assignment.');
+    const { data: quiz, error: quizError } = await supabase.from('quizzes').select('*').eq('id', body.quizId).eq('owner_id', profile.id).is('deleted_at', null).maybeSingle();
+    if (quizError) throw quizError;
+    if (!quiz) throw new Error('Quiz not found in your library. Refresh and try again.');
+    const questions = Array.isArray(quiz.draft_questions) ? quiz.draft_questions : [];
+    if (!questions.length) throw new Error('Add at least one question before assigning this quiz.');
+    const emails = [...new Set((body.targetEmails || []).map((email) => String(email).trim().toLowerCase()).filter(Boolean))];
+    const groupIds = [...new Set((body.targetGroupIds || []).map(String))];
+    if (body.targetType === 'students' && !emails.length) throw new Error('Select at least one student.');
+    if (body.targetType === 'groups' && !groupIds.length) throw new Error('Select at least one group.');
+    if (!['students', 'groups', 'all_roster'].includes(body.targetType)) throw new Error('Choose a valid assignment audience.');
+    if (body.targetType !== 'students' && emails.length) throw new Error('Assignment recipients are invalid.');
+    if (body.targetType !== 'groups' && groupIds.length) throw new Error('Assignment groups are invalid.');
+    const { data: versions, error: versionListError } = await supabase.from('quiz_versions').select('version_number').eq('quiz_id', quiz.id).order('version_number', { ascending: false }).limit(1);
+    if (versionListError) throw versionListError;
+    const { data: version, error: versionError } = await supabase.from('quiz_versions').insert({ quiz_id: quiz.id, owner_id: profile.id, version_number: Number(versions?.[0]?.version_number || 0) + 1, title: quiz.title, subject: quiz.subject || 'General', description: quiz.description || '', settings: quiz.settings || {}, question_count: questions.length }).select('*').single();
+    if (versionError) throw versionError;
+    const questionRows = questions.map((question, index) => ({
+      quiz_version_id: version.id, position: index, type: ['mcq', 'tf', 'short_answer', 'challenge'].includes(question.type) ? question.type : 'mcq',
+      prompt: String(question.prompt || question.text || `Question ${index + 1}`).slice(0, 10000),
+      options: Array.isArray(question.options) ? question.options : [],
+      correct_answer: question.correctAnswer ?? null, accepted_answers: question.acceptedAnswers || [],
+      match_options: question.matchOptions || {}, points: Math.max(0, Number(question.points || 1)),
+      time_limit_sec: Math.max(0, Number(question.timeLimitSec || question.time_limit_sec || 0)),
+      explanation: String(question.explanation || ''), image_url: String(question.imageUrl || question.image_url || ''),
+    }));
+    const { error: questionsError } = await supabase.from('questions').insert(questionRows);
+    if (questionsError) {
+      await supabase.from('quiz_versions').delete().eq('id', version.id);
+      throw questionsError;
+    }
+    const { data: assignment, error: assignmentError } = await supabase.from('assignments').insert({
+      teacher_id: profile.id, quiz_version_id: version.id, title: String(body.title || quiz.title).trim().slice(0, 160), target_type: body.targetType,
+      target_emails: emails, target_group_ids: groupIds, due_at: body.dueAt || null,
+      settings: body.settings || {},
+    }).select('*').single();
+    if (assignmentError) {
+      await supabase.from('quiz_versions').delete().eq('id', version.id);
+      throw assignmentError;
+    }
+    let notification = { sent: 0, failed: 0 };
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const response = await fetch('/api/roster-notify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'assignment', assignmentId: assignment.id, accessToken: sessionData?.session?.access_token, anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY }) });
+      if (response.ok) notification = await response.json();
+      else notification.failed = 1;
+    } catch { notification.failed = 1; }
+    const mapped = mapAssignment(assignment, version);
+    return { assignment: mapped, snapshot: mapped.snapshot, notification };
+  }
   if (method === 'POST' && path === '/api/assignments') {
     const assignment = { id: uid('assignment'), ...body, status: 'published', createdAt: iso(), updatedAt: iso() }; state.assignments.push(assignment); write(state); return data({ assignment });
   }
@@ -648,6 +798,67 @@ export async function workspaceRequest(method, path, body = {}) {
     }
     if (match[2] === 'answer') room.answers = room.answers || {};
     room.updatedAt = iso(); write(state); return data({ room });
+  }
+
+  const attemptReviewMatch = path.match(/^\/api\/attempts\/([^/]+)\/review$/);
+  if (isSupabaseConfigured && supabase && attemptReviewMatch && method === 'GET') {
+    const profile = await getCurrentProfile();
+    if (profile.role !== 'student') throw new Error('Student sign-in is required to review an attempt.');
+    const { data: attempt, error } = await supabase.from('attempts').select('*').eq('id', attemptReviewMatch[1]).eq('student_id', profile.id).maybeSingle();
+    if (error) throw error;
+    if (!attempt || !['submitted', 'late'].includes(attempt.status)) throw new Error('Submitted attempt not found.');
+    const [{ data: assignment, error: assignmentError }, { data: rawQuestions, error: questionError }, { data: answers, error: answerError }] = await Promise.all([
+      supabase.from('assignments').select('id,title,settings').eq('id', attempt.assignment_id).maybeSingle(),
+      supabase.rpc('get_student_questions', { p_quiz_version_id: attempt.quiz_version_id, p_reveal: true }),
+      supabase.from('answers').select('question_id,response,is_correct,awarded_points').eq('attempt_id', attempt.id),
+    ]);
+    if (assignmentError) throw assignmentError;
+    if (questionError) throw questionError;
+    if (answerError) throw answerError;
+    const answerMap = new Map((answers || []).map((answer) => [answer.question_id, answer]));
+    const showAnswers = Boolean(assignment?.settings?.showAnswersAfterSubmit);
+    const items = (rawQuestions || []).map((q) => {
+      const saved = answerMap.get(q.id) || {};
+      return { question: { id: q.id, position: q.position, type: q.type, prompt: q.prompt, options: q.options || [], points: q.points, correctAnswer: showAnswers ? q.correct_answer : null, explanation: showAnswers ? q.explanation : '' }, response: saved.response, isCorrect: showAnswers ? Boolean(saved.is_correct) : null, awardedPoints: showAnswers ? Number(saved.awarded_points || 0) : 0 };
+    });
+    return { attempt: { id: attempt.id, title: assignment?.title || 'Assessment', subject: 'Assessment', status: attempt.status, score: Number(attempt.score || 0), maxScore: Number(attempt.max_score || 0), percent: Number(attempt.percent || 0), submittedAt: attempt.submitted_at }, items, showAnswers };
+  }
+
+  if (isSupabaseConfigured && supabase && method === 'POST' && path === '/api/attempts/start') {
+    const profile = await getCurrentProfile();
+    if (profile.role !== 'student') throw new Error('Student sign-in is required to start an assignment.');
+    const { data: assignment, error: assignmentError } = await supabase.from('assignments').select('*,quiz_versions(id,quiz_id,title,subject,question_count)').eq('id', body.assignmentId).maybeSingle();
+    if (assignmentError) throw assignmentError;
+    if (!assignment) throw new Error('This assignment is not available to your account.');
+    const settings = assignment.settings || {};
+    const { data: attempt, error: startError } = await supabase.rpc('roster_start_assignment_attempt', { p_assignment_id: assignment.id });
+    if (startError) throw startError;
+    if (!attempt?.id) throw new Error('Could not create or resume this assignment attempt.');
+    const [questionResult, answerResult] = await Promise.all([
+      supabase.rpc('get_student_questions', { p_quiz_version_id: assignment.quiz_version_id, p_reveal: false }),
+      supabase.from('answers').select('question_id,response').eq('attempt_id', attempt.id),
+    ]);
+    if (questionResult.error) throw questionResult.error;
+    if (answerResult.error) throw answerResult.error;
+    const questions = (questionResult.data || []).map((q) => ({ id: q.id, position: q.position, type: q.type, prompt: q.prompt, options: q.options || [], points: q.points, timeLimitSec: q.time_limit_sec, imageUrl: q.image_url, correctAnswer: null }));
+    const savedAnswers = (answerResult.data || []).map((answer) => ({ questionId: answer.question_id, response: answer.response }));
+    return { attempt: { id: attempt.id, title: assignment.title, subject: assignment.quiz_versions?.subject || 'General', status: attempt.status, startedAt: attempt.started_at, timeLimitMin: Number(settings.timeLimitMin || 0), answers: savedAnswers }, questions };
+  }
+
+  const supabaseAnswerMatch = path.match(/^\/api\/attempts\/([^/]+)\/answer$/);
+  if (isSupabaseConfigured && supabase && supabaseAnswerMatch && method === 'PUT') {
+    const { error } = await supabase.rpc('roster_save_assignment_answer', { p_attempt_id: supabaseAnswerMatch[1], p_question_id: body.questionId, p_response: body.response });
+    if (error) throw error;
+    return { ok: true };
+  }
+
+  const supabaseSubmitMatch = path.match(/^\/api\/attempts\/([^/]+)\/submit$/);
+  if (isSupabaseConfigured && supabase && supabaseSubmitMatch && method === 'POST') {
+    const profile = await getCurrentProfile();
+    if (profile.role !== 'student') throw new Error('Student sign-in is required to submit this attempt.');
+    const { data, error } = await supabase.rpc('roster_submit_assignment_attempt', { p_attempt_id: supabaseSubmitMatch[1], p_answers: body.answers || {} });
+    if (error) throw error;
+    return { attempt: { id: supabaseSubmitMatch[1], ...data?.[0] } };
   }
 
   if (method === 'POST' && path === '/api/attempts/start') {

@@ -73,7 +73,9 @@ export function AssignQuizModal({ quiz, groups = [], rosterEntries = [], onClose
         },
       });
       setSnapshotInfo(res.snapshot);
-      showToast('Assignment published with an immutable quiz snapshot.');
+      const sent = Number(res.notification?.sent || 0);
+      const failed = Number(res.notification?.failed || 0);
+      showToast(`Assignment published. ${sent} notification email(s) sent${failed ? `; ${failed} could not be sent` : ''}.`);
       onAssigned?.(res.assignment);
     } catch (err) {
       showToast(err.message, 'error');

@@ -51,15 +51,8 @@ export default function StudentDashboardPage() {
 
   useEffect(() => {
     loadDashboard();
-    const timer = setInterval(loadDashboard, 30_000);
-    const onVis = () => {
-      if (document.visibilityState === 'visible') loadDashboard();
-    };
-    document.addEventListener('visibilitychange', onVis);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVis);
-    };
+    // Dashboard data loads once per page visit; the visible Refresh button
+    // keeps repeat database reads deliberate instead of polling every 30s.
   }, [loadDashboard]);
 
   const handleJoinCode = (e) => {
