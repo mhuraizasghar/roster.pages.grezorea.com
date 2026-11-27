@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowLeft,
@@ -18,12 +18,13 @@ import {
 import { api, connectRoomSocket } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import GoogleOneTapButton from '../components/auth/GoogleOneTapButton';
+import { beginGoogleSignIn } from '../lib/googleAuth';
+import GoogleAuthButton from '../components/auth/GoogleAuthButton';
 
 export default function LiveRoomStudentPage() {
   const { code } = useParams();
-  const { user, loginWithToken } = useAuth();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -37,7 +38,8 @@ export default function LiveRoomStudentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [feedbackMap, setFeedbackMap] = useState({});
   const [secondsLeft, setSecondsLeft] = useState(null);
-  const [joinRequested, setJoinRequested] = useState(false);
+  const [joinRequested, setJoinRequested] = useState(() => searchParams.get('join') === '1');
+  const [authLoading, setAuthLoading] = useState(false);
   const [studentName, setStudentName] = useState(() => {
     try {
       return localStorage.getItem('roster.live.studentName') || '';
@@ -46,23 +48,18 @@ export default function LiveRoomStudentPage() {
     }
   });
 
-  const handleGoogleCredential = async (idToken) => {
-    if (!isSupabaseConfigured || !supabase) {
-      showToast('Google One Tap is ready, but this local app needs VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.', 'error');
-      return;
-    }
+  const handleGoogleSignIn = async () => {
+    setJoinError('');
+    setAuthLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
-      if (error) throw error;
-      if (!data.session) throw new Error('Google sign-in did not create a Supabase session.');
-      const rosterSession = await api.post('/api/auth/google/token', { accessToken: data.session.access_token, portalRole: 'student', authProvider: 'google' });
-      loginWithToken(rosterSession.token, { ...rosterSession.user, avatarUrl: String(data.user?.user_metadata?.avatar_url || '') });
-      setStudentName(rosterSession.user.displayName || '');
-      setJoinError('');
-      setLoading(true);
-      setJoinRequested(true);
+      await beginGoogleSignIn({
+        portalRole: 'student',
+        next: `/room/${encodeURIComponent(code)}?join=1`,
+        studentName,
+      });
     } catch (error) {
-      showToast(error.message || 'Could not complete Google sign-in.', 'error');
+      setJoinError(error.message || 'Could not start Google sign-in.');
+      setAuthLoading(false);
     }
   };
 
@@ -246,7 +243,7 @@ export default function LiveRoomStudentPage() {
               required
             />
             <button type="submit" className="eval-btn-primary w-full text-xs">Continue with Name</button>
-            <GoogleOneTapButton onCredential={handleGoogleCredential} />
+            <GoogleAuthButton onClick={handleGoogleSignIn} loading={authLoading} disabled={authLoading} />
           </form>
         </div>
       </div>

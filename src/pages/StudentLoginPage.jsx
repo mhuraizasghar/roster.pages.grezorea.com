@@ -5,7 +5,8 @@ import { api, ApiError } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import GoogleOneTapButton from '../components/auth/GoogleOneTapButton';
+import { beginGoogleSignIn } from '../lib/googleAuth';
+import GoogleAuthButton from '../components/auth/GoogleAuthButton';
 
 export default function StudentLoginPage() {
   const [email, setEmail] = useState('');
@@ -36,22 +37,11 @@ export default function StudentLoginPage() {
     }
   };
 
-  const handleGoogleCredential = async (idToken) => {
+  const handleGoogleSignIn = async () => {
     setErrorInfo(null);
-    if (!isSupabaseConfigured || !supabase) {
-      setErrorInfo({ message: 'Google One Tap is ready, but this local app has no Supabase URL or anon key. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env, then restart Vite.' });
-      return;
-    }
-
     setBusy(true);
     try {
-      const { data, error } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken });
-      if (error) throw error;
-      if (!data.session) throw new Error('Google sign-in did not create a Supabase session.');
-      const rosterSession = await api.post('/api/auth/google/token', { accessToken: data.session.access_token, portalRole: 'student', authProvider: 'google' });
-      loginWithToken(rosterSession.token, { ...rosterSession.user, avatarUrl: String(data.user?.user_metadata?.avatar_url || '') });
-      showToast(`Signed in as ${rosterSession.user.displayName}`);
-      navigate(safeNext, { replace: true });
+      await beginGoogleSignIn({ portalRole: 'student', next: safeNext });
     } catch (err) {
       setErrorInfo({ message: err.message || 'Could not complete Google sign-in.' });
       setBusy(false);
@@ -158,7 +148,7 @@ export default function StudentLoginPage() {
         {/* Primary Google Sign-In */}
         {!otpSent && (
           <div className="space-y-3">
-            <GoogleOneTapButton onCredential={handleGoogleCredential} disabled={busy} />
+            <GoogleAuthButton onClick={handleGoogleSignIn} disabled={busy} loading={busy} />
 
             <div className="relative flex items-center py-1">
               <div className="flex-grow border-t" style={{ borderColor: 'var(--eval-border)' }} />

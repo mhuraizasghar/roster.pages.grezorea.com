@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { LoaderCircle } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +19,11 @@ export default function GoogleAuthCallbackPage() {
     handled.current = true;
 
     const completeLogin = async () => {
+      const providerError = searchParams.get('error_description') || searchParams.get('error');
+      if (providerError) {
+        setError(providerError);
+        return;
+      }
       if (!isSupabaseConfigured || !supabase) {
         setError('Supabase API key is missing or invalid.');
         return;
@@ -46,6 +52,7 @@ export default function GoogleAuthCallbackPage() {
       const portalRole = sessionStorage.getItem('googleAuthPortalRole') === 'student' ? 'student' : 'teacher';
       const next = sessionStorage.getItem('googleAuthNext') || (portalRole === 'student' ? '/student' : '/teacher');
       const institutionName = sessionStorage.getItem('googleAuthInstitutionName') || '';
+      const studentName = sessionStorage.getItem('googleAuthStudentName') || '';
 
       try {
         const { data, error: userError } = await supabase.auth.getUser(accessToken);
@@ -78,11 +85,15 @@ export default function GoogleAuthCallbackPage() {
           institutionName,
         });
         loginWithToken(session.token, { ...signedInUser, ...session.user, avatarUrl: signedInUser.avatarUrl });
+        if (studentName) {
+          try { localStorage.setItem('roster.live.studentName', studentName); } catch {}
+        }
         showToast(`Signed in as ${signedInUser.displayName}`);
         sessionStorage.removeItem('googleAuthPortalRole');
         sessionStorage.removeItem('googleAuthNext');
         sessionStorage.removeItem('googleAuthInstitutionName');
-        navigate(next.startsWith('/') ? next : `/${portalRole}`, { replace: true });
+        sessionStorage.removeItem('googleAuthStudentName');
+        navigate(next.startsWith('/') && !next.startsWith('//') ? next : `/${portalRole}`, { replace: true });
       } catch (err) {
         setError(err.message || 'Google sign-in could not be completed.');
       }
@@ -103,7 +114,10 @@ export default function GoogleAuthCallbackPage() {
             </button>
           </>
         ) : (
-          <p className="text-xs" style={{ color: 'var(--eval-muted)' }}>Please wait...</p>
+          <p className="inline-flex items-center justify-center gap-2 text-xs" style={{ color: 'var(--eval-muted)' }}>
+            <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+            Verifying your Google account…
+          </p>
         )}
       </div>
     </div>

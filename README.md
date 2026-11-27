@@ -34,6 +34,16 @@ npm run dev:all
 
 The React application is served through Vite. Configure Supabase and server environment variables before running against hosted data.
 
+### Google sign-in setup
+
+The Google button uses a full Supabase OAuth redirect and lets the user choose a Google account. Configure the web OAuth client in Google Cloud, then add its client ID and client secret under **Supabase Authentication → Providers → Google**.
+
+- Google **Authorized JavaScript origins**: `http://localhost:5173` and `https://roster.pages.grezorea.com`
+- Google **Authorized redirect URI**: `https://zimpzoakuxacjwikfnyk.supabase.co/auth/v1/callback`
+- Supabase **Redirect URLs**: `http://localhost:5173/auth/callback` and `https://roster.pages.grezorea.com/auth/callback`
+
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` for local use. The Supabase anon key is intended for browser clients; keep the Google client secret and `SESSION_SECRET` server-side. Restart Vite after changing `.env`.
+
 ## Build
 
 ```bash
