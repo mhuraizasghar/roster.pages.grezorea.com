@@ -88,8 +88,11 @@ module.exports = async function handler(req, res) {
   const supabaseConfig = configuredSupabase(accessToken);
   const sessionSecret = process.env.SESSION_SECRET;
   if (!supabaseConfig || !sessionSecret || sessionSecret.length < 32) {
-    console.error('Roster auth configuration is incomplete.');
-    return res.status(503).json({ error: 'Sign-in is temporarily unavailable. Please try again later.' });
+    console.error('Roster auth configuration is incomplete:', JSON.stringify({
+      supabaseConfig: Boolean(supabaseConfig),
+      sessionSecret: Boolean(sessionSecret && sessionSecret.length >= 32),
+    }));
+    return res.status(503).json({ errorCode: 'AUTH_CONFIGURATION', error: 'Sign-in is temporarily unavailable. Please try again later.' });
   }
 
   try {
@@ -109,7 +112,7 @@ module.exports = async function handler(req, res) {
       const authMessage = String(authBody.msg || authBody.message || '');
       console.error('Supabase token check failed:', authResponse.status, authCode || authMessage.slice(0, 100));
       if (/invalid api key|api key.*invalid/i.test(authMessage)) {
-        return res.status(503).json({ error: 'Sign-in is temporarily unavailable. Please try again later.' });
+        return res.status(503).json({ errorCode: 'SUPABASE_API_KEY', error: 'Sign-in is temporarily unavailable. Please try again later.' });
       }
       return res.status(401).json({ error: 'Google did not return a valid sign-in session. Please try again.' });
     }
@@ -170,6 +173,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true, token: createSessionToken(sessionSecret, user), user });
   } catch (error) {
     console.error('Roster auth exchange failed:', error?.message || 'Unknown error');
-    return res.status(503).json({ error: 'Sign-in is temporarily unavailable. Please try again later.' });
+    return res.status(503).json({ errorCode: 'SUPABASE_AUTH_UNAVAILABLE', error: 'Sign-in is temporarily unavailable. Please try again later.' });
   }
 };
