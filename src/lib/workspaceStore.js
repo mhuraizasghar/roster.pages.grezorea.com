@@ -326,7 +326,7 @@ export async function workspaceRequest(method, path, body = {}) {
     const roomReports = (rows || []).map((row) => {
       const report = row.payload || {};
       const studentRows = report.studentRows || [];
-      return { id: row.id, code: row.room_code, title: report.title || 'Live Classroom', mode: report.mode || 'teacher_paced', submissions: studentRows.length, averagePercent: studentRows.length ? Math.round(studentRows.reduce((sum, student) => sum + Number(student.percent || 0), 0) / studentRows.length * 10) / 10 : 0, finishedAt: row.finished_at };
+      return { id: row.room_code, code: row.room_code, title: report.title || 'Live Classroom', mode: report.mode || 'teacher_paced', submissions: studentRows.length, averagePercent: studentRows.length ? Math.round(studentRows.reduce((sum, student) => sum + Number(student.percent || 0), 0) / studentRows.length * 10) / 10 : 0, finishedAt: row.finished_at };
     });
     return { assignmentReports: [], roomReports };
   }
@@ -335,8 +335,9 @@ export async function workspaceRequest(method, path, body = {}) {
     const params = new URLSearchParams(path.split('?')[1] || '');
     if (params.get('type') === 'room') {
       const teacherId = await getTeacherProfileId();
-      const { data: row, error } = await supabase.from('roster_live_reports').select('payload').eq('id', params.get('id')).eq('teacher_id', teacherId).single();
+      const { data: row, error } = await supabase.from('roster_live_reports').select('payload').eq('room_code', String(params.get('id') || '').toUpperCase()).eq('teacher_id', teacherId).maybeSingle();
       if (error) throw error;
+      if (!row) throw new Error('The saved report for this live room could not be found. End the session again to save its report.');
       return { report: row.payload };
     }
   }
@@ -424,7 +425,7 @@ export async function workspaceRequest(method, path, body = {}) {
           supabase.from('roster_entries').select('*').eq('teacher_id', profileId).order('created_at', { ascending: false }),
         ]);
         if (!groupsResult.error && !rosterResult.error) {
-          const groups = (groupsResult.data || []).map((group) => ({ id: group.id, name: group.name, createdAt: group.created_at }));
+          const groups = (groupsResult.data || []).map((group) => ({ id: group.id, name: group.name, description: group.description || '', createdAt: group.created_at }));
           const entries = (rosterResult.data || []).map((entry) => ({ id: entry.id, studentEmail: entry.student_email, email: entry.student_email, displayName: entry.display_name || '', groupId: entry.group_id, status: entry.status, createdAt: entry.created_at, updatedAt: entry.updated_at }));
           return data({ entries, groups });
         }
@@ -594,15 +595,18 @@ export async function workspaceRequest(method, path, body = {}) {
       if (!profileId) throw new Error('Your Roster profile is still loading. Sign in again and retry.');
       const name = String(body.name || '').trim().slice(0, 80);
       if (!name) throw new Error('Group name is required.');
-      const { data: updated, error } = await supabase.from('groups').update({ name }).eq('id', groupId).eq('teacher_id', profileId).select('*').maybeSingle();
+      const values = { name };
+      if (body.description !== undefined) values.description = String(body.description || '').trim().slice(0, 300);
+      const { data: updated, error } = await supabase.from('groups').update(values).eq('id', groupId).eq('teacher_id', profileId).select('*').maybeSingle();
       if (error?.code === '23505') throw new Error('A group with this name already exists.');
       if (error) throw error;
       if (!updated) throw new Error('Group not found.');
-      return data({ group: { id: updated.id, name: updated.name, createdAt: updated.created_at } });
+      return data({ group: { id: updated.id, name: updated.name, description: updated.description || '', createdAt: updated.created_at } });
     }
     const group = state.groups.find((item) => item.id === groupId);
     if (!group) return Promise.reject(new Error('Group not found'));
     group.name = String(body.name || '').trim();
+    if (body.description !== undefined) group.description = String(body.description || '').trim().slice(0, 300);
     write(state);
     return data({ group });
   }
@@ -629,12 +633,13 @@ export async function workspaceRequest(method, path, body = {}) {
       if (!profileId) throw new Error('Your Roster profile is still loading. Sign in again and retry.');
       const name = String(body.name || '').trim().slice(0, 80);
       if (!name) throw new Error('Group name is required.');
-      const { data: created, error } = await supabase.from('groups').insert({ teacher_id: profileId, name }).select('*').single();
+      const description = String(body.description || '').trim().slice(0, 300);
+      const { data: created, error } = await supabase.from('groups').insert({ teacher_id: profileId, name, description }).select('*').single();
       if (error?.code === '23505') throw new Error('A group with this name already exists.');
       if (error) throw error;
-      return data({ group: { id: created.id, name: created.name, createdAt: created.created_at } });
+      return data({ group: { id: created.id, name: created.name, description: created.description || '', createdAt: created.created_at } });
     }
-    const group = { id: uid('group'), name: body.name, createdAt: iso() }; state.groups.push(group); write(state); return data({ group });
+    const group = { id: uid('group'), name, description: String(body.description || '').trim().slice(0, 300), createdAt: iso() }; state.groups.push(group); write(state); return data({ group });
   }
 
   if (method === 'POST' && path === '/api/roster') {

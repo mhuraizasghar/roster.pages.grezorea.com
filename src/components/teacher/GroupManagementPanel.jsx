@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Check, ChevronDown, ChevronRight, FolderPlus, Pencil, Search, Trash2, Users, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, FolderPlus, Pencil, Search, Trash2, Users, X, MoreHorizontal } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useToast } from '../Toast';
 
@@ -7,6 +7,8 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState('');
   const [editingName, setEditingName] = useState('');
+  const [description, setDescription] = useState('');
+  const [dialog, setDialog] = useState(null);
   const [deleteId, setDeleteId] = useState('');
   const [expandedId, setExpandedId] = useState('');
   const [memberSearch, setMemberSearch] = useState('');
@@ -19,8 +21,10 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
     if (!cleanName || busy) return;
     setBusy(true);
     try {
-      await api.post('/api/groups', { name: cleanName });
+      await api.post('/api/groups', { name: cleanName, description });
       setName('');
+      setDescription('');
+      setDialog(null);
       showToast('Group created.');
       await onRefresh();
     } catch (error) {
@@ -35,9 +39,10 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
     if (!cleanName || busy) return;
     setBusy(true);
     try {
-      await api.patch(`/api/groups/${groupId}`, { name: cleanName });
+      await api.patch(`/api/groups/${groupId}`, { name: cleanName, description });
       setEditingId('');
       setEditingName('');
+      setDialog(null);
       showToast('Group renamed.');
       await onRefresh();
     } catch (error) {
@@ -95,20 +100,7 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
         <span className="eval-badge eval-badge-neutral">{groups.length} groups · {entries.length} students</span>
       </header>
 
-      <form onSubmit={createGroup} className="eval-card p-4 flex flex-wrap items-center gap-2">
-        <input
-          className="eval-input min-w-52 flex-1 py-2 text-xs"
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="e.g. BSCMDA Section A"
-          maxLength={80}
-          aria-label="New group name"
-          required
-        />
-        <button type="submit" disabled={busy || !name.trim()} className="eval-btn-primary py-2 px-3 text-xs">
-          <FolderPlus className="h-3.5 w-3.5" /> Create group
-        </button>
-      </form>
+      <div className="flex justify-end"><button type="button" onClick={()=>{setName('');setDescription('');setEditingId('');setDialog('create')}} className="eval-btn-primary py-2 px-3 text-xs"><FolderPlus className="h-3.5 w-3.5"/>Create group</button></div>
 
       <div className="eval-card overflow-hidden">
         {groups.length === 0 ? (
@@ -121,33 +113,14 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
               const memberCount = entries.filter((entry) => entry.groupId === group.id).length;
               const expanded = expandedId === group.id;
               return (
-                <li key={group.id} className="px-4 py-3">
+                <li key={group.id} className="px-3 py-2">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0 flex-1 flex items-center gap-2">
                     {editingId !== group.id && <button type="button" onClick={() => setExpandedId(expanded ? '' : group.id)} className="eval-btn-ghost p-1" aria-label={`${expanded ? 'Collapse' : 'Expand'} ${group.name}`}>
                       {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                     </button>}
-                    {editingId === group.id ? (
-                      <div className="flex max-w-md items-center gap-2">
-                        <input
-                          className="eval-input min-w-0 flex-1 py-1.5 text-xs"
-                          value={editingName}
-                          onChange={(event) => setEditingName(event.target.value)}
-                          maxLength={80}
-                          aria-label="Group name"
-                          autoFocus
-                        />
-                        <button type="button" disabled={busy} onClick={() => renameGroup(group.id)} className="eval-btn-primary p-2" aria-label="Save group name"><Check className="h-3.5 w-3.5" /></button>
-                        <button type="button" onClick={() => setEditingId('')} className="eval-btn-ghost p-2" aria-label="Cancel rename"><X className="h-3.5 w-3.5" /></button>
-                      </div>
-                    ) : (
-                      <>
-                        <button type="button" onClick={() => setExpandedId(expanded ? '' : group.id)} className="truncate text-left text-sm font-medium hover:underline">{group.name}</button>
-                        <div className="mt-0.5 text-[11px]" style={{ color: 'var(--eval-muted)' }}>{memberCount} students</div>
-                      </>
-                    )}
+                    <div className="min-w-0"><button type="button" onClick={() => setExpandedId(expanded ? '' : group.id)} className="truncate text-left text-sm font-medium hover:underline">{group.name}</button><div className="text-[11px]" style={{ color: 'var(--eval-muted)' }}>{memberCount} students{group.createdAt ? ` · Created ${new Date(group.createdAt).toLocaleDateString()}` : ''}{group.description ? ` · ${group.description}` : ''}</div></div>
                   </div>
-                  {editingId !== group.id && (
                     <div className="flex items-center gap-1">
                       {deleteId === group.id ? (
                         <>
@@ -157,15 +130,13 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
                         </>
                       ) : (
                         <>
-                          <button type="button" onClick={() => { setEditingId(group.id); setEditingName(group.name); }} className="eval-btn-secondary p-2" aria-label={`Rename ${group.name}`}><Pencil className="h-3.5 w-3.5" /></button>
-                          <button type="button" onClick={() => setDeleteId(group.id)} className="eval-btn-ghost p-2" style={{ color: 'var(--status-fail)' }} aria-label={`Delete ${group.name}`}><Trash2 className="h-3.5 w-3.5" /></button>
+                          <details className="relative"><summary className="list-none cursor-pointer p-2" aria-label={`Options for ${group.name}`}><MoreHorizontal className="h-4 w-4"/></summary><div className="absolute right-0 z-20 w-36 bg-[var(--eval-bg)] py-1 border-y border-[var(--eval-border)]"><button type="button" onClick={()=>{setName(group.name);setDescription(group.description||'');setEditingId(group.id);setEditingName(group.name);setDialog('edit')}} className="w-full px-3 py-2 text-left text-xs"><Pencil className="mr-2 inline h-3.5 w-3.5"/>Edit group</button><button type="button" onClick={() => setDeleteId(group.id)} className="w-full px-3 py-2 text-left text-xs text-red-700"><Trash2 className="mr-2 inline h-3.5 w-3.5"/>Delete group</button></div></details>
                         </>
                       )}
                     </div>
-                  )}
                   </div>
                   {expanded && editingId !== group.id && (
-                    <div className="mt-4 border-t pt-3 space-y-3" style={{ borderColor: 'var(--eval-border)' }}>
+                      <div className="mt-3 border-t pt-3 space-y-3" style={{ borderColor: 'var(--eval-border)' }}>
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
                           <div className="text-xs font-semibold">Group members</div>
@@ -197,6 +168,7 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
           </ul>
         )}
       </div>
+      {dialog && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4"><form onSubmit={async(e)=>{if(dialog==='create') await createGroup(e); else {e.preventDefault(); await renameGroup(editingId)}}} className="w-full max-w-md bg-[var(--eval-bg)] p-5 space-y-3" role="dialog" aria-modal="true" aria-labelledby="group-dialog-title"><div><h3 id="group-dialog-title" className="font-semibold">{dialog==='create'?'Create group':'Edit group'}</h3><p className="mt-1 text-xs" style={{color:'var(--eval-muted)'}}>Organize students for assignments and classroom access.</p></div><label className="block text-xs">Group name<input className="eval-input mt-1 w-full text-xs" value={dialog==='edit'?editingName:name} onChange={e=>dialog==='edit'?setEditingName(e.target.value):setName(e.target.value)} maxLength={80} required autoFocus/></label><label className="block text-xs">Description <span style={{color:'var(--eval-muted)'}}>(optional)</span><textarea className="eval-input mt-1 w-full text-xs" rows={3} value={description} onChange={e=>setDescription(e.target.value)} maxLength={300} placeholder="Course, section, or term"/></label><div className="flex justify-end gap-2"><button type="button" onClick={()=>{setDialog(null);setEditingId('')}} className="eval-btn-secondary py-2 text-xs">Cancel</button><button type="submit" disabled={busy} className="eval-btn-primary py-2 text-xs">{dialog==='create'?'Create group':'Save changes'}</button></div></form></div>}
     </section>
   );
 }

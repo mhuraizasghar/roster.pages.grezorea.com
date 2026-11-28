@@ -16,6 +16,8 @@ import {
   FileText,
   Download,
   Upload,
+  MoreHorizontal,
+  ChevronDown,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useToast } from '../Toast';
@@ -40,6 +42,9 @@ export default function LibraryPanel({
   const [movingItem, setMovingItem] = useState(null);
   const [renamingFolder, setRenamingFolder] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [showActions, setShowActions] = useState(false);
+  const [expandedFolders, setExpandedFolders] = useState(() => new Set());
+  const [folderPaths, setFolderPaths] = useState('');
   const { showToast } = useToast();
 
   const parseCsv = (text) => {
@@ -305,10 +310,34 @@ export default function LibraryPanel({
 
   const trashCount = trashFolders.length + trashQuizzes.length;
 
+  const renderFolderTree = (folder, depth = 0) => {
+    const children = folders.filter((item) => item.parentId === folder.id);
+    const files = quizzes.filter((item) => item.folderId === folder.id);
+    const expanded = expandedFolders.has(folder.id);
+    return <React.Fragment key={`tree-${folder.id}`}><div className="flex items-center gap-1 py-1" style={{paddingLeft:`${depth * 16}px`}}><button type="button" onClick={()=>setExpandedFolders(old=>{const next=new Set(old);next.has(folder.id)?next.delete(folder.id):next.add(folder.id);return next})} aria-label={`${expanded?'Collapse':'Expand'} ${folder.name}`} className="p-1"><ChevronRight className={`h-3.5 w-3.5 transition-transform ${expanded?'rotate-90':''}`}/></button><Folder className="h-3.5 w-3.5"/><button type="button" onClick={()=>{setSearch('');setCurrentFolderId(folder.id)}} className="min-w-0 truncate text-left text-xs hover:underline">{folder.name}</button><span className="ml-auto pr-2 text-[10px]" style={{color:'var(--eval-muted)'}}>{children.length+files.length} items</span></div>{expanded&&<>{children.map((child)=>renderFolderTree(child,depth+1))}{files.map((quiz)=><button key={`tree-q-${quiz.id}`} type="button" onClick={()=>onEditQuiz(quiz)} className="flex w-full items-center gap-2 py-1 text-left text-xs" style={{paddingLeft:`${(depth+1)*16+24}px`}}><FileText className="h-3.5 w-3.5"/>{quiz.title}</button>)}</>}</React.Fragment>;
+  };
+
+  const handleFolderFile = async (event) => {
+    const file = event.target.files?.[0]; event.target.value = '';
+    if (!file) return;
+    try {
+      const content = await file.text();
+      let paths;
+      if (file.name.toLowerCase().endsWith('.json')) {
+        const parsed = JSON.parse(content);
+        const foldersInFile = Array.isArray(parsed) ? parsed : parsed.folders;
+        if (!Array.isArray(foldersInFile)) throw new Error('JSON needs a folders array.');
+        paths = foldersInFile.map((item) => typeof item === 'string' ? item : item.path || [item.parentPath, item.name].filter(Boolean).join('/'));
+      } else paths = parseCsv(content).map((row) => row.path || row.folder_path || row.folder || row.name).filter(Boolean);
+      if (!paths.length) throw new Error('No folder paths were found in that file.');
+      setFolderPaths(paths.join('\n'));
+    } catch (error) { showToast(error.message || 'Could not read folder structure.', 'error'); }
+  };
+
   return (
     <div className="space-y-5">
       {/* Compact, grouped library controls */}
-      <div className="eval-card p-3 sm:p-4 space-y-3">
+      <div className="eval-card p-2 sm:p-3 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold">{showTrash ? 'Quiz Trash' : 'Quiz Library'}</h2>
@@ -316,7 +345,7 @@ export default function LibraryPanel({
               {showTrash ? 'Restore removed items or permanently delete them.' : 'Create, organize, import, and export assessments.'}
             </p>
           </div>
-          <div className="inline-flex items-center gap-1 rounded-lg border p-1" style={{ borderColor: 'var(--eval-border)', backgroundColor: 'var(--eval-bg)' }} role="tablist" aria-label="Library views">
+          <div className="inline-flex items-center gap-1" role="tablist" aria-label="Library views">
             <button type="button" role="tab" aria-selected={!showTrash} onClick={() => setShowTrash(false)} className={!showTrash ? 'eval-btn-primary px-3 py-1.5 text-xs' : 'eval-btn-ghost px-3 py-1.5 text-xs'}>
               <Folder className="h-3.5 w-3.5" /> Library
             </button>
@@ -328,26 +357,7 @@ export default function LibraryPanel({
 
         {!showTrash && (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2">
-              <button type="button" onClick={handleCreateQuiz} className="eval-btn-primary w-full justify-center py-2 text-xs">
-                <Plus className="h-3.5 w-3.5" /> New Quiz
-              </button>
-              <label className="eval-btn-secondary w-full justify-center py-2 text-xs cursor-pointer">
-                <Upload className="h-3.5 w-3.5" /> {importing ? 'Importing…' : 'Import Quiz'}
-                <input type="file" accept=".json,.csv,application/json,text/csv" className="sr-only" onChange={handleImport} disabled={importing} />
-              </label>
-              <button type="button" onClick={() => exportQuizzes('json')} className="eval-btn-secondary w-full justify-center py-2 text-xs" title="Export visible quizzes as JSON">
-                <Download className="h-3.5 w-3.5" /> Export JSON
-              </button>
-              <button type="button" onClick={() => exportQuizzes('csv')} className="eval-btn-secondary w-full justify-center py-2 text-xs" title="Export visible quiz questions as CSV">
-                <Download className="h-3.5 w-3.5" /> Export CSV
-              </button>
-              <button type="button" onClick={() => setShowNewFolder((value) => !value)} className="eval-btn-secondary w-full justify-center py-2 text-xs">
-                <FolderPlus className="h-3.5 w-3.5" /> {currentFolderId ? 'New Subfolder' : 'New Subject / Folder'}
-              </button>
-            </div>
-
-            <div className="flex flex-col lg:flex-row lg:items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <div className="relative min-w-0 flex-1">
                 <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--eval-muted)' }} />
                 <input type="text" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search library…" aria-label="Search library" className="eval-input w-full pl-8 py-2 text-xs" />
@@ -356,30 +366,37 @@ export default function LibraryPanel({
                 <option value="name">Sort: Name</option>
                 <option value="updated">Sort: Last Updated</option>
               </select>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] lg:pl-1" style={{ color: 'var(--eval-muted)' }}>
-                <span>Templates:</span>
-                <a className="underline underline-offset-2" href="/templates/quiz-import-sample.json" download>JSON</a>
-                <a className="underline underline-offset-2" href="/templates/quiz-import-sample.csv" download>CSV</a>
-                <a className="underline underline-offset-2" href="/templates/quiz-import-format.md" download>Format guide</a>
+              <div className="relative">
+                <button type="button" onClick={() => setShowActions((v) => !v)} className="eval-btn-primary py-2 text-xs" aria-expanded={showActions}><Plus className="h-3.5 w-3.5"/> Library actions <ChevronDown className="h-3.5 w-3.5"/></button>
+                {showActions && <div className="absolute right-0 top-full z-20 mt-1 w-52 py-1 bg-[var(--eval-bg)] border-y border-[var(--eval-border)]">
+                  <button type="button" onClick={() => { setShowActions(false); handleCreateQuiz(); }} className="w-full px-3 py-2 text-left text-xs hover:text-[var(--eval-accent)]"><Plus className="mr-2 inline h-3.5 w-3.5"/>New quiz</button>
+                  <button type="button" onClick={() => { setShowActions(false); setImporting(true); }} className="w-full px-3 py-2 text-left text-xs hover:text-[var(--eval-accent)]"><Upload className="mr-2 inline h-3.5 w-3.5"/>Import quiz</button>
+                  <button type="button" onClick={() => { setShowActions(false); exportQuizzes('json'); }} className="w-full px-3 py-2 text-left text-xs"><Download className="mr-2 inline h-3.5 w-3.5"/>Export JSON</button>
+                  <button type="button" onClick={() => { setShowActions(false); exportQuizzes('csv'); }} className="w-full px-3 py-2 text-left text-xs"><Download className="mr-2 inline h-3.5 w-3.5"/>Export CSV</button>
+                  <button type="button" onClick={() => { setShowActions(false); setShowNewFolder(true); }} className="w-full px-3 py-2 text-left text-xs"><FolderPlus className="mr-2 inline h-3.5 w-3.5"/>New subject / folder</button>
+                </div>}
               </div>
             </div>
+            <div className="flex flex-wrap gap-3 text-[11px]" style={{color:'var(--eval-muted)'}}><span>Templates:</span><a className="underline" href="/templates/quiz-import-sample.json" download>JSON sample</a><a className="underline" href="/templates/quiz-import-sample.csv" download>CSV sample</a><a className="underline" href="/templates/quiz-import-format.md" download>Format guide</a></div>
           </>
         )}
       </div>
 
+      {importing && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4" onMouseDown={(e)=>{if(e.target===e.currentTarget)setImporting(false)}}><div className="w-full max-w-lg bg-[var(--eval-bg)] p-5" role="dialog" aria-modal="true" aria-labelledby="quiz-import-title"><div className="flex justify-between"><div><h3 id="quiz-import-title" className="font-semibold">Import quizzes</h3><p className="mt-1 text-xs" style={{color:'var(--eval-muted)'}}>Choose a JSON or CSV quiz file. It will be added to the current folder.</p></div><button type="button" onClick={()=>setImporting(false)} aria-label="Close">×</button></div><div className="mt-4 grid gap-2 sm:grid-cols-2"><label className="eval-btn-secondary cursor-pointer justify-center text-xs"><Upload className="h-4 w-4"/> Import JSON<input type="file" accept=".json,application/json" className="sr-only" onChange={handleImport}/></label><label className="eval-btn-secondary cursor-pointer justify-center text-xs"><Upload className="h-4 w-4"/> Import CSV<input type="file" accept=".csv,text/csv" className="sr-only" onChange={handleImport}/></label></div><p className="mt-4 text-xs" style={{color:'var(--eval-muted)'}}>Not sure about the required format? Download a sample JSON or CSV file, or read the format guide before importing.</p><div className="mt-2 flex gap-4 text-xs"><a className="underline" href="/templates/quiz-import-sample.json" download>Sample JSON</a><a className="underline" href="/templates/quiz-import-sample.csv" download>Sample CSV</a><a className="underline" href="/templates/quiz-import-format.md" download>Format guide</a></div></div></div>}
+
       {/* New Folder Inline Form */}
       {showNewFolder && !showTrash && (
-        <form onSubmit={handleCreateFolder} className="eval-card p-4 flex flex-wrap items-end gap-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4"><form onSubmit={async(e)=>{e.preventDefault(); try { const paths=folderPaths.split(/\r?\n/).map(x=>x.trim()).filter(Boolean); if(!paths.length) throw new Error('Enter at least one folder path.'); for(const path of paths){ let parentId=currentFolderId; for(const part of path.split('/').map(x=>x.trim()).filter(Boolean)){ let existing=folders.find(f=>f.name.toLowerCase()===part.toLowerCase()&&(f.parentId||null)===parentId); if(!existing){ const res=await api.post('/api/library/folders',{name:part,parentId,isSubject:!parentId&&newFolderIsSubject}); existing=res.folder||res; } parentId=existing.id; }} setFolderPaths('');setShowNewFolder(false);await onRefresh();showToast('Folder structure created.'); } catch(err){showToast(err.message||'Could not create folders.','error')} }} className="w-full max-w-lg bg-[var(--eval-bg)] p-5 space-y-3" role="dialog" aria-modal="true">
           <div className="flex-1 min-w-[200px]">
             <label htmlFor="newFldName" className="block text-xs font-medium mb-1">
               {currentFolderId ? 'Subfolder Name' : 'Subject or Folder Name'}
             </label>
-            <input
+            <textarea
               id="newFldName"
-              className="eval-input text-xs"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder="e.g. Data Structures"
+              className="eval-input min-h-28 text-xs"
+              placeholder="e.g. Data Structures / Week 1 / Practice"
+              value={folderPaths}
+              onChange={(e)=>setFolderPaths(e.target.value)}
               required
             />
           </div>
@@ -393,11 +410,13 @@ export default function LibraryPanel({
               Mark as Subject container
             </label>
           )}
+          <div className="flex flex-wrap items-center gap-3 text-xs"><label className="eval-btn-secondary cursor-pointer py-1.5 text-xs"><Upload className="h-3.5 w-3.5"/>Load CSV / JSON structure<input type="file" accept=".csv,.json,text/csv,application/json" className="sr-only" onChange={handleFolderFile}/></label><a className="underline" href="/templates/quiz-import-sample.json" download>JSON example</a><a className="underline" href="/templates/quiz-import-sample.csv" download>CSV example</a></div>
+          <p className="text-xs" style={{color:'var(--eval-muted)'}}>Enter one folder path per line. Use / to create nested folders. JSON structure files can include a folders array; CSV files should include a path column.</p>
           <div className="flex gap-2">
-            <button type="submit" className="eval-btn-primary text-xs py-2">Create</button>
+            <button type="submit" className="eval-btn-primary text-xs py-2">Create folders</button>
             <button type="button" onClick={() => setShowNewFolder(false)} className="eval-btn-secondary text-xs py-2">Cancel</button>
           </div>
-        </form>
+        </form></div>
       )}
 
       {/* Breadcrumbs */}
@@ -497,22 +516,28 @@ export default function LibraryPanel({
               </div>
             ) : (
               <>
-                {visibleFolders.map((folder) => {
+            {visibleFolders.map((folder) => {
                   const contents = folders.filter((item) => item.parentId === folder.id).length + quizzes.filter((item) => item.folderId === folder.id).length;
-                  return <div key={`folder-${folder.id}`} className="group flex flex-wrap items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--eval-bg)]">
-                    <button type="button" onClick={() => { setSearch(''); setCurrentFolderId(folder.id); }} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                  return <React.Fragment key={`folder-${folder.id}`}><div className="group flex flex-wrap items-center gap-2 px-3 py-2 transition-colors">
+                    <button type="button" aria-label={`${expandedFolders.has(folder.id)?'Collapse':'Expand'} ${folder.name}`} onClick={() => setExpandedFolders(old=>{const next=new Set(old); next.has(folder.id)?next.delete(folder.id):next.add(folder.id); return next})} className="p-1"><ChevronRight className={`h-4 w-4 transition-transform ${expandedFolders.has(folder.id)?'rotate-90':''}`} style={{color:'var(--eval-muted)'}}/></button>
+                    <button type="button" onClick={() => { setSearch(''); setCurrentFolderId(folder.id); }} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                       <Folder className="h-5 w-5 shrink-0" style={{ color: 'var(--eval-accent)' }} />
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">{folder.name}</span>
                       <span className="hidden text-[11px] sm:inline" style={{ color: 'var(--eval-muted)' }}>{contents} items</span>
                       <span className="eval-badge eval-badge-neutral text-[10px]">{folder.isSubject ? 'Subject' : 'Folder'}</span>
-                      <ChevronRight className="h-4 w-4 shrink-0" style={{ color: 'var(--eval-muted)' }} />
                     </button>
-                    <div className="flex items-center gap-1">
+                    <details className="relative"><summary className="list-none cursor-pointer p-1.5" aria-label={`More options for ${folder.name}`}><MoreHorizontal className="h-4 w-4"/></summary><div className="absolute right-0 z-20 w-40 bg-[var(--eval-bg)] py-1 border-y border-[var(--eval-border)]">
+                      <button type="button" onClick={() => setRenamingFolder({ id: folder.id, name: folder.name })} className="w-full px-3 py-2 text-left text-xs">Rename</button>
+                      <button type="button" onClick={() => setMovingItem({ kind: 'folder', id: folder.id, title: folder.name })} className="w-full px-3 py-2 text-left text-xs">Move</button>
+                      <button type="button" onClick={() => handleSoftDeleteFolder(folder)} className="w-full px-3 py-2 text-left text-xs text-red-700">Move to Trash</button>
+                    </div></details>
+                    {/* legacy actions replaced by the compact menu */}<div className="hidden">
                       <button type="button" onClick={() => setRenamingFolder({ id: folder.id, name: folder.name })} className="eval-btn-ghost p-1.5" title="Rename folder"><Edit3 className="h-3.5 w-3.5" /></button>
                       <button type="button" onClick={() => setMovingItem({ kind: 'folder', id: folder.id, title: folder.name })} className="eval-btn-ghost p-1.5" title="Move folder"><Move className="h-3.5 w-3.5" /></button>
                       <button type="button" onClick={() => handleSoftDeleteFolder(folder)} className="eval-btn-ghost p-1.5" title="Move folder to Trash" style={{ color: 'var(--status-fail)' }}><Trash2 className="h-3.5 w-3.5" /></button>
-                    </div>
-                  </div>
+                    </div></div>
+                    {expandedFolders.has(folder.id) && <div className="ml-8 border-l border-[var(--eval-border)]">{folders.filter(f=>f.parentId===folder.id).map(child=>renderFolderTree(child,0))}{quizzes.filter(q=>q.folderId===folder.id).map(q=><button key={q.id} type="button" onClick={()=>onEditQuiz(q)} className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs"><FileText className="h-3.5 w-3.5"/>{q.title}</button>)}</div>}
+                  </React.Fragment>
                 })}
                 {visibleQuizzes.map((quiz) => (
                   <div key={`quiz-${quiz.id}`} className="flex flex-wrap items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--eval-bg)]">

@@ -16,6 +16,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
   const [filterGroup, setFilterGroup] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [studentDialog, setStudentDialog] = useState('');
   const { showToast } = useToast();
 
   const parseCsvRows = (text) => {
@@ -42,6 +43,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
       });
       setSingleEmail('');
       setSingleName('');
+      setStudentDialog('');
       showToast('Student added to roster.');
       onRefresh();
     } catch (err) {
@@ -82,6 +84,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
       });
       setImportReport(res);
       setBulkText('');
+      setStudentDialog('');
       showToast(`Imported ${res.importedCount} student(s).`);
       onRefresh();
     } catch (err) {
@@ -175,107 +178,24 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-        {/* Add Single Student */}
-        <form onSubmit={handleAddSingle} className="lg:col-span-5 eval-card p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <UserPlus className="w-4 h-4" style={{ color: 'var(--eval-accent)' }} />
-            Add Student by Email
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">Student Email</label>
-            <input
-              type="email"
-              className="eval-input text-xs"
-              value={singleEmail}
-              onChange={(e) => setSingleEmail(e.target.value)}
-              placeholder="student@university.edu"
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-xs font-medium mb-1">Name (optional)</label>
-              <input
-                className="eval-input text-xs"
-                value={singleName}
-                onChange={(e) => setSingleName(e.target.value)}
-                placeholder="Ali Khan"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">Group</label>
-              <select
-                className="eval-input text-xs"
-                value={singleGroupId}
-                onChange={(e) => setSingleGroupId(e.target.value)}
-              >
-                <option value="">No group</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <button type="submit" className="eval-btn-primary text-xs w-full">Add to Roster</button>
-        </form>
-
-        {/* Bulk Paste or CSV Upload */}
-        <form onSubmit={handleBulkImport} className="lg:col-span-7 eval-card p-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Upload className="w-4 h-4" style={{ color: 'var(--eval-accent)' }} />
-              Bulk Paste or CSV Upload
-            </div>
-            <label className="eval-btn-secondary text-xs py-1.5 px-3 cursor-pointer">
-              Upload CSV / JSON
-              <input type="file" accept=".csv,.txt,.json,text/csv,application/json" className="hidden" onChange={handleCsvUpload} />
-            </label>
-          </div>
-          <div className="flex gap-3 text-[11px]" style={{ color: 'var(--eval-muted)' }}>
-            <a className="underline underline-offset-2" href="/templates/roster-import-sample.csv" download>CSV sample</a>
-            <a className="underline underline-offset-2" href="/templates/roster-import-sample.json" download>JSON sample</a>
-            <a className="underline underline-offset-2" href="/templates/roster-import-format.md" download>Format guide</a>
-          </div>
-          <textarea
-            rows={3}
-            className="eval-input text-xs font-mono"
-            value={bulkText}
-            onChange={(e) => setBulkText(e.target.value)}
-            placeholder={'email,name,group\naisha@uni.edu,Aisha Tariq,CS-101 Section A\nbilal@college.edu,Bilal Raza,Physics Lab B'}
-          />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <select
-              className="eval-input text-xs w-auto"
-              value={bulkGroupId}
-              onChange={(e) => setBulkGroupId(e.target.value)}
-            >
-              <option value="">Default group: None</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
-            <button type="submit" className="eval-btn-primary text-xs">Import Roster</button>
-          </div>
-          {importReport && (
-            <div
-              className="p-3 rounded-lg border text-xs space-y-1"
-              style={{ borderColor: 'var(--eval-border)', backgroundColor: 'var(--eval-bg)' }}
-            >
-              <div>
-                <strong style={{ color: 'var(--status-pass)' }}>{importReport.importedCount} imported</strong> &middot;{' '}
-                <strong style={{ color: 'var(--status-warn)' }}>{importReport.duplicateCount} duplicates skipped</strong> &middot;{' '}
-                <strong style={{ color: 'var(--status-fail)' }}>{importReport.invalidCount} invalid</strong>
-              </div>
-              {importReport.invalid?.length > 0 && (
-                <div className="font-mono text-[11px]" style={{ color: 'var(--status-fail)' }}>
-                  Invalid: {importReport.invalid.join(', ')}
-                </div>
-              )}
-            </div>
-          )}
-        </form>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h2 className="text-sm font-semibold">Students</h2><p className="text-xs" style={{color:'var(--eval-muted)'}}>Manage roster access and group membership. Invited students become active after verifying their account.</p></div>
+        <div className="flex gap-2"><button type="button" onClick={()=>setStudentDialog('single')} className="eval-btn-secondary py-2 text-xs"><UserPlus className="h-3.5 w-3.5"/>Add student</button><button type="button" onClick={()=>setStudentDialog('bulk')} className="eval-btn-primary py-2 text-xs"><Upload className="h-3.5 w-3.5"/>Import students</button></div>
       </div>
+
+      {studentDialog && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4"><div className="w-full max-w-xl bg-[var(--eval-bg)] p-5" role="dialog" aria-modal="true"><div className="mb-4 flex items-start justify-between"><div><h3 className="font-semibold">{studentDialog==='single'?'Add a student':'Import students'}</h3><p className="mt-1 text-xs" style={{color:'var(--eval-muted)'}}>{studentDialog==='single'?'Invite one student to your roster.':'Upload or paste a CSV or JSON student list.'}</p></div><button type="button" onClick={()=>setStudentDialog('')} aria-label="Close">×</button></div>
+      {studentDialog==='single' ? <form onSubmit={handleAddSingle} className="space-y-3">
+          <label className="block text-xs">Student email<input type="email" className="eval-input mt-1 text-xs" value={singleEmail} onChange={e=>setSingleEmail(e.target.value)} placeholder="student@university.edu" required/></label>
+          <div className="grid gap-2 sm:grid-cols-2"><label className="block text-xs">Display name <span style={{color:'var(--eval-muted)'}}>(optional)</span><input className="eval-input mt-1 text-xs" value={singleName} onChange={e=>setSingleName(e.target.value)} placeholder="Student name"/></label><label className="block text-xs">Group<select className="eval-input mt-1 text-xs" value={singleGroupId} onChange={e=>setSingleGroupId(e.target.value)}><option value="">No group</option>{groups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></label></div>
+          <div className="flex justify-end gap-2"><button type="button" onClick={()=>setStudentDialog('')} className="eval-btn-secondary text-xs">Cancel</button><button type="submit" className="eval-btn-primary text-xs">Add to roster</button></div>
+        </form> : <form onSubmit={handleBulkImport} className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3 text-xs"><label className="eval-btn-secondary cursor-pointer py-2 text-xs"><Upload className="h-3.5 w-3.5"/>Choose CSV / JSON<input type="file" accept=".csv,.txt,.json,text/csv,application/json" className="sr-only" onChange={handleCsvUpload}/></label><a className="underline" href="/templates/roster-import-sample.csv" download>CSV sample</a><a className="underline" href="/templates/roster-import-sample.json" download>JSON sample</a><a className="underline" href="/templates/roster-import-format.md" download>Format guide</a></div>
+          <p className="text-xs" style={{color:'var(--eval-muted)'}}>Use columns <code>email,name,group</code>. You can paste rows or upload a file. Students are invited and become active after verification.</p>
+          <textarea rows={7} className="eval-input w-full font-mono text-xs" value={bulkText} onChange={e=>setBulkText(e.target.value)} placeholder={'email,name,group\naisha@uni.edu,Aisha Tariq,CS-101'} />
+          <div className="flex flex-wrap items-center justify-between gap-2"><select className="eval-input text-xs" value={bulkGroupId} onChange={e=>setBulkGroupId(e.target.value)}><option value="">Default group: None</option>{groups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select><div className="flex gap-2"><button type="button" onClick={()=>setStudentDialog('')} className="eval-btn-secondary text-xs">Cancel</button><button type="submit" className="eval-btn-primary text-xs">Import roster</button></div></div>
+          {importReport && <p className="text-xs">{importReport.importedCount} imported · {importReport.duplicateCount} duplicates skipped · {importReport.invalidCount} invalid</p>}
+        </form>}
+      </div></div>}
 
       {/* Roster search and filters */}
       <div className="eval-card p-3 flex flex-wrap items-center justify-between gap-3">
@@ -301,7 +221,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
               {groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
             </select>
             <div className="inline-flex items-center p-0.5 rounded-lg border text-[11px]" style={{ borderColor: 'var(--eval-border)', backgroundColor: 'var(--eval-bg)' }}>
-              {['all', 'active', 'pending'].map((st) => (
+                {['all', 'active', 'pending'].map((st) => (
                 <button
                   key={st}
                   type="button"
@@ -313,7 +233,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
                       : { color: 'var(--eval-muted)' }
                   }
                 >
-                  {st}
+                  {st === 'pending' ? 'invited' : st}
                 </button>
               ))}
             </div>
@@ -326,7 +246,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
       {/* Roster Table */}
       <div className="eval-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="roster-table w-full text-left text-xs">
             <thead>
               <tr className="border-b" style={{ borderColor: 'var(--eval-border)', backgroundColor: 'var(--eval-bg)', color: 'var(--eval-muted)' }}>
                 <th className="py-2.5 px-4 font-semibold">Student Email</th>
@@ -389,7 +309,7 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
                     </td>
                     <td className="py-2.5 px-4">
                       <span className={entry.status === 'active' ? 'eval-badge eval-badge-pass' : 'eval-badge eval-badge-warn'}>
-                        {entry.status === 'active' ? 'Active' : 'Pending'}
+                        {entry.status === 'active' ? 'Active' : 'Invited'}
                       </span>
                     </td>
                     <td className="py-2.5 px-4 text-right">

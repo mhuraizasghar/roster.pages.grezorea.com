@@ -618,11 +618,30 @@ export function createRosterApp(db, { broadcastRoom = () => {}, mailer = null } 
       id: `grp_${crypto.randomUUID().slice(0, 8)}`,
       teacherId: req.user.id,
       name,
+      description: String(req.body?.description || '').trim().slice(0, 300),
       createdAt: new Date().toISOString(),
     };
     db.state.groups.push(group);
     db.save();
     res.status(201).json({ ok: true, group });
+  });
+
+  app.patch('/api/groups/:id', requireAuth('teacher'), (req, res) => {
+    const group = db.state.groups.find((g) => g.id === req.params.id && g.teacherId === req.user.id);
+    if (!group) return res.status(404).json({ error: 'Group not found.' });
+
+    const name = String(req.body?.name || '').trim().slice(0, 60);
+    if (!name) return res.status(400).json({ error: 'Group name is required.' });
+    const duplicate = db.state.groups.find(
+      (g) => g.id !== req.params.id && g.teacherId === req.user.id && g.name.toLowerCase() === name.toLowerCase()
+    );
+    if (duplicate) return res.status(409).json({ error: 'Group already exists.' });
+
+    group.name = name;
+    if (req.body?.description !== undefined) group.description = String(req.body.description || '').trim().slice(0, 300);
+    group.updatedAt = new Date().toISOString();
+    db.save();
+    res.json({ ok: true, group });
   });
 
   app.delete('/api/groups/:id', requireAuth('teacher'), (req, res) => {
