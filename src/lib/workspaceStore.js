@@ -723,6 +723,20 @@ export async function workspaceRequest(method, path, body = {}) {
     return data({ entries: state.rosterEntries, importedCount, duplicateCount, invalidCount: invalid.length, invalid });
   }
 
+  const resendInviteMatch = path.match(/^\/api\/roster\/([^/]+)\/resend-invitation$/);
+  if (resendInviteMatch && method === 'POST') {
+    if (!isSupabaseConfigured || !supabase) throw new Error('Invitation email is unavailable in this environment.');
+    const profileId = await getTeacherProfileId();
+    if (!profileId) throw new Error('Sign in as a teacher to resend this invitation.');
+    const { data: entry, error: entryError } = await supabase.from('roster_entries').select('student_email,status').eq('id', resendInviteMatch[1]).eq('teacher_id', profileId).maybeSingle();
+    if (entryError) throw entryError;
+    if (!entry) throw new Error('Roster entry not found. Refresh the student list and try again.');
+    if (entry.status === 'active') throw new Error('This student has already verified their account.');
+    const { error: inviteError } = await supabase.auth.signInWithOtp({ email: entry.student_email, options: { shouldCreateUser: true } });
+    if (inviteError) throw inviteError;
+    return { ok: true, email: entry.student_email };
+  }
+
   match = path.match(/^\/api\/roster\/([^/]+)$/);
   if (match && method === 'PATCH') {
     if (isSupabaseConfigured && supabase) {
