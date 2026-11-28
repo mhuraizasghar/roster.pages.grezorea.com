@@ -134,7 +134,9 @@ export default function LibraryPanel({
     const chain = [];
     let cursor = currentFolderId;
     const byId = new Map(folders.map((f) => [f.id, f]));
-    while (cursor && byId.has(cursor)) {
+    const seen = new Set();
+    while (cursor && byId.has(cursor) && !seen.has(cursor)) {
+      seen.add(cursor);
       const f = byId.get(cursor);
       chain.unshift(f);
       cursor = f.parentId;
@@ -274,6 +276,20 @@ export default function LibraryPanel({
   const handleMoveSubmit = async (targetFolderId) => {
     if (!movingItem) return;
     try {
+      if (movingItem.kind === 'folder' && targetFolderId) {
+        const descendants = new Set([movingItem.id]);
+        let grew = true;
+        while (grew) {
+          grew = false;
+          folders.forEach((folder) => {
+            if (descendants.has(folder.parentId) && !descendants.has(folder.id)) {
+              descendants.add(folder.id);
+              grew = true;
+            }
+          });
+        }
+        if (descendants.has(targetFolderId)) throw new Error('A folder cannot be moved inside itself or one of its subfolders.');
+      }
       if (movingItem.kind === 'quiz') {
         await api.patch(`/api/library/quizzes/${movingItem.id}`, { folderId: targetFolderId || null });
       } else {
@@ -465,141 +481,56 @@ export default function LibraryPanel({
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Folders Grid */}
-          {visibleFolders.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {visibleFolders.map((folder) => (
-                <div
-                  key={folder.id}
-                  className="eval-card eval-card-hover p-4 flex items-center justify-between gap-3"
-                >
-                  <button
-                    type="button"
-                    onClick={() => { setSearch(''); setCurrentFolderId(folder.id); }}
-                    className="flex items-center gap-3 text-left flex-1 min-w-0"
-                  >
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: 'var(--eval-accent-soft)', color: 'var(--eval-accent)' }}
-                    >
-                      <Folder className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold truncate">{folder.name}</div>
-                      <div className="text-[11px]" style={{ color: 'var(--eval-muted)' }}>
-                        {folder.isSubject ? 'Subject' : 'Folder'}
-                      </div>
-                    </div>
-                  </button>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setRenamingFolder({ id: folder.id, name: folder.name })}
-                      className="eval-btn-ghost p-1.5"
-                      title="Rename folder"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMovingItem({ kind: 'folder', id: folder.id, title: folder.name })}
-                      className="eval-btn-ghost p-1.5"
-                      title="Move folder"
-                    >
-                      <Move className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSoftDeleteFolder(folder)}
-                      className="eval-btn-ghost p-1.5"
-                      title="Move folder to Trash"
-                      style={{ color: 'var(--status-fail)' }}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+          {currentFolderId && (
+            <div>
+              <h2 className="text-lg font-semibold">{breadcrumbs.at(-1)?.name || 'Folder'}</h2>
+              <p className="mt-0.5 text-xs" style={{ color: 'var(--eval-muted)' }}>Quizzes and subfolders in this location.</p>
             </div>
           )}
-
-          {/* Quizzes List */}
-          <div className="eval-card divide-y" style={{ borderColor: 'var(--eval-border)' }}>
-            {visibleQuizzes.length === 0 ? (
+          <div className="eval-card overflow-hidden divide-y" style={{ borderColor: 'var(--eval-border)' }}>
+            {visibleFolders.length === 0 && visibleQuizzes.length === 0 ? (
               <div className="p-10 text-center space-y-2">
-                <p className="text-sm font-medium">No quizzes in this location yet</p>
+                <p className="text-sm font-medium">{search ? 'No matching items' : 'This folder is empty'}</p>
                 <p className="text-xs" style={{ color: 'var(--eval-muted)' }}>
-                  Create a new quiz or open a folder above.
+                  Create a quiz or folder here, or move existing items into this location.
                 </p>
               </div>
             ) : (
-              visibleQuizzes.map((quiz) => (
-                <div key={quiz.id} className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="space-y-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-semibold">{quiz.title}</h3>
-                      <span className="eval-badge eval-badge-brand">{quiz.subject || 'General'}</span>
-                      <span className="eval-badge eval-badge-neutral font-mono">
-                        {(quiz.draftQuestions || []).length} Qs
-                      </span>
+              <>
+                {visibleFolders.map((folder) => {
+                  const contents = folders.filter((item) => item.parentId === folder.id).length + quizzes.filter((item) => item.folderId === folder.id).length;
+                  return <div key={`folder-${folder.id}`} className="group flex flex-wrap items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--eval-bg)]">
+                    <button type="button" onClick={() => { setSearch(''); setCurrentFolderId(folder.id); }} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                      <Folder className="h-5 w-5 shrink-0" style={{ color: 'var(--eval-accent)' }} />
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{folder.name}</span>
+                      <span className="hidden text-[11px] sm:inline" style={{ color: 'var(--eval-muted)' }}>{contents} items</span>
+                      <span className="eval-badge eval-badge-neutral text-[10px]">{folder.isSubject ? 'Subject' : 'Folder'}</span>
+                      <ChevronRight className="h-4 w-4 shrink-0" style={{ color: 'var(--eval-muted)' }} />
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={() => setRenamingFolder({ id: folder.id, name: folder.name })} className="eval-btn-ghost p-1.5" title="Rename folder"><Edit3 className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => setMovingItem({ kind: 'folder', id: folder.id, title: folder.name })} className="eval-btn-ghost p-1.5" title="Move folder"><Move className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => handleSoftDeleteFolder(folder)} className="eval-btn-ghost p-1.5" title="Move folder to Trash" style={{ color: 'var(--status-fail)' }}><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
-                    {quiz.description && (
-                      <p className="text-xs truncate max-w-2xl" style={{ color: 'var(--eval-muted)' }}>
-                        {quiz.description}
-                      </p>
-                    )}
                   </div>
-
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => onLaunchLive(quiz)}
-                      className="eval-btn-primary text-xs py-1.5 px-3"
-                    >
-                      <Radio className="w-3.5 h-3.5" /> Live Room
+                })}
+                {visibleQuizzes.map((quiz) => (
+                  <div key={`quiz-${quiz.id}`} className="flex flex-wrap items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--eval-bg)]">
+                    <FileText className="h-5 w-5 shrink-0" style={{ color: 'var(--eval-muted)' }} />
+                    <button type="button" onClick={() => onEditQuiz(quiz)} className="min-w-0 flex-1 text-left">
+                      <span className="block truncate text-sm font-medium">{quiz.title}</span>
+                      <span className="block truncate text-[11px]" style={{ color: 'var(--eval-muted)' }}>{quiz.subject || 'General'} · {(quiz.draftQuestions || []).length} questions{quiz.description ? ` · ${quiz.description}` : ''}</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => onAssignQuiz(quiz)}
-                      className="eval-btn-secondary text-xs py-1.5 px-3"
-                    >
-                      <Send className="w-3.5 h-3.5" /> Assign
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onEditQuiz(quiz)}
-                      className="eval-btn-secondary text-xs py-1.5 px-3"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" /> Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDuplicate(quiz)}
-                      className="eval-btn-ghost p-1.5"
-                      title="Duplicate quiz"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMovingItem({ kind: 'quiz', id: quiz.id, title: quiz.title })}
-                      className="eval-btn-ghost p-1.5"
-                      title="Move quiz"
-                    >
-                      <Move className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSoftDeleteQuiz(quiz)}
-                      className="eval-btn-ghost p-1.5"
-                      title="Move quiz to Trash"
-                      style={{ color: 'var(--status-fail)' }}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <button type="button" onClick={() => onLaunchLive(quiz)} className="eval-btn-secondary px-2.5 py-1.5 text-[11px]"><Radio className="h-3.5 w-3.5" /> Live room</button>
+                      <button type="button" onClick={() => onAssignQuiz(quiz)} className="eval-btn-secondary px-2.5 py-1.5 text-[11px]"><Send className="h-3.5 w-3.5" /> Assign</button>
+                      <button type="button" onClick={() => handleDuplicate(quiz)} className="eval-btn-ghost p-1.5" title="Duplicate quiz"><Copy className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => setMovingItem({ kind: 'quiz', id: quiz.id, title: quiz.title })} className="eval-btn-ghost p-1.5" title="Move quiz"><Move className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => handleSoftDeleteQuiz(quiz)} className="eval-btn-ghost p-1.5" title="Move quiz to Trash" style={{ color: 'var(--status-fail)' }}><Trash2 className="h-3.5 w-3.5" /></button>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </>
             )}
           </div>
         </div>
@@ -640,7 +571,18 @@ export default function LibraryPanel({
                 Root (All Subjects)
               </button>
               {folders
-                .filter((f) => f.id !== movingItem.id)
+                .filter((f) => {
+                  if (movingItem.kind !== 'folder') return true;
+                  const descendants = new Set([movingItem.id]);
+                  let grew = true;
+                  while (grew) {
+                    grew = false;
+                    folders.forEach((folder) => {
+                      if (descendants.has(folder.parentId) && !descendants.has(folder.id)) { descendants.add(folder.id); grew = true; }
+                    });
+                  }
+                  return !descendants.has(f.id);
+                })
                 .map((f) => (
                   <button
                     key={f.id}

@@ -97,9 +97,15 @@ export function connectRoomSocket(roomCode, { onUpdate, onEnded, onStatusChange 
     finally { refreshing = false; }
   };
   onStatusChange?.('connecting');
-  const channel = supabase.channel(`roster-live-room-${code}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'roster_live_rooms', filter: `code=eq.${code}` }, refreshRoom)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'roster_live_participants', filter: `room_code=eq.${code}` }, refreshRoom)
-    .subscribe((status) => onStatusChange?.(status === 'SUBSCRIBED' ? 'connected' : 'reconnecting'));
+  let cachedRole = '';
+  try { cachedRole = JSON.parse(localStorage.getItem('roster.auth.user') || 'null')?.role || ''; } catch {}
+  let channel = supabase.channel(`roster-live-room-${code}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'roster_live_rooms', filter: `code=eq.${code}` }, refreshRoom);
+  // Participant rows are only needed by the instructor console. Broadcasting
+  // every student's answer to every student caused N×N database refreshes.
+  if (cachedRole === 'teacher') {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table: 'roster_live_participants', filter: `room_code=eq.${code}` }, refreshRoom);
+  }
+  channel = channel.subscribe((status) => onStatusChange?.(status === 'SUBSCRIBED' ? 'connected' : 'reconnecting'));
   return () => { closed = true; supabase.removeChannel(channel); };
 }

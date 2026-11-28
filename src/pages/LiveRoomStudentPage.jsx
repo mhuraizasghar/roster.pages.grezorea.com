@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -48,6 +48,7 @@ export default function LiveRoomStudentPage() {
   const [secondsLeft, setSecondsLeft] = useState(null);
   const [joinRequested, setJoinRequested] = useState(() => searchParams.get('join') === '1');
   const [authLoading, setAuthLoading] = useState(false);
+  const leavingRoomRef = useRef(false);
   const [studentName, setStudentName] = useState(() => {
     try {
       return localStorage.getItem('roster.live.studentName') || '';
@@ -127,6 +128,17 @@ export default function LiveRoomStudentPage() {
     return () => clearInterval(pollTimer);
   }, [joinRequested, room?.code, wsStatus, syncState]);
 
+  useEffect(() => {
+    if (!joinRequested || !room?.code) return undefined;
+    leavingRoomRef.current = false;
+    return () => {
+      if (leavingRoomRef.current) return;
+      leavingRoomRef.current = true;
+      // Browser Back unmounts the room route. Preserve saved answers while
+      // marking this participation as departed for the teacher's live list.
+      api.post(`/api/rooms/${encodeURIComponent(code)}/leave`, {}).catch(() => {});
+    };
+  }, [code, joinRequested, room?.code]);
   const activeIdx = room?.mode === 'student_paced' ? studentIdx : (room?.currentQuestionIdx || 0);
   const currentQ = room?.questions?.[activeIdx] || null;
 
@@ -155,7 +167,8 @@ export default function LiveRoomStudentPage() {
   }, [room?.mode, room?.status, room?.questionStartedAt, currentQ?.id, currentQ?.timeLimitSec]);
 
   const handleLeave = async () => {
-    if (window.confirm('Leave this live classroom?')) {
+    if (!leavingRoomRef.current && window.confirm('Leave this live classroom? Your answers will be saved, but this attempt will not resume.')) {
+      leavingRoomRef.current = true;
       try {
         const result = await api.post(`/api/rooms/${encodeURIComponent(code)}/leave`, {});
         if (result.attendanceUpdated === false) showToast('You left the room. Your attendance may remain visible until the room ends.', 'info');

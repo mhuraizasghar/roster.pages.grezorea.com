@@ -308,8 +308,12 @@ export async function workspaceRequest(method, path, body = {}) {
       const participantId = localStorage.getItem(`roster.room.participant.${code}`);
       if (!participantId) throw new Error('Your participant session was not found.');
       const { error } = await supabase.rpc('roster_leave_live_room', { p_code: code, p_participant: participantId });
-      if (error && isMissingRpcSignature(error)) return { ok: true, attendanceUpdated: false };
+      if (error && isMissingRpcSignature(error)) {
+        localStorage.removeItem(`roster.room.participant.${code}`);
+        return { ok: true, attendanceUpdated: false };
+      }
       if (error) throw error;
+      localStorage.removeItem(`roster.room.participant.${code}`);
       return { ok: true, attendanceUpdated: true };
     }
   }

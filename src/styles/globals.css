@@ -11,13 +11,13 @@
   --stone-brown: #5e503fff;
 
   /* Semantic Surface & Text Tokens (Light - Grezorea Editorial Clarity) */
-  --eval-bg: #f2f4f3;
-  --eval-surface: #ffffff;
-  --eval-surface-muted: #eaeceb;
+  --eval-bg: #f4f1ec;
+  --eval-surface: #fffdfa;
+  --eval-surface-muted: #ece8e1;
   --eval-ink: #0a0908;
   --eval-muted: #5e503f;
-  --eval-border: rgba(169, 146, 125, 0.38);
-  --eval-border-strong: rgba(94, 80, 63, 0.35);
+  --eval-border: rgba(94, 80, 63, 0.18);
+  --eval-border-strong: rgba(94, 80, 63, 0.32);
 
   --eval-accent: #49111c;
   --eval-accent-hover: #350b14;
@@ -34,8 +34,8 @@
   --eval-font: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --eval-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --eval-radius: 0.625rem;
-  --eval-shadow-sm: 0 1px 2px rgba(10, 9, 8, 0.04);
-  --eval-shadow-md: 0 8px 24px rgba(10, 9, 8, 0.06);
+  --eval-shadow-sm: 0 2px 8px rgba(36, 26, 18, 0.045);
+  --eval-shadow-md: 0 10px 28px rgba(36, 26, 18, 0.08);
 }
 
 html.dark {

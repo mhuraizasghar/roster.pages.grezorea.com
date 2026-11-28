@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import QRCode from 'qrcode';
 import {
@@ -31,6 +31,7 @@ export default function LiveRoomHostPage() {
   const [showQr, setShowQr] = useState(false);
   const [presentMode, setPresentMode] = useState(false);
   const [ending, setEnding] = useState(false);
+  const socketStatusRef = useRef('connecting');
   const { showToast } = useToast();
 
   const fetchState = useCallback(async () => {
@@ -57,13 +58,14 @@ export default function LiveRoomHostPage() {
         setRoom(nextRoom);
         showToast('Live room session ended and results recorded.', 'info');
       },
-      onStatusChange: (status) => setWsStatus(status),
+      onStatusChange: (status) => { socketStatusRef.current = status; setWsStatus(status); },
     });
 
-    // Backup poll if socket is reconnecting
+    // Poll only while the live channel is disconnected, and back off to avoid
+    // unnecessary Supabase reads when realtime is healthy or the tab is hidden.
     const poll = setInterval(() => {
-      if (wsStatus !== 'connected') fetchState();
-    }, 6000);
+      if (socketStatusRef.current !== 'connected' && document.visibilityState === 'visible') fetchState();
+    }, 25000);
 
     return () => {
       disconnect();

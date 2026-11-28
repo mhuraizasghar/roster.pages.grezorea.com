@@ -19,7 +19,7 @@ import ReportsPanel from '../components/teacher/ReportsPanel';
 
 const TABS = [
   { id: 'library', label: 'Quiz Library', icon: FolderTree },
-  { id: 'roster', label: 'Student Roster', icon: Users },
+  { id: 'roster', label: 'Students', icon: Users },
   { id: 'groups', label: 'Groups', icon: Users },
   { id: 'assignments', label: 'Assignments', icon: CalendarClock },
   { id: 'rooms', label: 'Live Classrooms', icon: Radio },
@@ -142,7 +142,7 @@ export default function TeacherWorkspacePage() {
 
       {/* Tab Navigation (hidden while editing a quiz) */}
       {!editingQuiz && (
-        <div className="flex flex-wrap items-center gap-1.5 p-1.5 rounded-xl border" style={{ borderColor: 'var(--eval-border)', backgroundColor: 'var(--eval-surface)' }} role="tablist" aria-label="Workspace sections">
+        <div className="flex max-w-full items-center gap-4 overflow-x-auto border-b" style={{ borderColor: 'var(--eval-border)' }} role="tablist" aria-label="Workspace sections">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = activeTab === tab.id;
@@ -153,16 +153,13 @@ export default function TeacherWorkspacePage() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setActiveTab(tab.id)}
-                className={
-                  active
-                    ? 'eval-btn-primary py-2 px-3.5 text-xs'
-                    : 'eval-btn-ghost py-2 px-3.5 text-xs'
-                }
+                className={`relative inline-flex shrink-0 items-center gap-2 px-1 py-3 text-xs font-medium transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:origin-left after:scale-x-0 after:bg-[var(--eval-accent)] after:transition-transform after:content-[''] ${active ? 'after:scale-x-100' : 'hover:after:scale-x-100'}`}
+                style={{ color: active ? 'var(--eval-ink)' : 'var(--eval-muted)' }}
               >
                 <Icon className="w-3.5 h-3.5" />
                 {tab.label}
                 {tab.id === 'rooms' && activeRoomsCount > 0 && (
-                  <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-white/20">
+                  <span className="ml-0.5 text-[10px] font-mono" style={{ color: 'var(--eval-accent)' }}>
                     {activeRoomsCount}
                   </span>
                 )}

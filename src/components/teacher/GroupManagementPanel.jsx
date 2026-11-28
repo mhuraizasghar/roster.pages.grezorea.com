@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Check, FolderPlus, Pencil, Trash2, Users, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Check, ChevronDown, ChevronRight, FolderPlus, Pencil, Search, Trash2, Users, X } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useToast } from '../Toast';
 
@@ -8,6 +8,8 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
   const [editingId, setEditingId] = useState('');
   const [editingName, setEditingName] = useState('');
   const [deleteId, setDeleteId] = useState('');
+  const [expandedId, setExpandedId] = useState('');
+  const [memberSearch, setMemberSearch] = useState('');
   const [busy, setBusy] = useState(false);
   const { showToast } = useToast();
 
@@ -60,6 +62,25 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
     }
   };
 
+  const visibleEntries = useMemo(() => {
+    const query = memberSearch.trim().toLowerCase();
+    if (!query) return entries;
+    return entries.filter((entry) => `${entry.displayName || ''} ${entry.studentEmail || entry.email || ''}`.toLowerCase().includes(query));
+  }, [entries, memberSearch]);
+
+  const setMembership = async (entry, groupId, checked) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await api.patch(`/api/roster/${entry.id}`, { groupId: checked ? groupId : null });
+      await onRefresh();
+    } catch (error) {
+      showToast(error.message || 'Could not update group membership.', 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <section className="space-y-4">
       <header className="flex flex-wrap items-end justify-between gap-3">
@@ -92,15 +113,20 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
       <div className="eval-card overflow-hidden">
         {groups.length === 0 ? (
           <div className="p-8 text-center text-xs" style={{ color: 'var(--eval-muted)' }}>
-            No groups yet. Create a group here, then assign students from the Student Roster tab.
+            No groups yet. Create a group, then open it to add students directly.
           </div>
         ) : (
           <ul className="divide-y" style={{ borderColor: 'var(--eval-border)' }}>
             {groups.map((group) => {
               const memberCount = entries.filter((entry) => entry.groupId === group.id).length;
+              const expanded = expandedId === group.id;
               return (
-                <li key={group.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0 flex-1">
+                <li key={group.id} className="px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1 flex items-center gap-2">
+                    {editingId !== group.id && <button type="button" onClick={() => setExpandedId(expanded ? '' : group.id)} className="eval-btn-ghost p-1" aria-label={`${expanded ? 'Collapse' : 'Expand'} ${group.name}`}>
+                      {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </button>}
                     {editingId === group.id ? (
                       <div className="flex max-w-md items-center gap-2">
                         <input
@@ -116,7 +142,7 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
                       </div>
                     ) : (
                       <>
-                        <div className="truncate text-sm font-medium">{group.name}</div>
+                        <button type="button" onClick={() => setExpandedId(expanded ? '' : group.id)} className="truncate text-left text-sm font-medium hover:underline">{group.name}</button>
                         <div className="mt-0.5 text-[11px]" style={{ color: 'var(--eval-muted)' }}>{memberCount} students</div>
                       </>
                     )}
@@ -135,6 +161,34 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
                           <button type="button" onClick={() => setDeleteId(group.id)} className="eval-btn-ghost p-2" style={{ color: 'var(--status-fail)' }} aria-label={`Delete ${group.name}`}><Trash2 className="h-3.5 w-3.5" /></button>
                         </>
                       )}
+                    </div>
+                  )}
+                  </div>
+                  {expanded && editingId !== group.id && (
+                    <div className="mt-4 border-t pt-3 space-y-3" style={{ borderColor: 'var(--eval-border)' }}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="text-xs font-semibold">Group members</div>
+                          <div className="text-[11px]" style={{ color: 'var(--eval-muted)' }}>Select students to add or remove from this group.</div>
+                        </div>
+                        <div className="relative w-full sm:w-64">
+                          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style={{ color: 'var(--eval-muted)' }} />
+                          <input value={memberSearch} onChange={(event) => setMemberSearch(event.target.value)} className="eval-input w-full py-1.5 pl-8 text-xs" placeholder="Filter students" aria-label="Filter students in group manager" />
+                        </div>
+                      </div>
+                      {visibleEntries.length ? (
+                        <div className="max-h-72 overflow-y-auto divide-y rounded-lg" style={{ border: '1px solid var(--eval-border)', borderColor: 'var(--eval-border)' }}>
+                          {visibleEntries.map((entry) => {
+                            const email = entry.studentEmail || entry.email || '';
+                            const member = entry.groupId === group.id;
+                            return <label key={entry.id} className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-xs hover:bg-[var(--eval-bg)]">
+                              <input type="checkbox" checked={member} disabled={busy} onChange={(event) => setMembership(entry, group.id, event.target.checked)} />
+                              <span className="min-w-0 flex-1 truncate font-medium">{entry.displayName || email}</span>
+                              <span className="truncate font-mono text-[11px]" style={{ color: 'var(--eval-muted)' }}>{email}</span>
+                            </label>;
+                          })}
+                        </div>
+                      ) : <p className="py-4 text-center text-xs" style={{ color: 'var(--eval-muted)' }}>No students match this filter.</p>}
                     </div>
                   )}
                 </li>
