@@ -43,7 +43,6 @@ export default function LibraryPanel({
   const [movingItem, setMovingItem] = useState(null);
   const [renamingFolder, setRenamingFolder] = useState(null);
   const [importing, setImporting] = useState(false);
-  const [showActions, setShowActions] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState(() => new Set());
   const [folderPaths, setFolderPaths] = useState('');
   const { showToast } = useToast();
@@ -360,16 +359,13 @@ export default function LibraryPanel({
                 <option value="name">Sort: Name</option>
                 <option value="updated">Sort: Last Updated</option>
               </select>
-              <div className="relative">
-                <button type="button" onClick={() => setShowActions((v) => !v)} className="eval-btn-primary py-2 text-xs" aria-expanded={showActions}><Plus className="h-3.5 w-3.5"/> Library actions <ChevronDown className="h-3.5 w-3.5"/></button>
-                {showActions && <div className="absolute right-0 top-full z-20 mt-1 w-52 py-1 bg-[var(--eval-bg)] border-y border-[var(--eval-border)]">
-                  <button type="button" onClick={() => { setShowActions(false); handleCreateQuiz(); }} className="w-full px-3 py-2 text-left text-xs hover:text-[var(--eval-accent)]"><Plus className="mr-2 inline h-3.5 w-3.5"/>New quiz</button>
-                  <button type="button" onClick={() => { setShowActions(false); setImporting(true); }} className="w-full px-3 py-2 text-left text-xs hover:text-[var(--eval-accent)]"><Upload className="mr-2 inline h-3.5 w-3.5"/>Import quiz</button>
-                  <button type="button" onClick={() => { setShowActions(false); exportQuizzes('json'); }} className="w-full px-3 py-2 text-left text-xs"><Download className="mr-2 inline h-3.5 w-3.5"/>Export JSON</button>
-                  <button type="button" onClick={() => { setShowActions(false); exportQuizzes('csv'); }} className="w-full px-3 py-2 text-left text-xs"><Download className="mr-2 inline h-3.5 w-3.5"/>Export CSV</button>
-                  <button type="button" onClick={() => { setShowActions(false); setFolderPaths(''); setShowNewFolder(true); }} className="w-full px-3 py-2 text-left text-xs"><FolderPlus className="mr-2 inline h-3.5 w-3.5"/>{currentFolderId ? 'New subfolder' : 'New subject / folder'}</button>
-                </div>}
-              </div>
+              <ActionMenu label="Library actions" trigger={<><Plus className="h-3.5 w-3.5"/>Library actions<ChevronDown className="h-3.5 w-3.5"/></>} triggerClassName="eval-btn-primary py-2 text-xs" items={[
+                {label:'New quiz',icon:Plus,onSelect:handleCreateQuiz},
+                {label:'Import quiz',icon:Upload,onSelect:()=>setImporting(true)},
+                {label:'Export JSON',icon:Download,onSelect:()=>exportQuizzes('json')},
+                {label:'Export CSV',icon:Download,onSelect:()=>exportQuizzes('csv')},
+                {label:currentFolderId?'New subfolder':'New subject / folder',icon:FolderPlus,onSelect:()=>{setFolderPaths('');setShowNewFolder(true)}},
+              ]}/>
             </div>
             <div className="flex flex-wrap gap-3 text-[11px]" style={{color:'var(--eval-muted)'}}><span>Templates:</span><a className="underline" href="/templates/quiz-import-sample.json" download>JSON sample</a><a className="underline" href="/templates/quiz-import-sample.csv" download>CSV sample</a><a className="underline" href="/templates/quiz-import-format.md" download>Format guide</a></div>
           </>

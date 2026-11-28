@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
 
 /** A small action menu rendered at the document layer so table/card overflow cannot clip it. */
-export default function ActionMenu({ label = 'More actions', items = [] }) {
+export default function ActionMenu({ label = 'More actions', items = [], trigger = null, triggerClassName = '' }) {
   const buttonRef = useRef(null);
   const [position, setPosition] = useState(null);
 
@@ -37,7 +37,7 @@ export default function ActionMenu({ label = 'More actions', items = [] }) {
   };
 
   return <>
-    <button ref={buttonRef} type="button" onClick={openMenu} aria-label={label} aria-haspopup="menu" aria-expanded={Boolean(position)} className="inline-flex rounded-lg p-2 hover:text-[var(--eval-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--eval-accent)]"><MoreHorizontal className="h-4 w-4"/></button>
+    <button ref={buttonRef} type="button" onClick={openMenu} aria-label={label} aria-haspopup="menu" aria-expanded={Boolean(position)} className={`inline-flex items-center justify-center gap-2 rounded-lg p-2 hover:text-[var(--eval-accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--eval-accent)] ${triggerClassName}`}>{trigger || <MoreHorizontal className="h-4 w-4"/>}</button>
     {position && createPortal(<>
       <button type="button" aria-label="Close menu" className="fixed inset-0 z-[99] cursor-default" onClick={()=>setPosition(null)}/>
       <div role="menu" className="eval-action-menu fixed z-[100] py-1" style={position}>
