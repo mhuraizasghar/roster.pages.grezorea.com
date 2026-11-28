@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Download, Search, Trash2, Upload, UserPlus, Check, Edit2, X, Mail, LoaderCircle } from 'lucide-react';
+import { Download, Search, Trash2, Upload, UserPlus, Check, Edit2, X, Mail, LoaderCircle, Eye, EyeOff } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useToast } from '../Toast';
 import ActionMenu from '../ActionMenu';
@@ -12,8 +12,11 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
   const [bulkGroupId, setBulkGroupId] = useState('');
   const [importReport, setImportReport] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [editingEmailId, setEditingEmailId] = useState(null);
   const [removeConfirmId, setRemoveConfirmId] = useState(null);
   const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [visibleEmails, setVisibleEmails] = useState(new Set());
   const [filterGroup, setFilterGroup] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,6 +120,34 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
     } catch (err) {
       showToast(err.message, 'error');
     }
+  };
+
+  const handleSaveEmail = async (entryId) => {
+    try {
+      await api.patch(`/api/roster/${entryId}`, { studentEmail: editEmail });
+      setEditingEmailId(null);
+      showToast('Updated student email.');
+      onRefresh();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  const toggleEmailVisibility = (id) => {
+    setVisibleEmails((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const maskEmail = (email) => {
+    if (!email) return '—';
+    const [local, domain] = email.split('@');
+    if (!domain) return '••••@••••';
+    const visibleLocal = local.length <= 2 ? local[0] + '•' : local.slice(0, 2) + '•'.repeat(Math.min(local.length - 2, 4));
+    return `${visibleLocal}@${domain}`;
   };
 
   const handleGroupChange = async (entryId, groupId) => {
@@ -279,7 +310,46 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
               ) : (
                 filtered.map((entry) => (
                   <tr key={entry.id}>
-                    <td className="py-2.5 px-4 font-mono">{entry.studentEmail || entry.email}</td>
+                    <td className="py-2.5 px-4 font-mono">
+                      {editingEmailId === entry.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="email"
+                            className="eval-input py-1 px-2 text-xs w-52"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEmail(entry.id); if (e.key === 'Escape') setEditingEmailId(null); }}
+                            autoFocus
+                          />
+                          <button type="button" onClick={() => handleSaveEmail(entry.id)} className="eval-btn-primary py-1 px-2 text-xs">
+                            <Check className="w-3 h-3" />
+                          </button>
+                          <button type="button" onClick={() => setEditingEmailId(null)} className="eval-btn-ghost p-1" title="Cancel">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <span>{visibleEmails.has(entry.id) ? (entry.studentEmail || entry.email) : maskEmail(entry.studentEmail || entry.email)}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleEmailVisibility(entry.id)}
+                            className="eval-btn-ghost p-1"
+                            title={visibleEmails.has(entry.id) ? 'Hide email' : 'Show email'}
+                          >
+                            {visibleEmails.has(entry.id) ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setEditingEmailId(entry.id); setEditEmail(entry.studentEmail || entry.email || ''); }}
+                            className="eval-btn-ghost p-1"
+                            title="Edit email"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td className="py-2.5 px-4">
                       {editingId === entry.id ? (
                         <div className="flex items-center gap-1.5">

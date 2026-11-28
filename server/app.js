@@ -753,6 +753,15 @@ export function createRosterApp(db, { broadcastRoom = () => {}, mailer = null } 
     if (req.body?.displayName !== undefined) {
       entry.displayName = String(req.body.displayName).trim().slice(0, 80);
     }
+    if (req.body?.studentEmail !== undefined) {
+      const newEmail = normalizeEmail(req.body.studentEmail);
+      if (!isValidEmail(newEmail)) return res.status(400).json({ error: 'Valid email address required.' });
+      const duplicate = db.state.rosterEntries.find(
+        (r) => r.id !== entry.id && r.teacherId === req.user.id && normalizeEmail(r.studentEmail) === newEmail
+      );
+      if (duplicate) return res.status(409).json({ error: 'That email is already on your roster.' });
+      entry.studentEmail = newEmail;
+    }
     if (req.body?.groupId !== undefined) {
       entry.groupId = req.body.groupId || null;
     }
