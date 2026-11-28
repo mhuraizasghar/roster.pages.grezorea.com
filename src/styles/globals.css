@@ -34,8 +34,6 @@
   --eval-font: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --eval-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --eval-radius: 0.625rem;
-  --eval-shadow-sm: 0 2px 8px rgba(36, 26, 18, 0.045);
-  --eval-shadow-md: 0 10px 28px rgba(36, 26, 18, 0.08);
 }
 
 html.dark {
@@ -85,16 +83,15 @@ html.dark {
 
 @layer components {
   .eval-card {
-    background-color: var(--eval-surface);
-    border: 1px solid var(--eval-border);
+    background-color: transparent;
+    border: 1px solid transparent;
     border-radius: var(--eval-radius);
-    box-shadow: var(--eval-shadow-sm);
-    transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+    box-shadow: none;
   }
 
   .eval-card-hover:hover {
-    border-color: var(--dusty-taupe);
-    box-shadow: var(--eval-shadow-md);
+    border-color: transparent;
+    box-shadow: none;
   }
 
   .eval-btn-primary {
