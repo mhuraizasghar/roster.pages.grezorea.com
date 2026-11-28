@@ -31,9 +31,10 @@ export default function LibraryPanel({
   onEditQuiz,
   onAssignQuiz,
   onLaunchLive,
+  view = 'library',
 }) {
   const [currentFolderId, setCurrentFolderId] = useState(null);
-  const [showTrash, setShowTrash] = useState(false);
+  const showTrash = view === 'trash';
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [newFolderName, setNewFolderName] = useState('');
@@ -340,19 +341,12 @@ export default function LibraryPanel({
       <div className="eval-card p-2 sm:p-3 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold">{showTrash ? 'Quiz Trash' : 'Quiz Library'}</h2>
+            <h2 className="text-sm font-semibold">{showTrash ? 'Trash' : 'Library'}</h2>
             <p className="mt-0.5 text-[11px]" style={{ color: 'var(--eval-muted)' }}>
               {showTrash ? 'Restore removed items or permanently delete them.' : 'Create, organize, import, and export assessments.'}
             </p>
           </div>
-          <div className="inline-flex items-center gap-1" role="tablist" aria-label="Library views">
-            <button type="button" role="tab" aria-selected={!showTrash} onClick={() => setShowTrash(false)} className={!showTrash ? 'eval-btn-primary px-3 py-1.5 text-xs' : 'eval-btn-ghost px-3 py-1.5 text-xs'}>
-              <Folder className="h-3.5 w-3.5" /> Library
-            </button>
-            <button type="button" role="tab" aria-selected={showTrash} onClick={() => setShowTrash(true)} className={showTrash ? 'eval-btn-primary px-3 py-1.5 text-xs' : 'eval-btn-ghost px-3 py-1.5 text-xs'}>
-              <Trash2 className="h-3.5 w-3.5" /> Trash ({trashCount})
-            </button>
-          </div>
+          {showTrash && <span className="text-xs" style={{color:'var(--eval-muted)'}}>{trashCount} items</span>}
         </div>
 
         {!showTrash && (
@@ -373,7 +367,7 @@ export default function LibraryPanel({
                   <button type="button" onClick={() => { setShowActions(false); setImporting(true); }} className="w-full px-3 py-2 text-left text-xs hover:text-[var(--eval-accent)]"><Upload className="mr-2 inline h-3.5 w-3.5"/>Import quiz</button>
                   <button type="button" onClick={() => { setShowActions(false); exportQuizzes('json'); }} className="w-full px-3 py-2 text-left text-xs"><Download className="mr-2 inline h-3.5 w-3.5"/>Export JSON</button>
                   <button type="button" onClick={() => { setShowActions(false); exportQuizzes('csv'); }} className="w-full px-3 py-2 text-left text-xs"><Download className="mr-2 inline h-3.5 w-3.5"/>Export CSV</button>
-                  <button type="button" onClick={() => { setShowActions(false); setShowNewFolder(true); }} className="w-full px-3 py-2 text-left text-xs"><FolderPlus className="mr-2 inline h-3.5 w-3.5"/>New subject / folder</button>
+                  <button type="button" onClick={() => { setShowActions(false); setFolderPaths(''); setShowNewFolder(true); }} className="w-full px-3 py-2 text-left text-xs"><FolderPlus className="mr-2 inline h-3.5 w-3.5"/>{currentFolderId ? 'New subfolder' : 'New subject / folder'}</button>
                 </div>}
               </div>
             </div>
@@ -501,9 +495,12 @@ export default function LibraryPanel({
       ) : (
         <div className="space-y-4">
           {currentFolderId && (
-            <div>
-              <h2 className="text-lg font-semibold">{breadcrumbs.at(-1)?.name || 'Folder'}</h2>
-              <p className="mt-0.5 text-xs" style={{ color: 'var(--eval-muted)' }}>Quizzes and subfolders in this location.</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">{breadcrumbs.at(-1)?.name || 'Folder'}</h2>
+                <p className="mt-0.5 text-xs" style={{ color: 'var(--eval-muted)' }}>Quizzes and subfolders in this location.</p>
+              </div>
+              <button type="button" onClick={() => { setFolderPaths(''); setShowNewFolder(true); }} className="eval-btn-secondary py-2 text-xs"><FolderPlus className="h-3.5 w-3.5"/>New subfolder</button>
             </div>
           )}
           <div className="eval-card overflow-hidden divide-y" style={{ borderColor: 'var(--eval-border)' }}>

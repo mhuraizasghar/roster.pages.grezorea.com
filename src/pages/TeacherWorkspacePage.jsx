@@ -5,6 +5,7 @@ import {
   FolderTree,
   Radio,
   Users,
+  Trash2,
 } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -18,7 +19,8 @@ import RoomsPanel from '../components/teacher/RoomsPanel';
 import ReportsPanel from '../components/teacher/ReportsPanel';
 
 const TABS = [
-  { id: 'library', label: 'Quiz Library', icon: FolderTree },
+  { id: 'library', label: 'Library', icon: FolderTree },
+  { id: 'trash', label: 'Trash', icon: Trash2 },
   { id: 'roster', label: 'Students', icon: Users },
   { id: 'groups', label: 'Groups', icon: Users },
   { id: 'assignments', label: 'Assignments', icon: CalendarClock },
@@ -158,6 +160,9 @@ export default function TeacherWorkspacePage() {
               >
                 <Icon className="w-3.5 h-3.5" />
                 {tab.label}
+                {tab.id === 'trash' && library.trashFolders.length + library.trashQuizzes.length > 0 && (
+                  <span className="ml-0.5 text-[10px] font-mono" style={{ color: 'var(--eval-accent)' }}>{library.trashFolders.length + library.trashQuizzes.length}</span>
+                )}
                 {tab.id === 'rooms' && activeRoomsCount > 0 && (
                   <span className="ml-0.5 text-[10px] font-mono" style={{ color: 'var(--eval-accent)' }}>
                     {activeRoomsCount}
@@ -188,7 +193,7 @@ export default function TeacherWorkspacePage() {
         />
       ) : (
         <>
-          {activeTab === 'library' && (
+          {(activeTab === 'library' || activeTab === 'trash') && (
             <LibraryPanel
               folders={library.folders}
               quizzes={library.quizzes}
@@ -201,6 +206,7 @@ export default function TeacherWorkspacePage() {
                 setInitialRoomQuiz(quiz);
                 setActiveTab('rooms');
               }}
+              view={activeTab}
             />
           )}
 
