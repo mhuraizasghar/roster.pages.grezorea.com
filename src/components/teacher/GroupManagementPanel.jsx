@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Check, ChevronDown, ChevronRight, FolderPlus, Pencil, Search, Trash2, Users, X, MoreHorizontal } from 'lucide-react';
+import { ChevronDown, ChevronRight, FolderPlus, Pencil, Search, Trash2, Users, X } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useToast } from '../Toast';
+import ActionMenu from '../ActionMenu';
 
 export default function GroupManagementPanel({ groups = [], entries = [], onRefresh }) {
   const [name, setName] = useState('');
@@ -130,7 +131,10 @@ export default function GroupManagementPanel({ groups = [], entries = [], onRefr
                         </>
                       ) : (
                         <>
-                          <details className="relative"><summary className="list-none cursor-pointer p-2" aria-label={`Options for ${group.name}`}><MoreHorizontal className="h-4 w-4"/></summary><div className="absolute right-0 z-20 w-36 bg-[var(--eval-bg)] py-1 border-y border-[var(--eval-border)]"><button type="button" onClick={()=>{setName(group.name);setDescription(group.description||'');setEditingId(group.id);setEditingName(group.name);setDialog('edit')}} className="w-full px-3 py-2 text-left text-xs"><Pencil className="mr-2 inline h-3.5 w-3.5"/>Edit group</button><button type="button" onClick={() => setDeleteId(group.id)} className="w-full px-3 py-2 text-left text-xs text-red-700"><Trash2 className="mr-2 inline h-3.5 w-3.5"/>Delete group</button></div></details>
+                          <ActionMenu label={`Options for ${group.name}`} items={[
+                            {label:'Edit group',icon:Pencil,onSelect:()=>{setName(group.name);setDescription(group.description||'');setEditingId(group.id);setEditingName(group.name);setDialog('edit')}},
+                            {label:'Delete group',icon:Trash2,danger:true,onSelect:()=>setDeleteId(group.id)},
+                          ]}/>
                         </>
                       )}
                     </div>

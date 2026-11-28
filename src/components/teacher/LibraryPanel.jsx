@@ -16,11 +16,11 @@ import {
   FileText,
   Download,
   Upload,
-  MoreHorizontal,
   ChevronDown,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useToast } from '../Toast';
+import ActionMenu from '../ActionMenu';
 
 export default function LibraryPanel({
   folders,
@@ -523,11 +523,11 @@ export default function LibraryPanel({
                       <span className="hidden text-[11px] sm:inline" style={{ color: 'var(--eval-muted)' }}>{contents} items</span>
                       <span className="eval-badge eval-badge-neutral text-[10px]">{folder.isSubject ? 'Subject' : 'Folder'}</span>
                     </button>
-                    <details className="relative"><summary className="list-none cursor-pointer p-1.5" aria-label={`More options for ${folder.name}`}><MoreHorizontal className="h-4 w-4"/></summary><div className="absolute right-0 z-20 w-40 bg-[var(--eval-bg)] py-1 border-y border-[var(--eval-border)]">
-                      <button type="button" onClick={() => setRenamingFolder({ id: folder.id, name: folder.name })} className="w-full px-3 py-2 text-left text-xs">Rename</button>
-                      <button type="button" onClick={() => setMovingItem({ kind: 'folder', id: folder.id, title: folder.name })} className="w-full px-3 py-2 text-left text-xs">Move</button>
-                      <button type="button" onClick={() => handleSoftDeleteFolder(folder)} className="w-full px-3 py-2 text-left text-xs text-red-700">Move to Trash</button>
-                    </div></details>
+                    <ActionMenu label={`More options for ${folder.name}`} items={[
+                      {label:'Rename',icon:Edit3,onSelect:()=>setRenamingFolder({id:folder.id,name:folder.name})},
+                      {label:'Move',icon:Move,onSelect:()=>setMovingItem({kind:'folder',id:folder.id,title:folder.name})},
+                      {label:'Move to Trash',icon:Trash2,danger:true,onSelect:()=>handleSoftDeleteFolder(folder)},
+                    ]}/>
                     {/* legacy actions replaced by the compact menu */}<div className="hidden">
                       <button type="button" onClick={() => setRenamingFolder({ id: folder.id, name: folder.name })} className="eval-btn-ghost p-1.5" title="Rename folder"><Edit3 className="h-3.5 w-3.5" /></button>
                       <button type="button" onClick={() => setMovingItem({ kind: 'folder', id: folder.id, title: folder.name })} className="eval-btn-ghost p-1.5" title="Move folder"><Move className="h-3.5 w-3.5" /></button>
@@ -543,16 +543,13 @@ export default function LibraryPanel({
                       <span className="block truncate text-sm font-medium">{quiz.title}</span>
                       <span className="block truncate text-[11px]" style={{ color: 'var(--eval-muted)' }}>{quiz.subject || 'General'} · {(quiz.draftQuestions || []).length} questions{quiz.description ? ` · ${quiz.description}` : ''}</span>
                     </button>
-                    <details className="relative shrink-0">
-                      <summary className="list-none cursor-pointer rounded-md p-2 hover:text-[var(--eval-accent)]" aria-label={`More actions for ${quiz.title}`}><MoreHorizontal className="h-5 w-5"/></summary>
-                      <div className="absolute right-0 top-full z-30 mt-1 w-44 bg-[var(--eval-bg)] py-1 border-y border-[var(--eval-border)]">
-                        <button type="button" onClick={(event)=>{event.currentTarget.closest('details').open=false;onLaunchLive(quiz)}} className="w-full px-3 py-2 text-left text-xs hover:text-[var(--eval-accent)]"><Radio className="mr-2 inline h-3.5 w-3.5"/>Start live room</button>
-                        <button type="button" onClick={(event)=>{event.currentTarget.closest('details').open=false;onAssignQuiz(quiz)}} className="w-full px-3 py-2 text-left text-xs hover:text-[var(--eval-accent)]"><Send className="mr-2 inline h-3.5 w-3.5"/>Assign quiz</button>
-                        <button type="button" onClick={(event)=>{event.currentTarget.closest('details').open=false;handleDuplicate(quiz)}} className="w-full px-3 py-2 text-left text-xs hover:text-[var(--eval-accent)]"><Copy className="mr-2 inline h-3.5 w-3.5"/>Duplicate</button>
-                        <button type="button" onClick={(event)=>{event.currentTarget.closest('details').open=false;setMovingItem({kind:'quiz',id:quiz.id,title:quiz.title})}} className="w-full px-3 py-2 text-left text-xs hover:text-[var(--eval-accent)]"><Move className="mr-2 inline h-3.5 w-3.5"/>Move to folder</button>
-                        <button type="button" onClick={(event)=>{event.currentTarget.closest('details').open=false;handleSoftDeleteQuiz(quiz)}} className="w-full px-3 py-2 text-left text-xs text-red-700"><Trash2 className="mr-2 inline h-3.5 w-3.5"/>Move to Trash</button>
-                      </div>
-                    </details>
+                    <ActionMenu label={`More actions for ${quiz.title}`} items={[
+                      {label:'Start live room',icon:Radio,onSelect:()=>onLaunchLive(quiz)},
+                      {label:'Assign quiz',icon:Send,onSelect:()=>onAssignQuiz(quiz)},
+                      {label:'Duplicate',icon:Copy,onSelect:()=>handleDuplicate(quiz)},
+                      {label:'Move to folder',icon:Move,onSelect:()=>setMovingItem({kind:'quiz',id:quiz.id,title:quiz.title})},
+                      {label:'Move to Trash',icon:Trash2,danger:true,onSelect:()=>handleSoftDeleteQuiz(quiz)},
+                    ]}/>
                   </div>
                 ))}
               </>

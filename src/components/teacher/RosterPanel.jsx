@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Download, Search, Trash2, Upload, UserPlus, Check, Edit2, X, MoreHorizontal, Mail, LoaderCircle } from 'lucide-react';
+import { Download, Search, Trash2, Upload, UserPlus, Check, Edit2, X, Mail, LoaderCircle } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useToast } from '../Toast';
+import ActionMenu from '../ActionMenu';
 
 export default function RosterPanel({ entries, groups, onRefresh }) {
   const [singleEmail, setSingleEmail] = useState('');
@@ -331,13 +332,10 @@ export default function RosterPanel({ entries, groups, onRefresh }) {
                           <button type="button" onClick={() => setRemoveConfirmId(null)} className="eval-btn-ghost p-1" title="Cancel"><X className="w-3.5 h-3.5" /></button>
                         </div>
                       ) : (
-                        <details className="relative inline-block text-left">
-                          <summary className="list-none cursor-pointer rounded-md p-1.5 hover:text-[var(--eval-accent)]" aria-label={`More actions for ${entry.studentEmail || entry.email}`}><MoreHorizontal className="h-4 w-4"/></summary>
-                          <div className="absolute right-0 z-30 mt-1 w-48 bg-[var(--eval-bg)] py-1 text-left border-y border-[var(--eval-border)]">
-                            {entry.status !== 'active' && <button type="button" disabled={resendingId === entry.id} onClick={(event)=>{event.currentTarget.closest('details').open=false;handleResendInvitation(entry)}} className="w-full px-3 py-2 text-left text-xs disabled:opacity-60"><Mail className="mr-2 inline h-3.5 w-3.5"/>{resendingId===entry.id?<><LoaderCircle className="mr-1 inline h-3.5 w-3.5 animate-spin"/>Sending…</>:'Resend invitation'}</button>}
-                            <button type="button" onClick={(event)=>{event.currentTarget.closest('details').open=false;setRemoveConfirmId(entry.id)}} className="w-full px-3 py-2 text-left text-xs text-red-700"><Trash2 className="mr-2 inline h-3.5 w-3.5"/>Remove from roster</button>
-                          </div>
-                        </details>
+                        <ActionMenu label={`More actions for ${entry.studentEmail || entry.email}`} items={[
+                          ...(entry.status !== 'active' ? [{ label: resendingId === entry.id ? 'Sending invitation…' : 'Resend invitation', icon: resendingId === entry.id ? LoaderCircle : Mail, loading: resendingId === entry.id, disabled: Boolean(resendingId), onSelect: () => handleResendInvitation(entry) }] : []),
+                          { label: 'Remove from roster', icon: Trash2, danger: true, onSelect: () => setRemoveConfirmId(entry.id) },
+                        ]}/>
                       )}
                     </td>
                   </tr>
